@@ -14,6 +14,7 @@ public class ChannelIngestionPipelineService : IIngestionPipelineService
     private readonly IImageProcessingService _imageService;
     private readonly IMetadataService _metadataService;
     private readonly IExcelRepository _excelRepo;
+    private readonly IPhotoRenamerService _photoRenamerService;
 
     private readonly ConcurrentDictionary<Guid, IngestionProgressReport> _activeJobs = new();
     private readonly ConcurrentDictionary<Guid, CancellationTokenSource> _jobCts = new();
@@ -29,16 +30,20 @@ public class ChannelIngestionPipelineService : IIngestionPipelineService
         ".cr2", ".cr3", ".nef", ".arw", ".dng", ".raf", ".rw2", ".orf", ".pef"
     };
 
+    private sealed record IngestionFileItem(string SourceFilePath, string RenamedFileName);
+
     public ChannelIngestionPipelineService(
         IFileOrganizationService fileOrgService,
         IImageProcessingService imageService,
         IMetadataService metadataService,
-        IExcelRepository excelRepo)
+        IExcelRepository excelRepo,
+        IPhotoRenamerService? photoRenamerService = null)
     {
         _fileOrgService = fileOrgService;
         _imageService = imageService;
         _metadataService = metadataService;
         _excelRepo = excelRepo;
+        _photoRenamerService = photoRenamerService ?? new Metadata.PhotoRenamerService();
     }
 
     public Task<Guid> EnqueueJobAsync(IngestionJobRequest request, CancellationToken cancellationToken = default)
@@ -107,7 +112,7 @@ public class ChannelIngestionPipelineService : IIngestionPipelineService
             }
 
             // 2. Creazione Channel Producer-Consumer bounded
-            var channel = Channel.CreateBounded<string>(new BoundedChannelOptions(50)
+            var channel = Channel.CreateBounded<IngestionFileItem>(new BoundedChannelOptions(50)
             {
                 SingleWriter = true,
                 SingleReader = false,
@@ -119,10 +124,25 @@ public class ChannelIngestionPipelineService : IIngestionPipelineService
             {
                 try
                 {
-                    foreach (var file in allFiles)
+                    // Raggruppa i file per coppia (stessa directory sorgente + stesso nome senza estensione)
+                    var fileGroups = allFiles
+                        .GroupBy(f => Path.Combine(Path.GetDirectoryName(f) ?? string.Empty, Path.GetFileNameWithoutExtension(f)), StringComparer.OrdinalIgnoreCase)
+                        .ToList();
+
+                    foreach (var group in fileGroups)
                     {
                         if (token.IsCancellationRequested) break;
-                        await channel.Writer.WriteAsync(file, token).ConfigureAwait(false);
+
+                        // Calcola la radice del nome una sola volta per la coppia RAW+JPEG
+                        var rootName = _photoRenamerService.ComputeRenamedRoot(group);
+
+                        foreach (var file in group)
+                        {
+                            if (token.IsCancellationRequested) break;
+
+                            var finalName = _photoRenamerService.GetRenamedFileName(file, rootName);
+                            await channel.Writer.WriteAsync(new IngestionFileItem(file, finalName), token).ConfigureAwait(false);
+                        }
                     }
                 }
                 finally
@@ -140,26 +160,27 @@ public class ChannelIngestionPipelineService : IIngestionPipelineService
             {
                 while (await channel.Reader.WaitToReadAsync(token).ConfigureAwait(false))
                 {
-                    while (channel.Reader.TryRead(out var sourceFilePath))
+                    while (channel.Reader.TryRead(out var item))
                     {
                         token.ThrowIfCancellationRequested();
 
                         try
                         {
-                            var ext = Path.GetExtension(sourceFilePath);
+                            var ext = Path.GetExtension(item.SourceFilePath);
                             var isRaw = _fileOrgService.IsRawFormat(ext);
 
                             var rootFolder = !string.IsNullOrWhiteSpace(request.BasePath)
                                 ? request.BasePath
                                 : request.EventoTarget.CartellaDestinazioneRoot;
 
-                            // Fase A: Copia organizzata con MD5 e relativePath puro
+                            // Fase A: Copia organizzata con MD5, relativePath puro e nome file ridenominato
                             var (destPath, relPath, md5, sizeBytes) = await _fileOrgService.CopyFileOrganizedAsync(
-                                sourceFilePath,
+                                item.SourceFilePath,
                                 rootFolder,
                                 request.EventoTarget.NomeEvento,
                                 request.AtletaTarget,
                                 request.DisciplinaTarget,
+                                item.RenamedFileName,
                                 token).ConfigureAwait(false);
 
                             // Fase B: Watermark (se abilitato e formato raster)
@@ -200,7 +221,7 @@ public class ChannelIngestionPipelineService : IIngestionPipelineService
                                 EventoId = request.EventoTarget.Id,
                                 AtletaId = request.AtletaTarget.Id,
                                 DisciplinaId = request.DisciplinaTarget.Id,
-                                NomeFileOriginale = Path.GetFileName(sourceFilePath),
+                                NomeFileOriginale = Path.GetFileName(item.SourceFilePath),
                                 PathRelativo = relPath,
                                 Formato = isRaw ? "RAW" : "JPEG",
                                 DataScatto = captureDate,
@@ -217,7 +238,7 @@ public class ChannelIngestionPipelineService : IIngestionPipelineService
                             {
                                 report.ProcessedFiles++;
                                 report.ProcessedBytes += sizeBytes;
-                                report.CurrentProcessingFile = Path.GetFileName(sourceFilePath);
+                                report.CurrentProcessingFile = item.RenamedFileName;
 
                                 var nowMs = stopwatch.ElapsedMilliseconds;
                                 var deltaMs = nowMs - lastReportTime;
@@ -252,7 +273,7 @@ public class ChannelIngestionPipelineService : IIngestionPipelineService
                         {
                             lock (report.Warnings)
                             {
-                                report.Warnings.Add($"Errore sul file {Path.GetFileName(sourceFilePath)}: {ex.Message}");
+                                report.Warnings.Add($"Errore sul file {Path.GetFileName(item.SourceFilePath)}: {ex.Message}");
                             }
                         }
                     }

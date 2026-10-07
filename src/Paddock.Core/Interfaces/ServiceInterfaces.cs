@@ -91,6 +91,7 @@ public interface IFileOrganizationService
         string eventName,
         Atleta atleta,
         Disciplina disciplina,
+        string? customFileName = null,
         CancellationToken cancellationToken = default);
 
     Task DeleteEventFilesOnDiskAsync(string rootPath, string eventName, CancellationToken cancellationToken = default);

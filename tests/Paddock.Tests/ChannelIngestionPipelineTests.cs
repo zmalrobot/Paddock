@@ -154,5 +154,84 @@ public class ChannelIngestionPipelineTests : IDisposable
         // Assert
         finalReport.Status.Should().BeOneOf(IngestionStatus.Cancelled, IngestionStatus.Completed);
     }
+
+    [Fact]
+    public async Task Pipeline_RawJpegPair_ReceivesSameRenamedRoot_AndDistributesToRawAndJpegFolders()
+    {
+        // Arrange - Crea una coppia RAW + JPEG
+        var rawSource = Path.Combine(_sourceDir, "IMG_4589.CR2");
+        var jpgSource = Path.Combine(_sourceDir, "IMG_4589.JPG");
+        await File.WriteAllBytesAsync(rawSource, new byte[] { 10, 20, 30 });
+        await File.WriteAllBytesAsync(jpgSource, new byte[] { 40, 50, 60 });
+
+        var fileOrg = new FileOrganizationService();
+        var mockImageService = new Mock<IImageProcessingService>();
+        var mockMetadataService = new Mock<IMetadataService>();
+        var mockExcelRepo = new Mock<IExcelRepository>();
+        List<Foto> savedBatch = new();
+        mockExcelRepo.Setup(e => e.AddFotoBatchAsync(It.IsAny<IEnumerable<Foto>>(), It.IsAny<CancellationToken>()))
+            .Callback<IEnumerable<Foto>, CancellationToken>((batch, ct) => savedBatch.AddRange(batch))
+            .Returns(Task.CompletedTask);
+
+        var mockRenamer = new Mock<IPhotoRenamerService>();
+        var expectedRoot = "EOS600D_20261007_153022_04_4589";
+
+        mockRenamer.Setup(r => r.ComputeRenamedRoot(It.IsAny<IEnumerable<string>>()))
+            .Returns(expectedRoot);
+
+        mockRenamer.Setup(r => r.GetRenamedFileName(It.IsAny<string>(), expectedRoot))
+            .Returns<string, string?>((path, root) => $"{root}{Path.GetExtension(path)}");
+
+        var pipeline = new ChannelIngestionPipelineService(
+            fileOrg,
+            mockImageService.Object,
+            mockMetadataService.Object,
+            mockExcelRepo.Object,
+            mockRenamer.Object);
+
+        var evento = new Evento { NomeEvento = "Mtb Trophy", CartellaDestinazioneRoot = _destDir };
+        var atleta = new Atleta { NumeroPettorale = "105", Nome = "Mario", Cognome = "Rossi" };
+        var disciplina = new Disciplina { NomeDisciplina = "Downhill" };
+
+        var request = new IngestionJobRequest
+        {
+            SourceDirectory = _sourceDir,
+            EventoTarget = evento,
+            AtletaTarget = atleta,
+            DisciplinaTarget = disciplina
+        };
+
+        var completedTcs = new TaskCompletionSource<IngestionProgressReport>();
+        pipeline.JobCompleted += (s, r) => completedTcs.TrySetResult(r);
+
+        // Act
+        await pipeline.EnqueueJobAsync(request);
+        var report = await completedTcs.Task.WaitAsync(TimeSpan.FromSeconds(10));
+
+        // Assert
+        report.Status.Should().Be(IngestionStatus.Completed);
+        report.ProcessedFiles.Should().Be(2);
+
+        // ComputeRenamedRoot deve essere chiamato una sola volta per l'intera coppia
+        mockRenamer.Verify(r => r.ComputeRenamedRoot(It.IsAny<IEnumerable<string>>()), Times.Once);
+
+        savedBatch.Should().HaveCount(2);
+
+        var rawFoto = savedBatch.First(f => f.Formato == "RAW");
+        rawFoto.NomeFileOriginale.Should().Be("IMG_4589.CR2");
+        rawFoto.PathRelativo.Should().EndWith("EOS600D_20261007_153022_04_4589.CR2");
+        rawFoto.PathRelativo.Should().Contain("Raw");
+
+        var jpgFoto = savedBatch.First(f => f.Formato == "JPEG");
+        jpgFoto.NomeFileOriginale.Should().Be("IMG_4589.JPG");
+        jpgFoto.PathRelativo.Should().EndWith("EOS600D_20261007_153022_04_4589.JPG");
+        jpgFoto.PathRelativo.Should().Contain("Jpeg");
+
+        // Verifica file fisici su disco
+        var fullRawPath = Path.Combine(_destDir, rawFoto.PathRelativo);
+        var fullJpgPath = Path.Combine(_destDir, jpgFoto.PathRelativo);
+        File.Exists(fullRawPath).Should().BeTrue();
+        File.Exists(fullJpgPath).Should().BeTrue();
+    }
 }
 

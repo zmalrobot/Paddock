@@ -853,5 +853,48 @@ public class ViewModelTests
         vm.Evento.TotaleFoto.Should().Be(1);
         vm.Evento.TotaleByteOccupati.Should().Be(5000);
     }
+
+    [Fact]
+    public async Task SlideshowWindowViewModel_Displays_Evento_Atleta_Disciplina_And_PhotoName_InHud()
+    {
+        var config = new SlideshowConfig
+        {
+            EventoId = Guid.NewGuid(),
+            SelectedAtletiIds = new List<Guid>(),
+            IncludeJpegPng = true,
+            IncludeRaw = false,
+            DurationSeconds = 5,
+            IsRandomOrder = false,
+            SelectedTransitionIds = new List<string> { "crossfade" }
+        };
+
+        var mockRepo = new Mock<IExcelRepository>();
+        var mockImg = new Mock<IImage>().Object;
+
+        var vm = new SlideshowWindowViewModel(config, mockRepo.Object)
+        {
+            ImageLoader = path => Task.FromResult<IImage?>(mockImg)
+        };
+
+        var photoItem = new SlideshowPhotoItem(
+            new Foto { Id = Guid.NewGuid(), NomeFileOriginale = "EOS600D_20261007_153022_04_4589.JPG" },
+            @"C:\Photos\EOS600D_20261007_153022_04_4589.JPG",
+            atletaInfo: "#105 Mario Rossi",
+            disciplinaInfo: "Slalom Gigante",
+            eventoInfo: "Coppa del Mondo 2026",
+            fileName: "EOS600D_20261007_153022_04_4589.JPG");
+
+        typeof(SlideshowWindowViewModel)
+            .GetField("_photos", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
+            .SetValue(vm, new List<SlideshowPhotoItem> { photoItem });
+
+        await vm.ShowNextPhotoAsync();
+
+        vm.CurrentEventoText.Should().Be("Coppa del Mondo 2026");
+        vm.CurrentAtletaText.Should().Be("#105 Mario Rossi");
+        vm.CurrentDisciplinaText.Should().Be("Slalom Gigante");
+        vm.CurrentPhotoNameText.Should().Be("EOS600D_20261007_153022_04_4589.JPG");
+        vm.CurrentCounterText.Should().Be("1 / 1");
+    }
 }
 

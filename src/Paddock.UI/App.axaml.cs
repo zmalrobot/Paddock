@@ -32,11 +32,13 @@ public partial class App : Application
             var imageService = new ImageSharpProcessingService();
             var metadataService = new ExifToolMetadataService();
             var sdWatcherService = new SdCardWatcherService();
+            var photoRenamerService = new PhotoRenamerService();
             var pipelineService = new ChannelIngestionPipelineService(
                 fileOrgService,
                 imageService,
                 metadataService,
-                excelRepo);
+                excelRepo,
+                photoRenamerService);
 
             var mainVm = new MainViewModel(
                 excelRepo,

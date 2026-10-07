@@ -62,12 +62,39 @@
                     BoxShadow="0 4 20 #80000000">
                 <Grid ColumnDefinitions="Auto,*,Auto">
                     
-                    <!-- Dettaglio Atleta -->
-                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                        <Border Background="#FF8C32" CornerRadius="4" Padding="6,2">
+                    <!-- Dettaglio Evento, Atleta, Disciplina e Nome Foto -->
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <Border Background="#FF8C32" CornerRadius="4" Padding="6,2" VerticalAlignment="Center">
                             <TextBlock Text="PADDOCK LIVE" FontSize="10" FontWeight="Bold" Foreground="#121316"/>
                         </Border>
-                        <TextBlock Text="{Binding CurrentAtletaText}" FontSize="13" FontWeight="SemiBold" Foreground="#EDEDED" VerticalAlignment="Center"/>
+
+                        <!-- Evento -->
+                        <Border Background="#22252B" CornerRadius="4" Padding="6,2" VerticalAlignment="Center"
+                                IsVisible="{Binding CurrentEventoText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                            <TextBlock Text="{Binding CurrentEventoText}" FontSize="12" Foreground="#00B4D8" FontWeight="SemiBold"/>
+                        </Border>
+
+                        <!-- Atleta -->
+                        <TextBlock Text="{Binding CurrentAtletaText}" FontSize="13" FontWeight="Bold" Foreground="#EDEDED" VerticalAlignment="Center"/>
+
+                        <TextBlock Text="•" FontSize="11" Foreground="#666666" VerticalAlignment="Center"
+                                   IsVisible="{Binding CurrentDisciplinaText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+
+                        <!-- Disciplina -->
+                        <Border Background="#1E232A" CornerRadius="4" Padding="6,2" VerticalAlignment="Center"
+                                IsVisible="{Binding CurrentDisciplinaText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                            <TextBlock Text="{Binding CurrentDisciplinaText}" FontSize="12" Foreground="#2ECC71" FontWeight="SemiBold"/>
+                        </Border>
+
+                        <TextBlock Text="•" FontSize="11" Foreground="#666666" VerticalAlignment="Center"
+                                   IsVisible="{Binding CurrentPhotoNameText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                        </TextBlock>
+
+                        <!-- Nome Foto -->
+                        <Border Background="#16181C" BorderBrush="#3E424B" BorderThickness="1" CornerRadius="4" Padding="6,2" VerticalAlignment="Center"
+                                IsVisible="{Binding CurrentPhotoNameText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                            <TextBlock Text="{Binding CurrentPhotoNameText}" FontSize="11" Foreground="#FFD166" FontFamily="Consolas, monospace" FontWeight="Medium"/>
+                        </Border>
                     </StackPanel>
 
                     <!-- Contatore Foto & Istruzione ESC -->

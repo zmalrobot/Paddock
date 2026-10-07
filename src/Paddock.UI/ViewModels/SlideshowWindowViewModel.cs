@@ -15,13 +15,23 @@ public class SlideshowPhotoItem
     public string AbsolutePath { get; set; } = string.Empty;
     public string AtletaInfo { get; set; } = string.Empty;
     public string DisciplinaInfo { get; set; } = string.Empty;
+    public string EventoInfo { get; set; } = string.Empty;
+    public string FileName { get; set; } = string.Empty;
 
-    public SlideshowPhotoItem(Foto foto, string absolutePath, string atletaInfo, string disciplinaInfo)
+    public SlideshowPhotoItem(
+        Foto foto,
+        string absolutePath,
+        string atletaInfo = "",
+        string disciplinaInfo = "",
+        string eventoInfo = "",
+        string fileName = "")
     {
         Foto = foto;
         AbsolutePath = absolutePath;
         AtletaInfo = atletaInfo;
         DisciplinaInfo = disciplinaInfo;
+        EventoInfo = eventoInfo;
+        FileName = !string.IsNullOrWhiteSpace(fileName) ? fileName : Path.GetFileName(absolutePath);
     }
 }
 
@@ -62,7 +72,16 @@ public partial class SlideshowWindowViewModel : ViewModelBase
     private double _flashOpacity = 0.0;
 
     [ObservableProperty]
+    private string _currentEventoText = string.Empty;
+
+    [ObservableProperty]
     private string _currentAtletaText = string.Empty;
+
+    [ObservableProperty]
+    private string _currentDisciplinaText = string.Empty;
+
+    [ObservableProperty]
+    private string _currentPhotoNameText = string.Empty;
 
     [ObservableProperty]
     private string _currentCounterText = string.Empty;
@@ -130,7 +149,12 @@ public partial class SlideshowWindowViewModel : ViewModelBase
 
         var allFoto = await _excelRepo.GetFotoByEventoAsync(_config.EventoId);
         var allAtleti = await _excelRepo.GetAtletiByEventoAsync(_config.EventoId);
+        var allDiscipline = await _excelRepo.GetDisciplineByEventoAsync(_config.EventoId);
+        var evento = await _excelRepo.GetEventoByIdAsync(_config.EventoId);
+
         var atletiMap = allAtleti.ToDictionary(a => a.Id, a => a.DisplayPettoraleNome);
+        var disciplineMap = allDiscipline.ToDictionary(d => d.Id, d => string.IsNullOrWhiteSpace(d.NomeDisciplina) ? "Generale" : d.NomeDisciplina);
+        var eventoName = evento?.NomeEvento ?? "Evento";
 
         var matchingFoto = allFoto.Where(f =>
             _config.SelectedAtletiIds.Contains(f.AtletaId) &&
@@ -138,7 +162,6 @@ public partial class SlideshowWindowViewModel : ViewModelBase
         ).ToList();
 
         var items = new List<SlideshowPhotoItem>();
-        Evento? evCache = null;
 
         foreach (var f in matchingFoto)
         {
@@ -150,10 +173,9 @@ public partial class SlideshowWindowViewModel : ViewModelBase
             if (!File.Exists(absPath))
             {
                 // Fallback: cerca nella cartella destinazione root dell'evento
-                evCache ??= await _excelRepo.GetEventoByIdAsync(_config.EventoId);
-                if (evCache != null && !string.IsNullOrWhiteSpace(evCache.CartellaDestinazioneRoot))
+                if (evento != null && !string.IsNullOrWhiteSpace(evento.CartellaDestinazioneRoot))
                 {
-                    var altPath = Path.Combine(evCache.CartellaDestinazioneRoot, Path.GetFileName(cleanRel));
+                    var altPath = Path.Combine(evento.CartellaDestinazioneRoot, Path.GetFileName(cleanRel));
                     if (File.Exists(altPath))
                     {
                         absPath = altPath;
@@ -164,7 +186,9 @@ public partial class SlideshowWindowViewModel : ViewModelBase
             if (File.Exists(absPath))
             {
                 var atInfo = atletiMap.TryGetValue(f.AtletaId, out var name) ? name : "Atleta";
-                items.Add(new SlideshowPhotoItem(f, absPath, atInfo, f.Formato));
+                var discInfo = disciplineMap.TryGetValue(f.DisciplinaId, out var disc) ? disc : "Generale";
+                var fileName = Path.GetFileName(absPath);
+                items.Add(new SlideshowPhotoItem(f, absPath, atInfo, discInfo, eventoName, fileName));
             }
         }
 
@@ -272,7 +296,10 @@ public partial class SlideshowWindowViewModel : ViewModelBase
             }
         }
 
+        CurrentEventoText = currentItem.EventoInfo;
         CurrentAtletaText = currentItem.AtletaInfo;
+        CurrentDisciplinaText = currentItem.DisciplinaInfo;
+        CurrentPhotoNameText = currentItem.FileName;
         CurrentCounterText = $"{_currentIndex + 1} / {_photos.Count}";
     }
 

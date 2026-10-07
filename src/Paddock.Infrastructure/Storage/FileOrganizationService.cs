@@ -44,6 +44,7 @@ public class FileOrganizationService : IFileOrganizationService
         string eventName,
         Atleta atleta,
         Disciplina disciplina,
+        string? customFileName = null,
         CancellationToken cancellationToken = default)
     {
         if (!File.Exists(sourceFilePath))
@@ -52,7 +53,7 @@ public class FileOrganizationService : IFileOrganizationService
         }
 
         var ext = Path.GetExtension(sourceFilePath);
-        var fileName = Path.GetFileName(sourceFilePath);
+        var fileName = !string.IsNullOrWhiteSpace(customFileName) ? customFileName : Path.GetFileName(sourceFilePath);
         var targetDir = GetDestinationDirectory(rootPath, eventName, atleta, disciplina, ext);
 
         if (!Directory.Exists(targetDir))
