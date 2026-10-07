@@ -4,7 +4,16 @@
              xmlns:models="using:Paddock.Core.Models"
              x:Class="Paddock.UI.Views.SettingsDialog"
              x:DataType="vm:SettingsViewModel"
-             Width="740" MaxHeight="800">
+             Width="780" MaxHeight="800">
+
+    <UserControl.Styles>
+        <Style Selector="TabItem">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="MinHeight" Value="32" />
+        </Style>
+    </UserControl.Styles>
 
     <Border Background="#1A1C20" BorderBrush="#2E323B" BorderThickness="1" CornerRadius="8" Padding="20">
         <Grid RowDefinitions="Auto,*,Auto">

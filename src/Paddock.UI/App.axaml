@@ -99,5 +99,13 @@
             <Setter Property="Background" Value="#E74C3C" />
             <Setter Property="Foreground" Value="#FFFFFF" />
         </Style>
+
+        <!-- Stile Globale Intestazioni Tab / Schede Darkroom -->
+        <Style Selector="TabItem">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="MinHeight" Value="32" />
+        </Style>
     </Application.Styles>
 </Application>
