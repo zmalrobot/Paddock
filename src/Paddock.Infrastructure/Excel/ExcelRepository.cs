@@ -251,15 +251,83 @@ public class ExcelRepository : IExcelRepository
 
     public static List<PrezzoCatalogoItem> GetDefaultCatalogoItems() => new()
     {
-        new PrezzoCatalogoItem { Nome = "Foto Singola Digitale", Categoria = CategoriaPrezzo.FotoSingola, Prezzo = 10.00m, QuantitaFotoIncluse = 1, Descrizione = "File JPEG ad alta risoluzione senza watermark" },
-        new PrezzoCatalogoItem { Nome = "Pacchetto 5 Foto Digitali", Categoria = CategoriaPrezzo.PacchettoFoto, Prezzo = 40.00m, QuantitaFotoIncluse = 5, Descrizione = "5 foto a scelta in alta risoluzione (8.00€/foto)" },
-        new PrezzoCatalogoItem { Nome = "Pacchetto 10 Foto Digitali", Categoria = CategoriaPrezzo.PacchettoFoto, Prezzo = 70.00m, QuantitaFotoIncluse = 10, Descrizione = "10 foto a scelta in alta risoluzione (7.00€/foto)" },
-        new PrezzoCatalogoItem { Nome = "Pacchetto 20 Foto Digitali", Categoria = CategoriaPrezzo.PacchettoFoto, Prezzo = 120.00m, QuantitaFotoIncluse = 20, Descrizione = "20 foto a scelta in alta risoluzione (6.00€/foto)" },
-        new PrezzoCatalogoItem { Nome = "Tutte le Foto dell'Atleta (All-Inclusive)", Categoria = CategoriaPrezzo.PacchettoFoto, Prezzo = 150.00m, QuantitaFotoIncluse = 999, Descrizione = "Tutti gli scatti JPEG dell'atleta nell'evento" },
-        new PrezzoCatalogoItem { Nome = "Pacchetto Disciplina Singola", Categoria = CategoriaPrezzo.PacchettoDisciplina, Prezzo = 50.00m, QuantitaFotoIncluse = 1, Descrizione = "Tutti gli scatti per una specifica disciplina" },
-        new PrezzoCatalogoItem { Nome = "Pacchetto Tutte le Discipline", Categoria = CategoriaPrezzo.PacchettoDisciplina, Prezzo = 90.00m, QuantitaFotoIncluse = 1, Descrizione = "Tutti gli scatti dell'atleta su tutte le discipline" },
-        new PrezzoCatalogoItem { Nome = "Editing Base Singola Foto", Categoria = CategoriaPrezzo.EditingBase, Prezzo = 5.00m, QuantitaFotoIncluse = 1, Descrizione = "Bilanciamento luce, colore e contrasto professionale" },
-        new PrezzoCatalogoItem { Nome = "Editing Avanzato Singola Foto", Categoria = CategoriaPrezzo.EditingAvanzato, Prezzo = 15.00m, QuantitaFotoIncluse = 1, Descrizione = "Ritocco accurato, rimozione elementi e grading cinematografico" }
+        // 1. PACCHETTI GARA (*PER SINGOLA GIORNATA)
+        new PrezzoCatalogoItem
+        {
+            Nome = "1 Percorso",
+            Categoria = CategoriaPrezzo.PacchettoGara,
+            Prezzo = 15.00m,
+            QuantitaFotoIncluse = 1,
+            Descrizione = "Foto per singolo percorso (per singola giornata)"
+        },
+        new PrezzoCatalogoItem
+        {
+            Nome = "2 Percorsi",
+            Categoria = CategoriaPrezzo.PacchettoGara,
+            Prezzo = 25.00m,
+            QuantitaFotoIncluse = 2,
+            Descrizione = "Foto per 2 percorsi (per singola giornata)"
+        },
+        new PrezzoCatalogoItem
+        {
+            Nome = "Giornata intera (Tutti i percorsi)",
+            Categoria = CategoriaPrezzo.PacchettoGara,
+            Prezzo = 35.00m,
+            QuantitaFotoIncluse = 999,
+            Descrizione = "Tutti i percorsi della giornata per singolo atleta"
+        },
+
+        // 2. FOTO SINGOLE (*PER SINGOLA GIORNATA)
+        new PrezzoCatalogoItem
+        {
+            Nome = "1 Foto",
+            Categoria = CategoriaPrezzo.FotoSingola,
+            Prezzo = 5.00m,
+            QuantitaFotoIncluse = 1,
+            Descrizione = "Singola foto digitale ad alta risoluzione (per singola giornata)"
+        },
+        new PrezzoCatalogoItem
+        {
+            Nome = "3 Foto",
+            Categoria = CategoriaPrezzo.PacchettoFoto,
+            Prezzo = 12.00m,
+            QuantitaFotoIncluse = 3,
+            Descrizione = "Pacchetto 3 foto digitali (4.00€/foto, per singola giornata)"
+        },
+        new PrezzoCatalogoItem
+        {
+            Nome = "5 Foto",
+            Categoria = CategoriaPrezzo.PacchettoFoto,
+            Prezzo = 18.00m,
+            QuantitaFotoIncluse = 5,
+            Descrizione = "Pacchetto 5 foto digitali (3.60€/foto, per singola giornata)"
+        },
+        new PrezzoCatalogoItem
+        {
+            Nome = "10 Foto",
+            Categoria = CategoriaPrezzo.PacchettoFoto,
+            Prezzo = 30.00m,
+            QuantitaFotoIncluse = 10,
+            Descrizione = "Pacchetto 10 foto digitali (3.00€/foto, per singola giornata)"
+        },
+
+        // 3. SERVIZI EXTRA EDITING
+        new PrezzoCatalogoItem
+        {
+            Nome = "Editing base (Luci e colore)",
+            Categoria = CategoriaPrezzo.EditingBase,
+            Prezzo = 3.00m,
+            QuantitaFotoIncluse = 1,
+            Descrizione = "Ottimizzazione luci, colore e contrasto professionale (+3€/foto)"
+        },
+        new PrezzoCatalogoItem
+        {
+            Nome = "Editing avanzato (rimozione oggetti)",
+            Categoria = CategoriaPrezzo.EditingAvanzato,
+            Prezzo = 6.00m,
+            QuantitaFotoIncluse = 1,
+            Descrizione = "Ritocco avanzato e rimozione elementi indesiderati (+6€/foto)"
+        }
     };
 
     private static void FormatHeader(IXLWorksheet ws, int columnsCount)

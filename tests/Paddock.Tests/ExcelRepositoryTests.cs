@@ -226,7 +226,11 @@ public class ExcelRepositoryTests : IDisposable
         // 1. Get initial default items
         var items = await repo.GetCatalogoPrezziAsync();
         items.Should().HaveCount(9);
-        items.Should().Contain(i => i.Nome == "Foto Singola Digitale" && i.Prezzo == 10.00m);
+        items.Should().Contain(i => i.Nome == "1 Foto" && i.Prezzo == 5.00m && i.Categoria == CategoriaPrezzo.FotoSingola);
+        items.Should().Contain(i => i.Nome == "1 Percorso" && i.Prezzo == 15.00m && i.Categoria == CategoriaPrezzo.PacchettoGara);
+        items.Should().Contain(i => i.Nome == "Giornata intera (Tutti i percorsi)" && i.Prezzo == 35.00m && i.Categoria == CategoriaPrezzo.PacchettoGara);
+        items.Should().Contain(i => i.Nome == "Editing base (Luci e colore)" && i.Prezzo == 3.00m && i.Categoria == CategoriaPrezzo.EditingBase);
+        items.Should().Contain(i => i.Nome == "Editing avanzato (rimozione oggetti)" && i.Prezzo == 6.00m && i.Categoria == CategoriaPrezzo.EditingAvanzato);
 
         // 2. Add custom item
         var customItem = new PrezzoCatalogoItem

@@ -85,6 +85,7 @@ public enum CategoriaPrezzo
 {
     FotoSingola,
     PacchettoFoto,
+    PacchettoGara,
     PacchettoDisciplina,
     EditingBase,
     EditingAvanzato
@@ -103,6 +104,7 @@ public class PrezzoCatalogoItem
     {
         CategoriaPrezzo.FotoSingola => "Foto Singola",
         CategoriaPrezzo.PacchettoFoto => "Pacchetto Foto",
+        CategoriaPrezzo.PacchettoGara => "Pacchetto Gara",
         CategoriaPrezzo.PacchettoDisciplina => "Pacchetto Disciplina",
         CategoriaPrezzo.EditingBase => "Editing Base",
         CategoriaPrezzo.EditingAvanzato => "Editing Avanzato",

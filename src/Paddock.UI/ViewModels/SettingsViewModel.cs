@@ -355,7 +355,7 @@ public partial class SettingsViewModel : ViewModelBase
                 CatalogoPrezzi.Add(item);
             }
 
-            StatusMessage = "Listino prezzi ripristinato con i 9 pacchetti predefiniti consigliati.";
+            StatusMessage = $"Listino prezzi ripristinato con i {defaults.Count} articoli predefiniti dal catalogo.";
             IsErrorMessage = false;
         }
         catch (Exception ex)
