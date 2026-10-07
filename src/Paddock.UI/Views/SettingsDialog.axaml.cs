@@ -80,5 +80,30 @@ public partial class SettingsDialog : UserControl
             }
         }
     }
+
+    private async void BrowseWatermarkImage_Click(object? sender, RoutedEventArgs e)
+    {
+        var topLevel = TopLevel.GetTopLevel(this);
+        if (topLevel != null)
+        {
+            var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = "Seleziona Immagine Watermark (PNG)",
+                AllowMultiple = false,
+                FileTypeFilter = new[]
+                {
+                    new FilePickerFileType("File Immagine (*.png, *.jpg, *.jpeg)")
+                    {
+                        Patterns = new[] { "*.png", "*.jpg", "*.jpeg" }
+                    }
+                }
+            });
+
+            if (files.Count > 0 && DataContext is SettingsViewModel vm)
+            {
+                vm.DefaultWatermarkImagePath = files[0].Path.LocalPath;
+            }
+        }
+    }
 }
 

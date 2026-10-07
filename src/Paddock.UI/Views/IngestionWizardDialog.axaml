@@ -115,6 +115,15 @@
                                               HorizontalAlignment="Stretch"/>
                                 </StackPanel>
                             </Grid>
+
+                            <!-- Anteprima Live Posizionamento -->
+                            <TextBlock Text="Anteprima Live Posizionamento:" FontSize="11" Foreground="#9EA3AE" Margin="0,4,0,0"/>
+                            <Border Background="#101215" BorderBrush="#2E323B" BorderThickness="1" CornerRadius="6" Height="160" ClipToBounds="True">
+                                <Panel>
+                                    <Image Source="{Binding WatermarkPreviewBitmap}" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsPreviewLoading}" Width="80" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Panel>
+                            </Border>
                         </StackPanel>
                     </StackPanel>
                 </Border>

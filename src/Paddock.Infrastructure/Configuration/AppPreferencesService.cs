@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Paddock.Core.Enums;
 using Paddock.Core.Interfaces;
 
 namespace Paddock.Infrastructure.Configuration;
@@ -20,6 +21,48 @@ public class AppPreferencesService : IAppPreferencesService
     {
         get => _data.AutoOpenLastDatabase;
         set => _data.AutoOpenLastDatabase = value;
+    }
+
+    public bool DefaultWatermarkEnabled
+    {
+        get => _data.DefaultWatermarkEnabled;
+        set => _data.DefaultWatermarkEnabled = value;
+    }
+
+    public string? DefaultWatermarkImagePath
+    {
+        get => _data.DefaultWatermarkImagePath;
+        set => _data.DefaultWatermarkImagePath = value;
+    }
+
+    public float DefaultWatermarkOpacity
+    {
+        get => _data.DefaultWatermarkOpacity;
+        set => _data.DefaultWatermarkOpacity = value;
+    }
+
+    public WatermarkPosition DefaultWatermarkPosition
+    {
+        get => _data.DefaultWatermarkPosition;
+        set => _data.DefaultWatermarkPosition = value;
+    }
+
+    public float DefaultWatermarkScalePercent
+    {
+        get => _data.DefaultWatermarkScalePercent;
+        set => _data.DefaultWatermarkScalePercent = value;
+    }
+
+    public string DefaultPhotographerName
+    {
+        get => _data.DefaultPhotographerName;
+        set => _data.DefaultPhotographerName = value;
+    }
+
+    public string DefaultCopyrightNotice
+    {
+        get => _data.DefaultCopyrightNotice;
+        set => _data.DefaultCopyrightNotice = value;
     }
 
     public AppPreferencesService(string? customConfigPath = null)
@@ -118,5 +161,13 @@ public class AppPreferencesService : IAppPreferencesService
         public string? LastDatabasePath { get; set; }
         public List<string> RecentDatabases { get; set; } = new();
         public bool AutoOpenLastDatabase { get; set; } = false;
+
+        public bool DefaultWatermarkEnabled { get; set; } = false;
+        public string? DefaultWatermarkImagePath { get; set; }
+        public float DefaultWatermarkOpacity { get; set; } = 0.65f;
+        public WatermarkPosition DefaultWatermarkPosition { get; set; } = WatermarkPosition.BottomRight;
+        public float DefaultWatermarkScalePercent { get; set; } = 0.20f;
+        public string DefaultPhotographerName { get; set; } = string.Empty;
+        public string DefaultCopyrightNotice { get; set; } = string.Empty;
     }
 }

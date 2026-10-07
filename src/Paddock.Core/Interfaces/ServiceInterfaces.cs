@@ -62,6 +62,16 @@ public interface IAppPreferencesService
     List<string> RecentDatabases { get; }
     bool AutoOpenLastDatabase { get; set; }
     void AddRecentDatabase(string path);
+
+    // Watermark & Metadati di Default
+    bool DefaultWatermarkEnabled { get; set; }
+    string? DefaultWatermarkImagePath { get; set; }
+    float DefaultWatermarkOpacity { get; set; }
+    WatermarkPosition DefaultWatermarkPosition { get; set; }
+    float DefaultWatermarkScalePercent { get; set; }
+    string DefaultPhotographerName { get; set; }
+    string DefaultCopyrightNotice { get; set; }
+
     void Load();
     Task LoadAsync();
     Task SaveAsync();
@@ -87,6 +97,12 @@ public interface IImageProcessingService
 {
     Task ApplyWatermarkAsync(string sourceImagePath, string destinationImagePath, WatermarkOptions options, CancellationToken cancellationToken = default);
     Task<byte[]> GenerateThumbnailAsync(string imagePath, int maxWidth = 260, int maxHeight = 260, CancellationToken cancellationToken = default);
+    Task<byte[]> GenerateWatermarkPreviewJpegAsync(
+        string? sampleImagePath,
+        WatermarkOptions options,
+        int previewWidth = 640,
+        int previewHeight = 426,
+        CancellationToken cancellationToken = default);
 }
 
 public interface IMetadataService

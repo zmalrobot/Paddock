@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.IO;
+using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Paddock.Core.DTOs;
@@ -11,6 +13,8 @@ namespace Paddock.UI.ViewModels;
 public partial class IngestionWizardViewModel : ViewModelBase
 {
     private readonly ISdCardWatcherService _sdCardWatcher;
+    private readonly IAppPreferencesService? _prefsService;
+    private readonly IImageProcessingService? _imageService;
 
     public Evento Evento { get; }
 
@@ -36,6 +40,15 @@ public partial class IngestionWizardViewModel : ViewModelBase
     private WatermarkPosition _watermarkPosition = WatermarkPosition.BottomRight;
 
     [ObservableProperty]
+    private float _watermarkScalePercent = 0.20f;
+
+    [ObservableProperty]
+    private Bitmap? _watermarkPreviewBitmap;
+
+    [ObservableProperty]
+    private bool _isPreviewLoading;
+
+    [ObservableProperty]
     private bool _injectMetadata = true;
 
     [ObservableProperty]
@@ -58,10 +71,14 @@ public partial class IngestionWizardViewModel : ViewModelBase
         Evento evento,
         IEnumerable<Atleta> atleti,
         IEnumerable<Disciplina> discipline,
-        ISdCardWatcherService sdCardWatcher)
+        ISdCardWatcherService sdCardWatcher,
+        IAppPreferencesService? prefsService = null,
+        IImageProcessingService? imageService = null)
     {
         Evento = evento;
         _sdCardWatcher = sdCardWatcher;
+        _prefsService = prefsService;
+        _imageService = imageService;
 
         foreach (var a in atleti) Atleti.Add(a);
         foreach (var d in discipline) Discipline.Add(d);
@@ -69,8 +86,21 @@ public partial class IngestionWizardViewModel : ViewModelBase
         SelectedAtleta = Atleti.FirstOrDefault();
         SelectedDisciplina = Discipline.FirstOrDefault();
 
+        if (_prefsService != null)
+        {
+            WatermarkEnabled = _prefsService.DefaultWatermarkEnabled;
+            WatermarkImagePath = _prefsService.DefaultWatermarkImagePath;
+            WatermarkOpacity = _prefsService.DefaultWatermarkOpacity > 0 ? _prefsService.DefaultWatermarkOpacity : 0.65f;
+            WatermarkPosition = _prefsService.DefaultWatermarkPosition;
+            WatermarkScalePercent = _prefsService.DefaultWatermarkScalePercent > 0 ? _prefsService.DefaultWatermarkScalePercent : 0.20f;
+            PhotographerName = _prefsService.DefaultPhotographerName ?? string.Empty;
+            CopyrightNotice = _prefsService.DefaultCopyrightNotice ?? string.Empty;
+        }
+
         RefreshDrives();
         _sdCardWatcher.RemovableDrivesChanged += (s, drives) => RefreshDrives();
+
+        _ = UpdateWatermarkPreviewAsync();
     }
 
     private void RefreshDrives()
@@ -96,6 +126,61 @@ public partial class IngestionWizardViewModel : ViewModelBase
     {
         SourceDirectory = drive.DcimPath;
     }
+
+    public async Task UpdateWatermarkPreviewAsync()
+    {
+        if (_imageService == null) return;
+
+        try
+        {
+            IsPreviewLoading = true;
+            var options = new WatermarkOptions
+            {
+                Enabled = WatermarkEnabled,
+                WatermarkImagePath = WatermarkImagePath,
+                Opacity = WatermarkOpacity,
+                Position = WatermarkPosition,
+                ScalePercent = WatermarkScalePercent
+            };
+
+            string? samplePhotoPath = null;
+            if (!string.IsNullOrWhiteSpace(SourceDirectory) && Directory.Exists(SourceDirectory))
+            {
+                var extensions = new[] { ".jpg", ".jpeg", ".png" };
+                try
+                {
+                    samplePhotoPath = Directory.EnumerateFiles(SourceDirectory, "*.*", SearchOption.AllDirectories)
+                        .FirstOrDefault(f => extensions.Contains(Path.GetExtension(f).ToLowerInvariant()));
+                }
+                catch
+                {
+                    // Fallback to null
+                }
+            }
+
+            var bytes = await _imageService.GenerateWatermarkPreviewJpegAsync(samplePhotoPath, options);
+            if (bytes != null && bytes.Length > 0)
+            {
+                using var ms = new MemoryStream(bytes);
+                WatermarkPreviewBitmap = new Bitmap(ms);
+            }
+        }
+        catch
+        {
+            // Ignora errori rendering anteprima
+        }
+        finally
+        {
+            IsPreviewLoading = false;
+        }
+    }
+
+    partial void OnWatermarkEnabledChanged(bool value) => _ = UpdateWatermarkPreviewAsync();
+    partial void OnWatermarkImagePathChanged(string? value) => _ = UpdateWatermarkPreviewAsync();
+    partial void OnWatermarkOpacityChanged(float value) => _ = UpdateWatermarkPreviewAsync();
+    partial void OnWatermarkPositionChanged(WatermarkPosition value) => _ = UpdateWatermarkPreviewAsync();
+    partial void OnWatermarkScalePercentChanged(float value) => _ = UpdateWatermarkPreviewAsync();
+    partial void OnSourceDirectoryChanged(string value) => _ = UpdateWatermarkPreviewAsync();
 
     [RelayCommand]
     private void StartIngestion()
@@ -129,7 +214,8 @@ public partial class IngestionWizardViewModel : ViewModelBase
                 Enabled = WatermarkEnabled,
                 WatermarkImagePath = WatermarkImagePath,
                 Opacity = WatermarkOpacity,
-                Position = WatermarkPosition
+                Position = WatermarkPosition,
+                ScalePercent = WatermarkScalePercent
             },
             Metadata = new MetadataOptions
             {

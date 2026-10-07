@@ -43,7 +43,8 @@ public partial class App : Application
                 fileOrgService,
                 pipelineService,
                 sdWatcherService,
-                prefsService);
+                prefsService,
+                imageService);
 
             var mainWindow = new MainWindow
             {

@@ -16,6 +16,7 @@ public partial class MainViewModel : ViewModelBase
     private readonly IIngestionPipelineService _pipelineService;
     private readonly ISdCardWatcherService _sdCardWatcher;
     private readonly IAppPreferencesService _prefsService;
+    private readonly IImageProcessingService? _imageService;
 
     [ObservableProperty]
     private string _eventSearchFilter = string.Empty;
@@ -57,13 +58,15 @@ public partial class MainViewModel : ViewModelBase
         IFileOrganizationService fileOrgService,
         IIngestionPipelineService pipelineService,
         ISdCardWatcherService sdCardWatcher,
-        IAppPreferencesService? prefsService = null)
+        IAppPreferencesService? prefsService = null,
+        IImageProcessingService? imageService = null)
     {
         _excelRepo = excelRepo;
         _fileOrgService = fileOrgService;
         _pipelineService = pipelineService;
         _sdCardWatcher = sdCardWatcher;
         _prefsService = prefsService ?? new Paddock.Infrastructure.Configuration.AppPreferencesService();
+        _imageService = imageService;
 
         JobManager = new JobManagerViewModel(_pipelineService);
 
@@ -261,7 +264,7 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     private async Task OpenSettingsDialogAsync()
     {
-        var settingsVm = new SettingsViewModel(_excelRepo, _prefsService);
+        var settingsVm = new SettingsViewModel(_excelRepo, _prefsService, _imageService);
         await settingsVm.InitializeAsync();
 
         settingsVm.RequestClose += CloseModal;
@@ -315,7 +318,7 @@ public partial class MainViewModel : ViewModelBase
         var atleti = await _excelRepo.GetAtletiByEventoAsync(evento.Id);
         var disc = await _excelRepo.GetDisciplineByEventoAsync(evento.Id);
 
-        var wizardVm = new IngestionWizardViewModel(evento, atleti, disc, _sdCardWatcher);
+        var wizardVm = new IngestionWizardViewModel(evento, atleti, disc, _sdCardWatcher, _prefsService, _imageService);
         wizardVm.RequestClose += async request =>
         {
             CloseModal();

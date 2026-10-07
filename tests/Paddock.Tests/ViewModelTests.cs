@@ -457,5 +457,114 @@ public class ViewModelTests
 
         mockExcel.Verify(x => x.UpsertAcquistoFotoAsync(It.IsAny<AcquistoFoto>(), default), Times.Once);
     }
+
+    [Fact]
+    public async Task SettingsViewModel_WatermarkSettings_LoadAndSave()
+    {
+        var mockRepo = new Mock<IExcelRepository>();
+        mockRepo.Setup(r => r.DatabaseFilePath).Returns(@"C:\Data\Photos.xlsx");
+        mockRepo.Setup(r => r.GetBasePathAsync(It.IsAny<CancellationToken>())).ReturnsAsync(@"C:\Photos");
+
+        var mockPrefs = new Mock<IAppPreferencesService>();
+        mockPrefs.SetupProperty(p => p.DefaultWatermarkEnabled, false);
+        mockPrefs.SetupProperty(p => p.DefaultWatermarkImagePath, @"C:\OldLogo.png");
+        mockPrefs.SetupProperty(p => p.DefaultWatermarkOpacity, 0.50f);
+        mockPrefs.SetupProperty(p => p.DefaultWatermarkPosition, WatermarkPosition.TopLeft);
+        mockPrefs.SetupProperty(p => p.DefaultWatermarkScalePercent, 0.25f);
+        mockPrefs.SetupProperty(p => p.DefaultPhotographerName, "Mario Rossi");
+        mockPrefs.SetupProperty(p => p.DefaultCopyrightNotice, "© 2026 Mario Rossi");
+        mockPrefs.Setup(p => p.RecentDatabases).Returns(new List<string>());
+
+        var vm = new SettingsViewModel(mockRepo.Object, mockPrefs.Object);
+
+        // Verifica caricamento iniziale
+        vm.DefaultWatermarkEnabled.Should().BeFalse();
+        vm.DefaultWatermarkImagePath.Should().Be(@"C:\OldLogo.png");
+        vm.DefaultWatermarkOpacity.Should().Be(0.50f);
+        vm.DefaultWatermarkPosition.Should().Be(WatermarkPosition.TopLeft);
+        vm.DefaultWatermarkScalePercent.Should().Be(0.25f);
+        vm.DefaultPhotographerName.Should().Be("Mario Rossi");
+        vm.DefaultCopyrightNotice.Should().Be("© 2026 Mario Rossi");
+
+        // Modifica valori
+        vm.DefaultWatermarkEnabled = true;
+        vm.DefaultWatermarkImagePath = @"C:\NewLogo.png";
+        vm.DefaultWatermarkOpacity = 0.80f;
+        vm.DefaultWatermarkPosition = WatermarkPosition.BottomRight;
+        vm.DefaultWatermarkScalePercent = 0.30f;
+        vm.DefaultPhotographerName = "Luigi Verdi";
+        vm.DefaultCopyrightNotice = "© 2026 Luigi Verdi";
+
+        await vm.SaveWatermarkSettingsAsync();
+
+        // Verifica salvataggio nel mock
+        mockPrefs.Object.DefaultWatermarkEnabled.Should().BeTrue();
+        mockPrefs.Object.DefaultWatermarkImagePath.Should().Be(@"C:\NewLogo.png");
+        mockPrefs.Object.DefaultWatermarkOpacity.Should().Be(0.80f);
+        mockPrefs.Object.DefaultWatermarkPosition.Should().Be(WatermarkPosition.BottomRight);
+        mockPrefs.Object.DefaultWatermarkScalePercent.Should().Be(0.30f);
+        mockPrefs.Object.DefaultPhotographerName.Should().Be("Luigi Verdi");
+        mockPrefs.Object.DefaultCopyrightNotice.Should().Be("© 2026 Luigi Verdi");
+        mockPrefs.Verify(p => p.SaveAsync(), Times.Once);
+    }
+
+    [Fact]
+    public void IngestionWizardViewModel_LoadsDefaultsFromPreferences()
+    {
+        var evento = new Evento { NomeEvento = "Test Event" };
+        var atleta = new Atleta { NumeroPettorale = "99", Nome = "Giacomo", Cognome = "Leopardi" };
+        var disc = new Disciplina { NomeDisciplina = "Poesia" };
+        var mockWatcher = new Mock<ISdCardWatcherService>();
+
+        var mockPrefs = new Mock<IAppPreferencesService>();
+        mockPrefs.Setup(p => p.DefaultWatermarkEnabled).Returns(true);
+        mockPrefs.Setup(p => p.DefaultWatermarkImagePath).Returns(@"C:\Brand\Logo.png");
+        mockPrefs.Setup(p => p.DefaultWatermarkOpacity).Returns(0.75f);
+        mockPrefs.Setup(p => p.DefaultWatermarkPosition).Returns(WatermarkPosition.Center);
+        mockPrefs.Setup(p => p.DefaultWatermarkScalePercent).Returns(0.22f);
+        mockPrefs.Setup(p => p.DefaultPhotographerName).Returns("Paddock Pro Studio");
+        mockPrefs.Setup(p => p.DefaultCopyrightNotice).Returns("© Paddock Pro 2026");
+
+        var vm = new IngestionWizardViewModel(
+            evento,
+            new[] { atleta },
+            new[] { disc },
+            mockWatcher.Object,
+            mockPrefs.Object);
+
+        // Verifica precompilazione
+        vm.WatermarkEnabled.Should().BeTrue();
+        vm.WatermarkImagePath.Should().Be(@"C:\Brand\Logo.png");
+        vm.WatermarkOpacity.Should().Be(0.75f);
+        vm.WatermarkPosition.Should().Be(WatermarkPosition.Center);
+        vm.WatermarkScalePercent.Should().Be(0.22f);
+        vm.PhotographerName.Should().Be("Paddock Pro Studio");
+        vm.CopyrightNotice.Should().Be("© Paddock Pro 2026");
+
+        // Verifica generazione richiesta di ingestione con i valori precompilati
+        var tempSource = Path.Combine(Path.GetTempPath(), "TempSource_Defaults_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempSource);
+        try
+        {
+            vm.SourceDirectory = tempSource;
+            IngestionJobRequest? request = null;
+            vm.RequestClose += r => request = r;
+
+            vm.StartIngestionCommand.Execute(null);
+
+            request.Should().NotBeNull();
+            request!.Watermark.Enabled.Should().BeTrue();
+            request.Watermark.WatermarkImagePath.Should().Be(@"C:\Brand\Logo.png");
+            request.Watermark.Opacity.Should().Be(0.75f);
+            request.Watermark.Position.Should().Be(WatermarkPosition.Center);
+            request.Watermark.ScalePercent.Should().Be(0.22f);
+            request.Metadata.PhotographerName.Should().Be("Paddock Pro Studio");
+            request.Metadata.CopyrightNotice.Should().Be("© Paddock Pro 2026");
+        }
+        finally
+        {
+            Directory.Delete(tempSource, recursive: true);
+        }
+    }
 }
 

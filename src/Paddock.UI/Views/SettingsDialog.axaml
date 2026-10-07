@@ -214,6 +214,111 @@
                     </Grid>
                 </TabItem>
 
+                <!-- TAB 3: WATERMARK & METADATI -->
+                <TabItem Header="Watermark &amp; Metadati">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,12,0,0">
+                        <StackPanel Spacing="16">
+
+                            <!-- Sezione Watermark Predefinito -->
+                            <Border Background="#16181C" CornerRadius="6" Padding="14" BorderBrush="#2E323B" BorderThickness="1">
+                                <StackPanel Spacing="12">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                                            <TextBlock Text="Watermark Predefinito (Applicato ai file JPEG/PNG)" FontWeight="SemiBold" FontSize="13" Foreground="#EDEDED"/>
+                                            <TextBlock Text="Abilita il watermark e definisci il logo per le future importazioni" FontSize="11" Foreground="#9EA3AE"/>
+                                        </StackPanel>
+                                        <ToggleSwitch Grid.Column="1" IsChecked="{Binding DefaultWatermarkEnabled}" OnContent="Attivo" OffContent="Disattivo"/>
+                                    </Grid>
+
+                                    <StackPanel Spacing="10" IsVisible="{Binding DefaultWatermarkEnabled}">
+                                        <StackPanel Spacing="4">
+                                            <TextBlock Text="File Immagine Watermark (PNG consigliato):" FontSize="11" Foreground="#9EA3AE"/>
+                                            <Grid ColumnDefinitions="*,Auto">
+                                                <TextBox Grid.Column="0" Text="{Binding DefaultWatermarkImagePath}" PlaceholderText="C:\Loghi\WatermarkStudio.png" Margin="0,0,8,0"/>
+                                                <Button Grid.Column="1" Classes="secondary" Content="📁 Sfoglia..." Click="BrowseWatermarkImage_Click"/>
+                                            </Grid>
+                                        </StackPanel>
+
+                                        <Grid ColumnDefinitions="*,*,*">
+                                            <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,8,0">
+                                                <TextBlock Text="Posizione Predefinita:" FontSize="11" Foreground="#9EA3AE"/>
+                                                <ComboBox ItemsSource="{Binding AvailablePositions}"
+                                                          SelectedItem="{Binding DefaultWatermarkPosition}"
+                                                          HorizontalAlignment="Stretch"/>
+                                            </StackPanel>
+
+                                            <StackPanel Grid.Column="1" Spacing="4" Margin="0,0,8,0">
+                                                <TextBlock Text="{Binding DefaultWatermarkOpacity, StringFormat='Opacità: {0:P0}'}" FontSize="11" Foreground="#9EA3AE"/>
+                                                <Slider Minimum="0.1" Maximum="1.0" Value="{Binding DefaultWatermarkOpacity}"/>
+                                            </StackPanel>
+
+                                            <StackPanel Grid.Column="2" Spacing="4">
+                                                <TextBlock Text="{Binding DefaultWatermarkScalePercent, StringFormat='Dimensione: {0:P0}'}" FontSize="11" Foreground="#9EA3AE"/>
+                                                <Slider Minimum="0.05" Maximum="0.50" Value="{Binding DefaultWatermarkScalePercent}"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Live Watermark Preview -->
+                            <Border Background="#16181C" CornerRadius="6" Padding="14" BorderBrush="#2E323B" BorderThickness="1">
+                                <StackPanel Spacing="10">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <StackPanel Grid.Column="0" Spacing="2">
+                                            <TextBlock Text="Anteprima Live Posizionamento Watermark" FontWeight="SemiBold" FontSize="12" Foreground="#FF8C32"/>
+                                            <TextBlock Text="Campione di riferimento: Canon EOS 600D (5184 x 3456 px, 18.0 MP APS-C, 3:2)" FontSize="10" Foreground="#636773"/>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <Border Background="#101215" BorderBrush="#2E323B" BorderThickness="1" CornerRadius="6"
+                                            Height="180" ClipToBounds="True">
+                                        <Panel>
+                                            <Image Source="{Binding WatermarkPreviewBitmap}" Stretch="Uniform"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsPreviewLoading}"
+                                                         VerticalAlignment="Center" HorizontalAlignment="Center" Width="100"/>
+                                            <TextBlock Text="Nessun watermark o file immagine non selezionato"
+                                                       FontSize="11" Foreground="#636773"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                       IsVisible="{Binding WatermarkPreviewBitmap, Converter={x:Static ObjectConverters.IsNull}}"/>
+                                        </Panel>
+                                    </Border>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Metadati Predefiniti Fotografo & Copyright -->
+                            <Border Background="#16181C" CornerRadius="6" Padding="14" BorderBrush="#2E323B" BorderThickness="1">
+                                <StackPanel Spacing="10">
+                                    <TextBlock Text="Metadati Autore &amp; Copyright Predefiniti (JPEG + RAW)" FontWeight="SemiBold" FontSize="12" Foreground="#EDEDED"/>
+
+                                    <Grid ColumnDefinitions="*,*">
+                                        <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,8,0">
+                                            <TextBlock Text="Nome Fotografo (Artist / Creator):" FontSize="11" Foreground="#9EA3AE"/>
+                                            <TextBox Text="{Binding DefaultPhotographerName}" PlaceholderText="es. Mario Rossi"/>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="1" Spacing="4">
+                                            <TextBlock Text="Avviso Copyright:" FontSize="11" Foreground="#9EA3AE"/>
+                                            <TextBox Text="{Binding DefaultCopyrightNotice}" PlaceholderText="es. © 2026 Mario Rossi / Paddock"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Pulsante Salva Impostazioni Watermark & Metadati -->
+                            <Button Classes="primary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                    Padding="12,10" Command="{Binding SaveWatermarkSettingsCommand}">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="💾" FontSize="14" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Salva Preferenze Watermark &amp; Metadati" FontWeight="Bold" FontSize="12" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
             </TabControl>
 
             <!-- 3. Feedback Banner & Footer -->

@@ -46,44 +46,7 @@ public class ImageSharpProcessingService : IImageProcessingService
             cancellationToken.ThrowIfCancellationRequested();
 
             using var image = Image.Load<Rgba32>(sourceImagePath);
-
-            if (!string.IsNullOrWhiteSpace(options.WatermarkImagePath) && File.Exists(options.WatermarkImagePath))
-            {
-                using var watermark = Image.Load<Rgba32>(options.WatermarkImagePath);
-
-                // Calcolo dimensioni del watermark scalato in base alla dimensione dell'immagine principale
-                var targetWatermarkWidth = Math.Max(32, (int)(image.Width * Math.Clamp(options.ScalePercent, 0.05f, 0.80f)));
-                var scaleRatio = (double)targetWatermarkWidth / watermark.Width;
-                var targetWatermarkHeight = Math.Max(32, (int)(watermark.Height * scaleRatio));
-
-                watermark.Mutate(w => w.Resize(new ResizeOptions
-                {
-                    Size = new Size(targetWatermarkWidth, targetWatermarkHeight),
-                    Mode = ResizeMode.Max
-                }));
-
-                var margin = Math.Clamp(options.MarginPixels, 8, 200);
-                var opacity = Math.Clamp(options.Opacity, 0.05f, 1.0f);
-
-                if (options.Position == WatermarkPosition.Tiled)
-                {
-                    var stepX = targetWatermarkWidth + margin * 2;
-                    var stepY = targetWatermarkHeight + margin * 2;
-                    for (int x = margin; x < image.Width; x += stepX)
-                    {
-                        for (int y = margin; y < image.Height; y += stepY)
-                        {
-                            var pt = new Point(x, y);
-                            image.Mutate(ctx => ctx.DrawImage(watermark, pt, opacity));
-                        }
-                    }
-                }
-                else
-                {
-                    var location = CalculateWatermarkPoint(image.Width, image.Height, targetWatermarkWidth, targetWatermarkHeight, options.Position, margin);
-                    image.Mutate(ctx => ctx.DrawImage(watermark, location, opacity));
-                }
-            }
+            ApplyWatermarkToImage(image, options);
 
             // Salvataggio mantenendo alta qualità JPEG
             var jpegEncoder = new JpegEncoder { Quality = 92 };
@@ -120,6 +83,156 @@ public class ImageSharpProcessingService : IImageProcessingService
             image.SaveAsJpeg(ms, new JpegEncoder { Quality = 75 });
             return ms.ToArray();
         }, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<byte[]> GenerateWatermarkPreviewJpegAsync(
+        string? sampleImagePath,
+        WatermarkOptions options,
+        int previewWidth = 640,
+        int previewHeight = 426,
+        CancellationToken cancellationToken = default)
+    {
+        return await Task.Run(() =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            Image<Rgba32> image;
+
+            if (!string.IsNullOrWhiteSpace(sampleImagePath) && File.Exists(sampleImagePath))
+            {
+                var ext = Path.GetExtension(sampleImagePath);
+                if (RasterExtensions.Contains(ext))
+                {
+                    try
+                    {
+                        image = Image.Load<Rgba32>(sampleImagePath);
+                    }
+                    catch
+                    {
+                        image = CreateCanonEos600DTestPattern();
+                    }
+                }
+                else
+                {
+                    image = CreateCanonEos600DTestPattern();
+                }
+            }
+            else
+            {
+                image = CreateCanonEos600DTestPattern();
+            }
+
+            using (image)
+            {
+                ApplyWatermarkToImage(image, options);
+
+                image.Mutate(x => x.Resize(new ResizeOptions
+                {
+                    Size = new Size(previewWidth, previewHeight),
+                    Mode = ResizeMode.Max
+                }));
+
+                using var ms = new MemoryStream();
+                image.SaveAsJpeg(ms, new JpegEncoder { Quality = 85 });
+                return ms.ToArray();
+            }
+        }, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static void ApplyWatermarkToImage(Image<Rgba32> image, WatermarkOptions options)
+    {
+        if (!options.Enabled || string.IsNullOrWhiteSpace(options.WatermarkImagePath) || !File.Exists(options.WatermarkImagePath))
+        {
+            return;
+        }
+
+        using var watermark = Image.Load<Rgba32>(options.WatermarkImagePath);
+
+        // Calcolo proporzionale del watermark su base risoluzione immagine target (es. 5184px nativi)
+        var targetWatermarkWidth = Math.Max(32, (int)(image.Width * Math.Clamp(options.ScalePercent, 0.05f, 0.80f)));
+        var scaleRatio = (double)targetWatermarkWidth / watermark.Width;
+        var targetWatermarkHeight = Math.Max(32, (int)(watermark.Height * scaleRatio));
+
+        watermark.Mutate(w => w.Resize(new ResizeOptions
+        {
+            Size = new Size(targetWatermarkWidth, targetWatermarkHeight),
+            Mode = ResizeMode.Max
+        }));
+
+        var margin = Math.Clamp(options.MarginPixels, 8, 300);
+        var opacity = Math.Clamp(options.Opacity, 0.05f, 1.0f);
+
+        if (options.Position == WatermarkPosition.Tiled)
+        {
+            var stepX = targetWatermarkWidth + margin * 2;
+            var stepY = targetWatermarkHeight + margin * 2;
+            for (int x = margin; x < image.Width; x += stepX)
+            {
+                for (int y = margin; y < image.Height; y += stepY)
+                {
+                    var pt = new Point(x, y);
+                    image.Mutate(ctx => ctx.DrawImage(watermark, pt, opacity));
+                }
+            }
+        }
+        else
+        {
+            var location = CalculateWatermarkPoint(image.Width, image.Height, targetWatermarkWidth, targetWatermarkHeight, options.Position, margin);
+            image.Mutate(ctx => ctx.DrawImage(watermark, location, opacity));
+        }
+    }
+
+    /// <summary>
+    /// Genera in memoria una tela fotorealistica con risoluzione standard nativa Canon EOS 600D (5184 x 3456 px, 18.0 MP APS-C, 3:2)
+    /// </summary>
+    private static Image<Rgba32> CreateCanonEos600DTestPattern()
+    {
+        const int width = 5184;
+        const int height = 3456;
+        var image = new Image<Rgba32>(width, height);
+
+        image.ProcessPixelRows(accessor =>
+        {
+            var thirdW1 = width / 3;
+            var thirdW2 = (width * 2) / 3;
+            var thirdH1 = height / 3;
+            var thirdH2 = (height * 2) / 3;
+
+            for (int y = 0; y < height; y++)
+            {
+                var row = accessor.GetRowSpan(y);
+                float ratio = (float)y / height;
+                // Gradiente fotografico blu scuro - asfalto sportivo
+                byte r = (byte)(26 + ratio * 28);
+                byte g = (byte)(30 + ratio * 26);
+                byte b = (byte)(38 + ratio * 18);
+
+                bool isHorizontalThird = Math.Abs(y - thirdH1) <= 3 || Math.Abs(y - thirdH2) <= 3;
+
+                for (int x = 0; x < width; x++)
+                {
+                    bool isVerticalThird = Math.Abs(x - thirdW1) <= 3 || Math.Abs(x - thirdW2) <= 3;
+                    bool isBorder = x < 12 || x >= width - 12 || y < 12 || y >= height - 12;
+                    bool isCenterCross = (Math.Abs(x - width / 2) <= 60 && Math.Abs(y - height / 2) <= 3) ||
+                                         (Math.Abs(y - height / 2) <= 60 && Math.Abs(x - width / 2) <= 3);
+
+                    if (isBorder || isCenterCross)
+                    {
+                        row[x] = new Rgba32(255, 140, 50); // Paddock Orange accent
+                    }
+                    else if (isHorizontalThird || isVerticalThird)
+                    {
+                        row[x] = new Rgba32(90, 105, 125, 180); // Griglia fotografica terzi
+                    }
+                    else
+                    {
+                        row[x] = new Rgba32(r, g, b);
+                    }
+                }
+            }
+        });
+
+        return image;
     }
 
     private static Point CalculateWatermarkPoint(int imgW, int imgH, int wmW, int wmH, WatermarkPosition position, int margin)

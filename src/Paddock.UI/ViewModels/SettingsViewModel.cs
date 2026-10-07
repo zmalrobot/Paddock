@@ -1,6 +1,9 @@
 using System.Collections.ObjectModel;
+using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Paddock.Core.DTOs;
+using Paddock.Core.Enums;
 using Paddock.Core.Interfaces;
 using Paddock.Core.Models;
 using Paddock.Infrastructure.Excel;
@@ -11,6 +14,7 @@ public partial class SettingsViewModel : ViewModelBase
 {
     private readonly IExcelRepository _excelRepo;
     private readonly IAppPreferencesService _prefsService;
+    private readonly IImageProcessingService? _imageService;
 
     [ObservableProperty]
     private int _selectedTabIndex;
@@ -54,17 +58,60 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     private string _newItemDescrizione = string.Empty;
 
+    // Watermark & Metadati di Default
+    [ObservableProperty]
+    private bool _defaultWatermarkEnabled;
+
+    [ObservableProperty]
+    private string? _defaultWatermarkImagePath;
+
+    [ObservableProperty]
+    private float _defaultWatermarkOpacity = 0.65f;
+
+    [ObservableProperty]
+    private WatermarkPosition _defaultWatermarkPosition = WatermarkPosition.BottomRight;
+
+    [ObservableProperty]
+    private float _defaultWatermarkScalePercent = 0.20f;
+
+    [ObservableProperty]
+    private string _defaultPhotographerName = string.Empty;
+
+    [ObservableProperty]
+    private string _defaultCopyrightNotice = string.Empty;
+
+    [ObservableProperty]
+    private Bitmap? _watermarkPreviewBitmap;
+
+    [ObservableProperty]
+    private bool _isPreviewLoading;
+
+    public List<WatermarkPosition> AvailablePositions { get; } = Enum.GetValues<WatermarkPosition>().ToList();
+
     public event Action? RequestClose;
     public event Func<Task>? DatabaseChanged;
     public event Func<Task>? BasePathChanged;
 
-    public SettingsViewModel(IExcelRepository excelRepo, IAppPreferencesService prefsService)
+    public SettingsViewModel(
+        IExcelRepository excelRepo,
+        IAppPreferencesService prefsService,
+        IImageProcessingService? imageService = null)
     {
         _excelRepo = excelRepo;
         _prefsService = prefsService;
+        _imageService = imageService;
 
         DatabaseFilePath = _excelRepo.DatabaseFilePath;
         AutoOpenLastDatabase = _prefsService.AutoOpenLastDatabase;
+
+        // Inizializza Watermark e Metadati da preferenze
+        DefaultWatermarkEnabled = _prefsService.DefaultWatermarkEnabled;
+        DefaultWatermarkImagePath = _prefsService.DefaultWatermarkImagePath;
+        DefaultWatermarkOpacity = _prefsService.DefaultWatermarkOpacity > 0 ? _prefsService.DefaultWatermarkOpacity : 0.65f;
+        DefaultWatermarkPosition = _prefsService.DefaultWatermarkPosition;
+        DefaultWatermarkScalePercent = _prefsService.DefaultWatermarkScalePercent > 0 ? _prefsService.DefaultWatermarkScalePercent : 0.20f;
+        DefaultPhotographerName = _prefsService.DefaultPhotographerName ?? string.Empty;
+        DefaultCopyrightNotice = _prefsService.DefaultCopyrightNotice ?? string.Empty;
 
         RefreshRecentDatabases();
     }
@@ -77,6 +124,7 @@ public partial class SettingsViewModel : ViewModelBase
             var currentBase = await _excelRepo.GetBasePathAsync();
             BasePath = currentBase ?? string.Empty;
             await LoadCatalogoPrezziAsync();
+            await UpdateWatermarkPreviewAsync();
         }
         catch (Exception ex)
         {
@@ -320,6 +368,82 @@ public partial class SettingsViewModel : ViewModelBase
             IsBusy = false;
         }
     }
+
+    #region Watermark & Metadati
+
+    public async Task UpdateWatermarkPreviewAsync()
+    {
+        if (_imageService == null) return;
+
+        try
+        {
+            IsPreviewLoading = true;
+            var options = new WatermarkOptions
+            {
+                Enabled = DefaultWatermarkEnabled,
+                WatermarkImagePath = DefaultWatermarkImagePath,
+                Opacity = DefaultWatermarkOpacity,
+                Position = DefaultWatermarkPosition,
+                ScalePercent = DefaultWatermarkScalePercent
+            };
+
+            var bytes = await _imageService.GenerateWatermarkPreviewJpegAsync(null, options);
+            if (bytes != null && bytes.Length > 0)
+            {
+                using var ms = new MemoryStream(bytes);
+                WatermarkPreviewBitmap = new Bitmap(ms);
+            }
+        }
+        catch
+        {
+            // Ignora errori di rendering anteprima
+        }
+        finally
+        {
+            IsPreviewLoading = false;
+        }
+    }
+
+    partial void OnDefaultWatermarkEnabledChanged(bool value) => _ = UpdateWatermarkPreviewAsync();
+    partial void OnDefaultWatermarkImagePathChanged(string? value) => _ = UpdateWatermarkPreviewAsync();
+    partial void OnDefaultWatermarkOpacityChanged(float value) => _ = UpdateWatermarkPreviewAsync();
+    partial void OnDefaultWatermarkPositionChanged(WatermarkPosition value) => _ = UpdateWatermarkPreviewAsync();
+    partial void OnDefaultWatermarkScalePercentChanged(float value) => _ = UpdateWatermarkPreviewAsync();
+
+    [RelayCommand]
+    public async Task SaveWatermarkSettingsAsync()
+    {
+        try
+        {
+            IsBusy = true;
+            StatusMessage = null;
+            IsErrorMessage = false;
+
+            _prefsService.DefaultWatermarkEnabled = DefaultWatermarkEnabled;
+            _prefsService.DefaultWatermarkImagePath = DefaultWatermarkImagePath;
+            _prefsService.DefaultWatermarkOpacity = DefaultWatermarkOpacity;
+            _prefsService.DefaultWatermarkPosition = DefaultWatermarkPosition;
+            _prefsService.DefaultWatermarkScalePercent = DefaultWatermarkScalePercent;
+            _prefsService.DefaultPhotographerName = DefaultPhotographerName.Trim();
+            _prefsService.DefaultCopyrightNotice = DefaultCopyrightNotice.Trim();
+
+            await _prefsService.SaveAsync();
+
+            StatusMessage = "Impostazioni predefinite di Watermark e Metadati salvate con successo!";
+            IsErrorMessage = false;
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Errore durante il salvataggio: {ex.Message}";
+            IsErrorMessage = true;
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    #endregion
 
     [RelayCommand]
     private void Close()
