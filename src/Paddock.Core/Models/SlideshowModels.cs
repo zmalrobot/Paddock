@@ -50,6 +50,7 @@ public class SlideshowConfig
     public List<Guid> SelectedAtletiIds { get; set; } = new();
     public bool IncludeJpegPng { get; set; } = true;
     public bool IncludeRaw { get; set; } = false;
+    public bool IncludePremiazioni { get; set; } = false;
     public int TargetScreenIndex { get; set; }
     public DisplayScreenInfo? TargetScreen { get; set; }
     public int DurationSeconds { get; set; } = 5;

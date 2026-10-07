@@ -109,6 +109,7 @@ public partial class EventDetailViewModel : ViewModelBase
     // Browser Foto Gerarchico & Viewer Standalone
     public ObservableCollection<PhotoBrowserAthleteGroup> AthletePhotoGroups { get; } = new();
     public List<PhotoItemViewModel> FlatActivePhotoItems { get; } = new();
+    public ObservableCollection<PhotoItemViewModel> PremiazioniPhotos { get; } = new();
 
     public ObservableCollection<AcquistoFoto> Acquisti { get; } = new();
     public ObservableCollection<PrezzoCatalogoItem> CatalogoDisponibile { get; } = new();
@@ -169,6 +170,7 @@ public partial class EventDetailViewModel : ViewModelBase
             AllFoto.Clear();
             foreach (var f in bundle.Foto ?? Enumerable.Empty<Foto>()) AllFoto.Add(f);
             await RebuildHierarchicalPhotoGroupsAsync();
+            await RebuildPremiazioniPhotosAsync();
 
             // 4. Carica catalogo e acquisti evento
             CatalogoDisponibile.Clear();
@@ -233,11 +235,13 @@ public partial class EventDetailViewModel : ViewModelBase
         FlatActivePhotoItems.Clear();
         AthletePhotoGroups.Clear();
 
+        var athletePhotos = AllFoto.Where(f => !f.IsPremiazione);
+
         var query = FotoFormatFilter switch
         {
-            "JPEG" => AllFoto.Where(f => !f.IsRaw),
-            "RAW" => AllFoto.Where(f => f.IsRaw),
-            _ => AllFoto.AsEnumerable()
+            "JPEG" => athletePhotos.Where(f => !f.IsRaw),
+            "RAW" => athletePhotos.Where(f => f.IsRaw),
+            _ => athletePhotos
         };
 
         var filteredList = query.ToList();
@@ -323,6 +327,29 @@ public partial class EventDetailViewModel : ViewModelBase
         }
     }
 
+    public async Task RebuildPremiazioniPhotosAsync()
+    {
+        PremiazioniPhotos.Clear();
+
+        var premiazioniList = AllFoto.Where(f => f.IsPremiazione).ToList();
+        if (premiazioniList.Count == 0) return;
+
+        var basePath = await _excelRepo.GetBasePathAsync() ?? string.Empty;
+
+        foreach (var f in premiazioniList)
+        {
+            var fullPath = Path.Combine(basePath, f.PathRelativo);
+            var item = new PhotoItemViewModel(f, fullPath)
+            {
+                AtletaDisplay = "Premiazioni",
+                DisciplinaDisplay = "Podio & Premiazioni"
+            };
+
+            PremiazioniPhotos.Add(item);
+            _ = item.LoadThumbnailAsync(_imageService);
+        }
+    }
+
     [RelayCommand]
     public void ExpandAllPhotoGroups()
     {
@@ -350,9 +377,33 @@ public partial class EventDetailViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    public void OpenPremiazioniPhotoViewer(PhotoItemViewModel photoItem)
+    {
+        if (photoItem == null) return;
+
+        var list = PremiazioniPhotos.ToList();
+        var index = list.IndexOf(photoItem);
+        if (index < 0) index = 0;
+
+        var viewerVm = new PhotoViewerViewModel(
+            list,
+            index,
+            _imageService,
+            deleteCallback: DeleteSinglePhotoAsync);
+
+        RequestOpenPhotoViewer?.Invoke(viewerVm);
+    }
+
+    [RelayCommand]
     public void OpenPhotoViewer(PhotoItemViewModel photoItem)
     {
         if (photoItem == null) return;
+
+        if (photoItem.Foto.IsPremiazione || PremiazioniPhotos.Contains(photoItem))
+        {
+            OpenPremiazioniPhotoViewer(photoItem);
+            return;
+        }
 
         var index = FlatActivePhotoItems.IndexOf(photoItem);
         if (index < 0) index = 0;
@@ -394,6 +445,7 @@ public partial class EventDetailViewModel : ViewModelBase
             }
             FilteredFoto.Remove(photoItem.Foto);
             FlatActivePhotoItems.Remove(photoItem);
+            PremiazioniPhotos.Remove(photoItem);
 
             foreach (var ag in AthletePhotoGroups)
             {
@@ -556,6 +608,7 @@ public partial class EventDetailViewModel : ViewModelBase
             AllFoto.Clear();
             foreach (var f in foto) AllFoto.Add(f);
             await RebuildHierarchicalPhotoGroupsAsync();
+            await RebuildPremiazioniPhotosAsync();
 
             Evento.TotaleFoto = AllFoto.Count;
             Evento.TotaleByteOccupati = AllFoto.Sum(f => f.DimensioneByte);

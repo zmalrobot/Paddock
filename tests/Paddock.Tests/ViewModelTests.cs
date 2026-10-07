@@ -999,5 +999,203 @@ public class ViewModelTests
         // Verifica che GetFotoByEventoAsync sia stato chiamato per l'evento attivo
         mockExcel.Verify(r => r.GetFotoByEventoAsync(eventoId), Times.AtLeastOnce());
     }
+
+    [Fact]
+    public void IngestionWizardViewModel_IsPremiazioni_ClearsAndDisablesAthleteAndDiscipline()
+    {
+        var evento = new Evento { Id = Guid.NewGuid(), NomeEvento = "Trial 2026" };
+        var atleta = new Atleta { Id = Guid.NewGuid(), NumeroPettorale = "1", Nome = "Mario", Cognome = "Rossi" };
+        var disc = new Disciplina { Id = Guid.NewGuid(), NomeDisciplina = "Slalom" };
+        var mockWatcher = new Mock<ISdCardWatcherService>();
+
+        var vm = new IngestionWizardViewModel(evento, new[] { atleta }, new[] { disc }, mockWatcher.Object);
+        vm.SelectedAtleta = atleta;
+        vm.SelectedDisciplina = disc;
+
+        vm.IsPremiazioni = true;
+
+        vm.SelectedAtleta.Should().BeNull();
+        vm.SelectedDisciplina.Should().BeNull();
+    }
+
+    [Fact]
+    public void IngestionWizardViewModel_StartIngestion_AllowsNullAthleteWhenPremiazioni()
+    {
+        var evento = new Evento { Id = Guid.NewGuid(), NomeEvento = "Trial 2026" };
+        var mockWatcher = new Mock<ISdCardWatcherService>();
+
+        var tempSource = Path.Combine(Path.GetTempPath(), "TempSourcePrem_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempSource);
+        try
+        {
+            var vm = new IngestionWizardViewModel(evento, Array.Empty<Atleta>(), Array.Empty<Disciplina>(), mockWatcher.Object);
+            vm.SourceDirectory = tempSource;
+            vm.IsPremiazioni = true;
+
+            IngestionJobRequest? generatedRequest = null;
+            vm.RequestClose += req => generatedRequest = req;
+
+            vm.StartIngestionCommand.Execute(null);
+
+            generatedRequest.Should().NotBeNull();
+            generatedRequest!.IsPremiazioni.Should().BeTrue();
+            generatedRequest.AtletaTarget.Should().BeNull();
+            generatedRequest.DisciplinaTarget.Should().BeNull();
+            vm.ErrorMessage.Should().BeNull();
+        }
+        finally
+        {
+            Directory.Delete(tempSource, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task EventDetailViewModel_SeparatesAthleteAndPremiazioniPhotos()
+    {
+        var eventoId = Guid.NewGuid();
+        var atletaId = Guid.NewGuid();
+        var evento = new Evento { Id = eventoId, NomeEvento = "Coppa del Mondo 2026" };
+        var atleta = new Atleta { Id = atletaId, EventoId = eventoId, NumeroPettorale = "10", Nome = "Mario", Cognome = "Rossi" };
+        var disc = new Disciplina { Id = Guid.NewGuid(), EventoId = eventoId, NomeDisciplina = "Slalom" };
+
+        var fotoAtleta = new Foto
+        {
+            Id = Guid.NewGuid(),
+            EventoId = eventoId,
+            AtletaId = atletaId,
+            DisciplinaId = disc.Id,
+            NomeFileOriginale = "ROSSI_01.JPG",
+            PathRelativo = @"Coppa del Mondo 2026\10_Rossi_Mario\Slalom\Jpeg\ROSSI_01.JPG",
+            IsPremiazione = false,
+            Formato = "JPEG"
+        };
+
+        var fotoPremiazione = new Foto
+        {
+            Id = Guid.NewGuid(),
+            EventoId = eventoId,
+            NomeFileOriginale = "PODIO_01.JPG",
+            PathRelativo = @"Coppa del Mondo 2026\Premiazioni\PODIO_01.JPG",
+            IsPremiazione = true,
+            Formato = "JPEG"
+        };
+
+        var mockExcel = new Mock<IExcelRepository>();
+        mockExcel.Setup(r => r.GetBasePathAsync(It.IsAny<CancellationToken>())).ReturnsAsync(@"C:\Foto");
+        mockExcel.Setup(r => r.GetAtletiByEventoAsync(eventoId, It.IsAny<CancellationToken>())).ReturnsAsync(new List<Atleta> { atleta });
+        mockExcel.Setup(r => r.GetDisciplineByEventoAsync(eventoId, It.IsAny<CancellationToken>())).ReturnsAsync(new List<Disciplina> { disc });
+        mockExcel.Setup(r => r.GetFotoByEventoAsync(eventoId, It.IsAny<CancellationToken>())).ReturnsAsync(new List<Foto> { fotoAtleta, fotoPremiazione });
+        mockExcel.Setup(r => r.GetAcquistiByEventoAsync(eventoId, It.IsAny<CancellationToken>())).ReturnsAsync(new List<AcquistoFoto>());
+        mockExcel.Setup(r => r.GetCatalogoPrezziAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<PrezzoCatalogoItem>());
+
+        var mockFileOrg = new Mock<IFileOrganizationService>();
+
+        var vm = new EventDetailViewModel(evento, mockExcel.Object, mockFileOrg.Object);
+        await vm.LoadEventDataAsync();
+
+        // I gruppi atleta devono contenere solo le foto degli atleti
+        vm.AthletePhotoGroups.Should().HaveCount(1);
+        vm.AthletePhotoGroups[0].Atleta.Id.Should().Be(atletaId);
+        vm.FlatActivePhotoItems.Should().HaveCount(1);
+        vm.FlatActivePhotoItems[0].Foto.Id.Should().Be(fotoAtleta.Id);
+
+        // La collezione PremiazioniPhotos deve contenere la foto della premiazione
+        vm.PremiazioniPhotos.Should().HaveCount(1);
+        vm.PremiazioniPhotos[0].Foto.Id.Should().Be(fotoPremiazione.Id);
+        vm.PremiazioniPhotos[0].AtletaDisplay.Should().Be("Premiazioni");
+    }
+
+    [Fact]
+    public async Task SlideshowConfigViewModel_AllowsStartWithOnlyPremiazioni()
+    {
+        var mockRepo = new Mock<IExcelRepository>();
+        var ev = new Evento { NomeEvento = "Coppa 2026" };
+        var atleta = new Atleta { Id = Guid.NewGuid(), NumeroPettorale = "1", Nome = "Mario", Cognome = "Rossi" };
+        var fotoPremiazione = new Foto
+        {
+            Id = Guid.NewGuid(),
+            EventoId = ev.Id,
+            NomeFileOriginale = "PODIO.JPG",
+            PathRelativo = @"Coppa 2026\Premiazioni\PODIO.JPG",
+            IsPremiazione = true,
+            Formato = "JPEG"
+        };
+
+        mockRepo.Setup(r => r.GetAtletiByEventoAsync(ev.Id, default)).ReturnsAsync(new List<Atleta> { atleta });
+        mockRepo.Setup(r => r.GetFotoByEventoAsync(ev.Id, default)).ReturnsAsync(new List<Foto> { fotoPremiazione });
+
+        var vm = new SlideshowConfigViewModel(mockRepo.Object, new[] { ev }, Array.Empty<DisplayScreenInfo>(), ev);
+        await vm.LoadAtletiForSelectedEventoAsync(ev.Id);
+
+        // Deseleziona tutti gli atleti, ma mantieni IncludePremiazioni = true
+        vm.DeselectAllAtletiCommand.Execute(null);
+        vm.IncludePremiazioni = true;
+
+        SlideshowConfig? startedConfig = null;
+        vm.RequestStartSlideshow += c => startedConfig = c;
+
+        await vm.StartSlideshowAsync();
+
+        startedConfig.Should().NotBeNull();
+        startedConfig!.IncludePremiazioni.Should().BeTrue();
+        startedConfig.SelectedAtletiIds.Should().BeEmpty();
+        vm.ErrorMessage.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task SlideshowWindowViewModel_LoadsPremiazioniPhotos_WithCustomHUD()
+    {
+        var evId = Guid.NewGuid();
+        var ev = new Evento { Id = evId, NomeEvento = "Coppa 2026" };
+        var fotoPremiazione = new Foto
+        {
+            Id = Guid.NewGuid(),
+            EventoId = evId,
+            NomeFileOriginale = "PODIO.JPG",
+            PathRelativo = "PODIO.JPG",
+            IsPremiazione = true,
+            Formato = "JPEG"
+        };
+
+        var tempDir = Path.Combine(Path.GetTempPath(), "SlideshowPremTest_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        var dummyPhoto = Path.Combine(tempDir, "PODIO.JPG");
+        await File.WriteAllBytesAsync(dummyPhoto, new byte[] { 1, 2, 3 });
+
+        try
+        {
+            var mockRepo = new Mock<IExcelRepository>();
+            mockRepo.Setup(r => r.GetBasePathAsync(default)).ReturnsAsync(tempDir);
+            mockRepo.Setup(r => r.GetEventoByIdAsync(evId, default)).ReturnsAsync(ev);
+            mockRepo.Setup(r => r.GetFotoByEventoAsync(evId, default)).ReturnsAsync(new List<Foto> { fotoPremiazione });
+            mockRepo.Setup(r => r.GetAtletiByEventoAsync(evId, default)).ReturnsAsync(new List<Atleta>());
+            mockRepo.Setup(r => r.GetDisciplineByEventoAsync(evId, default)).ReturnsAsync(new List<Disciplina>());
+
+            var config = new SlideshowConfig
+            {
+                EventoId = evId,
+                EventoNome = "Coppa 2026",
+                IncludePremiazioni = true,
+                IncludeJpegPng = true,
+                SelectedAtletiIds = new List<Guid>(),
+                SelectedTransitionIds = new List<string> { "crossfade" }
+            };
+
+            var mockImg = new Mock<IImage>().Object;
+            var vm = new SlideshowWindowViewModel(config, mockRepo.Object)
+            {
+                ImageLoader = path => Task.FromResult<IImage?>(mockImg)
+            };
+            await vm.StartAsync();
+
+            vm.CurrentAtletaText.Should().Be("Premiazioni");
+            vm.CurrentDisciplinaText.Should().Be("Podio & Premiazioni");
+            vm.CurrentPhotoNameText.Should().Be("PODIO.JPG");
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
 }
 

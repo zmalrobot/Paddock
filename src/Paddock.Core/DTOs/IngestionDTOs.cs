@@ -28,8 +28,9 @@ public class IngestionJobRequest
     public string SourceDirectory { get; set; } = string.Empty;
     public string? BasePath { get; set; }
     public Evento EventoTarget { get; set; } = null!;
-    public Atleta AtletaTarget { get; set; } = null!;
-    public Disciplina DisciplinaTarget { get; set; } = null!;
+    public bool IsPremiazioni { get; set; }
+    public Atleta? AtletaTarget { get; set; }
+    public Disciplina? DisciplinaTarget { get; set; }
     public WatermarkOptions Watermark { get; set; } = new();
     public MetadataOptions Metadata { get; set; } = new();
     public bool RecursiveScan { get; set; } = true;
@@ -40,6 +41,7 @@ public class IngestionProgressReport
     public Guid JobId { get; set; }
     public Guid? EventoId { get; set; }
     public Guid? AtletaId { get; set; }
+    public bool IsPremiazioni { get; set; }
     public IngestionStatus Status { get; set; } = IngestionStatus.Running;
     public string SourceName { get; set; } = string.Empty;
     public string TargetDescription { get; set; } = string.Empty;

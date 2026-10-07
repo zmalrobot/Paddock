@@ -148,7 +148,11 @@
 
             <!-- TAB 3: BROWSER FOTO -->
             <TabItem Header="Browser Foto">
-                <Grid RowDefinitions="Auto,*" Margin="0,12,0,0">
+                <TabControl Margin="0,4,0,0">
+
+                    <!-- Sotto-Tab 1: Atleti -->
+                    <TabItem Header="Atleti">
+                        <Grid RowDefinitions="Auto,*" Margin="0,12,0,0">
 
                     <!-- Barra Filtri & Azioni Foto -->
                     <Border Grid.Row="0" Background="#1A1C20" CornerRadius="6" Padding="12" BorderBrush="#2E323B" BorderThickness="1" Margin="0,0,0,12">
@@ -346,7 +350,130 @@
                         </StackPanel>
                     </ScrollViewer>
 
-                </Grid>
+                        </Grid>
+                    </TabItem>
+
+                    <!-- Sotto-Tab 2: Premiazioni -->
+                    <TabItem Header="Premiazioni">
+                        <Grid RowDefinitions="Auto,*" Margin="0,12,0,0">
+
+                            <!-- Barra Azioni Premiazioni -->
+                            <Border Grid.Row="0" Background="#1A1C20" CornerRadius="6" Padding="12" BorderBrush="#2E323B" BorderThickness="1" Margin="0,0,0,12">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                        <TextBlock Text="Foto Premiazioni" FontWeight="SemiBold" FontSize="13" Foreground="#EDEDED" VerticalAlignment="Center"/>
+                                        <Border Background="#22252B" CornerRadius="8" Padding="8,2" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding PremiazioniPhotos.Count, StringFormat='{}{0} foto'}" FontSize="10" Foreground="#9EA3AE"/>
+                                        </Border>
+                                    </StackPanel>
+
+                                    <Button Grid.Column="1" Classes="secondary" Content="Ricarica Foto" Command="{Binding RefreshPhotosCommand}"
+                                            Padding="10,5" FontSize="11" VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+
+                            <!-- Lista Foto Premiazioni (Nessun filtro, mostra tutte le foto) -->
+                            <ScrollViewer Grid.Row="1">
+                                <StackPanel Spacing="12">
+
+                                    <!-- Messaggio se nessuna foto trovata -->
+                                    <Border Background="#1A1C20" BorderBrush="#2E323B" BorderThickness="1" CornerRadius="6" Padding="32"
+                                            HorizontalAlignment="Stretch"
+                                            IsVisible="{Binding PremiazioniPhotos.Count, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=0}">
+                                        <StackPanel HorizontalAlignment="Center" Spacing="8">
+                                            <TextBlock Text="Nessuna foto delle premiazioni presente." FontWeight="SemiBold" FontSize="13" Foreground="#9EA3AE" HorizontalAlignment="Center"/>
+                                            <TextBlock Text="Importa foto selezionando l'opzione Premiazioni nell'ingestione." FontSize="11" Foreground="#636773" HorizontalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- Griglia Foto Premiazioni -->
+                                    <ItemsControl ItemsSource="{Binding PremiazioniPhotos}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <WrapPanel Orientation="Horizontal"/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="vm:PhotoItemViewModel">
+                                                <Border Background="#1A1C20" BorderBrush="#2E323B" BorderThickness="1"
+                                                        CornerRadius="6" Width="220" Margin="0,0,10,10" Padding="8">
+                                                    <Grid RowDefinitions="130,Auto,Auto">
+
+                                                        <!-- 1. Preview Immagine Miniatura -->
+                                                        <Border Grid.Row="0" Background="#101215" CornerRadius="4" ClipToBounds="True">
+                                                            <Grid>
+                                                                <Image Source="{Binding ThumbnailBitmap}"
+                                                                       Stretch="UniformToFill"
+                                                                       HorizontalAlignment="Center"
+                                                                       VerticalAlignment="Center"/>
+
+                                                                <Border Background="#16181C" IsVisible="{Binding ShowRawPlaceholder}">
+                                                                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="4">
+                                                                        <TextBlock Text="RAW" FontWeight="Bold" FontSize="16" Foreground="#636773" HorizontalAlignment="Center"/>
+                                                                        <TextBlock Text="File Negativo" FontSize="9" Foreground="#636773" HorizontalAlignment="Center"/>
+                                                                    </StackPanel>
+                                                                </Border>
+
+                                                                <Border Background="#A0101215" IsVisible="{Binding IsLoadingThumbnail}">
+                                                                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="4">
+                                                                        <ProgressBar IsIndeterminate="True" Width="50" Height="4"/>
+                                                                        <TextBlock Text="Caricamento..." FontSize="9" Foreground="#9EA3AE" HorizontalAlignment="Center"/>
+                                                                    </StackPanel>
+                                                                </Border>
+
+                                                                <Border HorizontalAlignment="Left" VerticalAlignment="Top" Margin="6"
+                                                                        Background="{Binding Formato, Converter={StaticResource FormatToBrushConverter}}"
+                                                                        CornerRadius="3" Padding="5,1">
+                                                                    <TextBlock Text="{Binding Formato}" FontSize="8" FontWeight="Bold" Foreground="#121316"/>
+                                                                </Border>
+
+                                                                <Border HorizontalAlignment="Right" VerticalAlignment="Top" Margin="6"
+                                                                        Background="#1B3A4B" CornerRadius="3" Padding="4,1"
+                                                                        IsVisible="{Binding WatermarkApplicato}">
+                                                                    <TextBlock Text="WM" FontSize="8" FontWeight="Bold" Foreground="#00B4D8"/>
+                                                                </Border>
+                                                            </Grid>
+                                                        </Border>
+
+                                                        <!-- 2. Metadati File -->
+                                                        <StackPanel Grid.Row="1" Spacing="3" Margin="0,8,0,8">
+                                                            <TextBlock Text="{Binding NomeFile}" FontWeight="SemiBold" FontSize="11"
+                                                                       Foreground="#EDEDED" TextTrimming="CharacterEllipsis"/>
+                                                            <Grid ColumnDefinitions="*,Auto">
+                                                                <TextBlock Grid.Column="0" Text="{Binding DimensioneDisplay}"
+                                                                           FontSize="10" Foreground="#9EA3AE"/>
+                                                                <TextBlock Grid.Column="1" Text="{Binding DataScattoDisplay}"
+                                                                           FontSize="10" Foreground="#636773"/>
+                                                            </Grid>
+                                                        </StackPanel>
+
+                                                        <!-- 3. Pulsanti Azione (Ingrandisci e Elimina) -->
+                                                        <Grid Grid.Row="2" ColumnDefinitions="*,*">
+                                                            <Button Grid.Column="0" Classes="secondary" Content="Ingrandisci" Margin="0,0,4,0"
+                                                                    Padding="6,4" FontSize="10" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                                    Command="{Binding $parent[UserControl].((vm:EventDetailViewModel)DataContext).OpenPremiazioniPhotoViewerCommand}"
+                                                                    CommandParameter="{Binding}"/>
+
+                                                            <Button Grid.Column="1" Classes="danger" Content="Elimina" Margin="4,0,0,0"
+                                                                    Padding="6,4" FontSize="10" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                                    Command="{Binding $parent[UserControl].((vm:EventDetailViewModel)DataContext).DeleteSinglePhotoCommand}"
+                                                                    CommandParameter="{Binding}"/>
+                                                        </Grid>
+
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+
+                                </StackPanel>
+                            </ScrollViewer>
+
+                        </Grid>
+                    </TabItem>
+
+                </TabControl>
             </TabItem>
 
             <!-- TAB 4: ACQUISTI E VENDITA FOTO -->

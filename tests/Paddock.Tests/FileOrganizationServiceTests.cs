@@ -92,5 +92,44 @@ public class FileOrganizationServiceTests : IDisposable
         destPath.Should().Contain(Path.Combine("Meeting Atletica", "7_Bianchi_Luca", "Corsa 100m", "Jpeg"));
         relPath.Should().Be(Path.Combine("Meeting Atletica", "7_Bianchi_Luca", "Corsa 100m", "Jpeg", "source_sample.jpg"));
     }
+
+    [Fact]
+    public void GetPremiazioniDestinationDirectory_ReturnsCorrectPath()
+    {
+        var destDir = _service.GetPremiazioniDestinationDirectory(_tempRoot, "Trofeo Invernale 2026");
+        destDir.Should().Be(Path.Combine(_tempRoot, "Trofeo Invernale 2026", "Premiazioni"));
+    }
+
+    [Fact]
+    public void GetPremiazioniRelativePath_ReturnsCorrectPath()
+    {
+        var relPath = _service.GetPremiazioniRelativePath("Trofeo Invernale 2026", "IMG_0001.JPG");
+        relPath.Should().Be(Path.Combine("Trofeo Invernale 2026", "Premiazioni", "IMG_0001.JPG"));
+    }
+
+    [Fact]
+    public async Task CopyFileOrganizedAsync_WithPremiazione_CopiesToPremiazioniFolder()
+    {
+        // Arrange
+        var sourceFile = Path.Combine(_tempRoot, "podio_sample.jpg");
+        var content = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46 };
+        await File.WriteAllBytesAsync(sourceFile, content);
+
+        // Act
+        var (destPath, relPath, md5, size) = await _service.CopyFileOrganizedAsync(
+            sourceFile,
+            _tempRoot,
+            "Trofeo Invernale 2026",
+            atleta: null,
+            disciplina: null,
+            isPremiazione: true);
+
+        // Assert
+        File.Exists(destPath).Should().BeTrue();
+        size.Should().Be(content.Length);
+        md5.Should().NotBeNullOrWhiteSpace();
+        destPath.Should().Be(Path.Combine(_tempRoot, "Trofeo Invernale 2026", "Premiazioni", "podio_sample.jpg"));
+        relPath.Should().Be(Path.Combine("Trofeo Invernale 2026", "Premiazioni", "podio_sample.jpg"));
+    }
 }
 

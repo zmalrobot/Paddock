@@ -38,13 +38,26 @@ public class FileOrganizationService : IFileOrganizationService
         return Path.Combine(rootPath, sanitizedEvent, atletaFolder, discFolder, subFolder);
     }
 
+    public string GetPremiazioniRelativePath(string eventName, string fileName)
+    {
+        var sanitizedEvent = SanitizeFolderName(eventName);
+        return Path.Combine(sanitizedEvent, "Premiazioni", fileName);
+    }
+
+    public string GetPremiazioniDestinationDirectory(string rootPath, string eventName)
+    {
+        var sanitizedEvent = SanitizeFolderName(eventName);
+        return Path.Combine(rootPath, sanitizedEvent, "Premiazioni");
+    }
+
     public async Task<(string destinationPath, string relativePath, string md5Hash, long fileSizeBytes)> CopyFileOrganizedAsync(
         string sourceFilePath,
         string rootPath,
         string eventName,
-        Atleta atleta,
-        Disciplina disciplina,
+        Atleta? atleta,
+        Disciplina? disciplina,
         string? customFileName = null,
+        bool isPremiazione = false,
         CancellationToken cancellationToken = default)
     {
         if (!File.Exists(sourceFilePath))
@@ -54,7 +67,9 @@ public class FileOrganizationService : IFileOrganizationService
 
         var ext = Path.GetExtension(sourceFilePath);
         var fileName = !string.IsNullOrWhiteSpace(customFileName) ? customFileName : Path.GetFileName(sourceFilePath);
-        var targetDir = GetDestinationDirectory(rootPath, eventName, atleta, disciplina, ext);
+        var targetDir = isPremiazione
+            ? GetPremiazioniDestinationDirectory(rootPath, eventName)
+            : GetDestinationDirectory(rootPath, eventName, atleta!, disciplina!, ext);
 
         if (!Directory.Exists(targetDir))
         {
@@ -76,9 +91,11 @@ public class FileOrganizationService : IFileOrganizationService
             }
         }
 
-        // Calcolo del percorso relativo puro conforme ("Nome evento/Atleta/Disciplina/Jpeg|Raw/NomeFile")
+        // Calcolo del percorso relativo puro conforme
         var finalFileName = Path.GetFileName(targetFilePath);
-        var relativePath = GetRelativePhotoPath(eventName, atleta, disciplina, ext, finalFileName);
+        var relativePath = isPremiazione
+            ? GetPremiazioniRelativePath(eventName, finalFileName)
+            : GetRelativePhotoPath(eventName, atleta!, disciplina!, ext, finalFileName);
 
         // Copia asincrona con calcolo contestuale dell'MD5
         string md5Hash;

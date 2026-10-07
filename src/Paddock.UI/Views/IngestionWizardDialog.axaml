@@ -55,8 +55,11 @@
                 <!-- Sezione Target Atleta & Disciplina -->
                 <Border Background="#22252B" CornerRadius="6" Padding="14" BorderBrush="#2E323B" BorderThickness="1">
                     <StackPanel Spacing="10">
-                        <TextBlock Text="Associazione Catalogo" FontWeight="SemiBold" Foreground="#EDEDED"/>
-                        <Grid ColumnDefinitions="*,*">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Grid.Column="0" Text="Associazione Catalogo" FontWeight="SemiBold" Foreground="#EDEDED" VerticalAlignment="Center"/>
+                            <CheckBox Grid.Column="1" Content="Premiazioni" IsChecked="{Binding IsPremiazioni}" VerticalAlignment="Center" FontSize="12"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="*,*" IsEnabled="{Binding !IsPremiazioni}">
                             <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,6,0">
                                 <TextBlock Text="Atleta *" FontSize="12" Foreground="#9EA3AE"/>
                                 <ComboBox ItemsSource="{Binding Atleti}"

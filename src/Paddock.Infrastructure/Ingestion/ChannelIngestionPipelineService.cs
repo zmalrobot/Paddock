@@ -59,10 +59,11 @@ public class ChannelIngestionPipelineService : IIngestionPipelineService
         {
             JobId = jobId,
             EventoId = request.EventoTarget.Id,
-            AtletaId = request.AtletaTarget.Id,
+            AtletaId = request.AtletaTarget?.Id,
+            IsPremiazioni = request.IsPremiazioni,
             Status = IngestionStatus.Queued,
             SourceName = sourceLabel,
-            TargetDescription = $"{request.AtletaTarget.DisplayPettoraleNome} — {request.DisciplinaTarget.NomeDisciplina}",
+            TargetDescription = request.IsPremiazioni ? "Premiazioni" : $"{request.AtletaTarget?.DisplayPettoraleNome} — {request.DisciplinaTarget?.NomeDisciplina}",
             StatusMessage = "Scansione file in corso..."
         };
 
@@ -183,6 +184,7 @@ public class ChannelIngestionPipelineService : IIngestionPipelineService
                                 request.AtletaTarget,
                                 request.DisciplinaTarget,
                                 item.RenamedFileName,
+                                request.IsPremiazioni,
                                 token).ConfigureAwait(false);
 
                             // Fase B: Watermark (se abilitato e formato raster)
@@ -221,8 +223,9 @@ public class ChannelIngestionPipelineService : IIngestionPipelineService
                             var foto = new Foto
                             {
                                 EventoId = request.EventoTarget.Id,
-                                AtletaId = request.AtletaTarget.Id,
-                                DisciplinaId = request.DisciplinaTarget.Id,
+                                AtletaId = request.IsPremiazioni ? Guid.Empty : (request.AtletaTarget?.Id ?? Guid.Empty),
+                                DisciplinaId = request.IsPremiazioni ? Guid.Empty : (request.DisciplinaTarget?.Id ?? Guid.Empty),
+                                IsPremiazione = request.IsPremiazioni,
                                 NomeFileOriginale = Path.GetFileName(item.SourceFilePath),
                                 PathRelativo = relPath,
                                 Formato = isRaw ? "RAW" : "JPEG",

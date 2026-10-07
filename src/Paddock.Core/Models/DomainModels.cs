@@ -76,6 +76,7 @@ public class Foto
     public bool WatermarkApplicato { get; set; }
     public long DimensioneByte { get; set; }
     public string? HashMd5 { get; set; }
+    public bool IsPremiazione { get; set; }
 
     // Helper per determinare se è RAW
     public bool IsRaw => Formato.Equals("RAW", StringComparison.OrdinalIgnoreCase);

@@ -61,12 +61,13 @@
                             </ComboBox>
                         </StackPanel>
 
-                        <!-- Formati Foto -->
+                        <!-- Formati Foto & Sorgenti -->
                         <Border Background="#16181C" BorderBrush="#2E323B" BorderThickness="1" CornerRadius="6" Padding="12,10">
                             <StackPanel Spacing="8">
-                                <TextBlock Text="Formati Inclusi" FontSize="11" FontWeight="SemiBold" Foreground="#FF8C32"/>
+                                <TextBlock Text="Sorgenti &amp; Formati Inclusi" FontSize="11" FontWeight="SemiBold" Foreground="#FF8C32"/>
                                 <CheckBox Content="Usa Jpeg / PNG" IsChecked="{Binding IncludeJpegPng}" FontSize="12" Foreground="#EDEDED"/>
                                 <CheckBox Content="Usa RAW (estrazione anteprima)" IsChecked="{Binding IncludeRaw}" FontSize="12" Foreground="#EDEDED"/>
+                                <CheckBox Content="Visualizza premiazioni" IsChecked="{Binding IncludePremiazioni}" FontSize="12" Foreground="#EDEDED"/>
                             </StackPanel>
                         </Border>
 

@@ -85,13 +85,16 @@ public interface IFileOrganizationService
     bool IsRawFormat(string extension);
     string GetRelativePhotoPath(string eventName, Atleta atleta, Disciplina disciplina, string extension, string fileName);
     string GetDestinationDirectory(string rootPath, string eventName, Atleta atleta, Disciplina disciplina, string extension);
+    string GetPremiazioniRelativePath(string eventName, string fileName);
+    string GetPremiazioniDestinationDirectory(string rootPath, string eventName);
     Task<(string destinationPath, string relativePath, string md5Hash, long fileSizeBytes)> CopyFileOrganizedAsync(
         string sourceFilePath,
         string rootPath,
         string eventName,
-        Atleta atleta,
-        Disciplina disciplina,
+        Atleta? atleta,
+        Disciplina? disciplina,
         string? customFileName = null,
+        bool isPremiazione = false,
         CancellationToken cancellationToken = default);
 
     Task DeleteEventFilesOnDiskAsync(string rootPath, string eventName, CancellationToken cancellationToken = default);

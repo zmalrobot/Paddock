@@ -157,7 +157,7 @@ public partial class SlideshowWindowViewModel : ViewModelBase
         var eventoName = evento?.NomeEvento ?? "Evento";
 
         var matchingFoto = allFoto.Where(f =>
-            _config.SelectedAtletiIds.Contains(f.AtletaId) &&
+            (_config.SelectedAtletiIds.Contains(f.AtletaId) || (_config.IncludePremiazioni && f.IsPremiazione)) &&
             ((_config.IncludeJpegPng && !f.IsRaw) || (_config.IncludeRaw && f.IsRaw))
         ).ToList();
 
@@ -185,10 +185,62 @@ public partial class SlideshowWindowViewModel : ViewModelBase
 
             if (File.Exists(absPath))
             {
-                var atInfo = atletiMap.TryGetValue(f.AtletaId, out var name) ? name : "Atleta";
-                var discInfo = disciplineMap.TryGetValue(f.DisciplinaId, out var disc) ? disc : "Generale";
+                var atInfo = f.IsPremiazione ? "Premiazioni" : (atletiMap.TryGetValue(f.AtletaId, out var name) ? name : "Atleta");
+                var discInfo = f.IsPremiazione ? "Podio & Premiazioni" : (disciplineMap.TryGetValue(f.DisciplinaId, out var disc) ? disc : "Generale");
                 var fileName = Path.GetFileName(absPath);
                 items.Add(new SlideshowPhotoItem(f, absPath, atInfo, discInfo, eventoName, fileName));
+            }
+        }
+
+        if (_config.IncludePremiazioni)
+        {
+            var eventFolder = !string.IsNullOrWhiteSpace(evento?.CartellaDestinazioneRoot)
+                ? evento.CartellaDestinazioneRoot
+                : Path.Combine(basePath, eventoName);
+            var premiazioniFolder = Path.Combine(eventFolder, "Premiazioni");
+
+            if (Directory.Exists(premiazioniFolder))
+            {
+                var extensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                if (_config.IncludeJpegPng)
+                {
+                    extensions.Add(".jpg");
+                    extensions.Add(".jpeg");
+                    extensions.Add(".png");
+                }
+                if (_config.IncludeRaw)
+                {
+                    extensions.Add(".cr2");
+                    extensions.Add(".cr3");
+                    extensions.Add(".nef");
+                    extensions.Add(".arw");
+                    extensions.Add(".dng");
+                }
+
+                var existingPaths = new HashSet<string>(items.Select(i => i.AbsolutePath), StringComparer.OrdinalIgnoreCase);
+
+                foreach (var file in Directory.EnumerateFiles(premiazioniFolder, "*.*", SearchOption.AllDirectories))
+                {
+                    if (extensions.Contains(Path.GetExtension(file)) && !existingPaths.Contains(file))
+                    {
+                        var ext = Path.GetExtension(file);
+                        var isRaw = ext.Equals(".CR2", StringComparison.OrdinalIgnoreCase) ||
+                                    ext.Equals(".CR3", StringComparison.OrdinalIgnoreCase) ||
+                                    ext.Equals(".NEF", StringComparison.OrdinalIgnoreCase) ||
+                                    ext.Equals(".ARW", StringComparison.OrdinalIgnoreCase) ||
+                                    ext.Equals(".DNG", StringComparison.OrdinalIgnoreCase);
+                        var dummyFoto = new Foto
+                        {
+                            Id = Guid.NewGuid(),
+                            EventoId = _config.EventoId,
+                            NomeFileOriginale = Path.GetFileName(file),
+                            PathRelativo = Path.GetRelativePath(basePath, file),
+                            IsPremiazione = true,
+                            Formato = isRaw ? "RAW" : "JPEG"
+                        };
+                        items.Add(new SlideshowPhotoItem(dummyFoto, file, "Premiazioni", "Podio & Premiazioni", eventoName, Path.GetFileName(file)));
+                    }
+                }
             }
         }
 

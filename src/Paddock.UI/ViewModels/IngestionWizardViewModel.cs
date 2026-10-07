@@ -28,6 +28,18 @@ public partial class IngestionWizardViewModel : ViewModelBase
     private Disciplina? _selectedDisciplina;
 
     [ObservableProperty]
+    private bool _isPremiazioni;
+
+    partial void OnIsPremiazioniChanged(bool value)
+    {
+        if (value)
+        {
+            SelectedAtleta = null;
+            SelectedDisciplina = null;
+        }
+    }
+
+    [ObservableProperty]
     private bool _watermarkEnabled = false;
 
     [ObservableProperty]
@@ -191,24 +203,28 @@ public partial class IngestionWizardViewModel : ViewModelBase
             return;
         }
 
-        if (SelectedAtleta == null)
+        if (!IsPremiazioni)
         {
-            ErrorMessage = "Seleziona l'atleta target per questa importazione.";
-            return;
-        }
+            if (SelectedAtleta == null)
+            {
+                ErrorMessage = "Seleziona l'atleta target per questa importazione.";
+                return;
+            }
 
-        if (SelectedDisciplina == null)
-        {
-            ErrorMessage = "Seleziona la disciplina sportiva target.";
-            return;
+            if (SelectedDisciplina == null)
+            {
+                ErrorMessage = "Seleziona la disciplina sportiva target.";
+                return;
+            }
         }
 
         var request = new IngestionJobRequest
         {
             SourceDirectory = SourceDirectory,
             EventoTarget = Evento,
-            AtletaTarget = SelectedAtleta,
-            DisciplinaTarget = SelectedDisciplina,
+            IsPremiazioni = IsPremiazioni,
+            AtletaTarget = IsPremiazioni ? null : SelectedAtleta,
+            DisciplinaTarget = IsPremiazioni ? null : SelectedDisciplina,
             Watermark = new WatermarkOptions
             {
                 Enabled = WatermarkEnabled,

@@ -196,7 +196,8 @@ public class ExcelRepository : IExcelRepository
         ws.Cell(1, 10).Value = "WatermarkApplicato";
         ws.Cell(1, 11).Value = "DimensioneByte";
         ws.Cell(1, 12).Value = "HashMd5";
-        FormatHeader(ws, 12);
+        ws.Cell(1, 13).Value = "IsPremiazione";
+        FormatHeader(ws, 13);
     }
 
     private static void CreateSheetListinoPrezzi(XLWorkbook wb)
@@ -868,20 +869,27 @@ public class ExcelRepository : IExcelRepository
                     if (r.Cell(2).GetString() != evIdStr) continue;
                     if (!Guid.TryParse(r.Cell(1).GetString(), out var id)) continue;
 
+                    var aid = Guid.TryParse(r.Cell(3).GetString(), out var parsedAid) ? parsedAid : Guid.Empty;
+                    var relPath = r.Cell(6).GetString();
+                    var isPrem = bool.TryParse(r.Cell(13).GetString(), out var p)
+                        ? p
+                        : (relPath.Replace('/', '\\').Contains(@"\Premiazioni\") || relPath.StartsWith("Premiazioni", StringComparison.OrdinalIgnoreCase));
+
                     list.Add(new Foto
                     {
                         Id = id,
                         EventoId = eventoId,
-                        AtletaId = Guid.TryParse(r.Cell(3).GetString(), out var aid) ? aid : Guid.Empty,
+                        AtletaId = aid,
                         DisciplinaId = Guid.TryParse(r.Cell(4).GetString(), out var did) ? did : Guid.Empty,
                         NomeFileOriginale = r.Cell(5).GetString(),
-                        PathRelativo = r.Cell(6).GetString(),
+                        PathRelativo = relPath,
                         Formato = r.Cell(7).GetString(),
                         DataScatto = ParseNullableDateTime(r.Cell(8).GetString()),
                         Fotografo = r.Cell(9).GetString(),
                         WatermarkApplicato = bool.TryParse(r.Cell(10).GetString(), out var w) && w,
                         DimensioneByte = long.TryParse(r.Cell(11).GetString(), out var s) ? s : 0,
-                        HashMd5 = r.Cell(12).GetString()
+                        HashMd5 = r.Cell(12).GetString(),
+                        IsPremiazione = isPrem
                     });
                 }
             }, cancellationToken).ConfigureAwait(false);
@@ -964,6 +972,7 @@ public class ExcelRepository : IExcelRepository
                     ws.Cell(currentRow, 10).Value = f.WatermarkApplicato;
                     ws.Cell(currentRow, 11).Value = f.DimensioneByte;
                     ws.Cell(currentRow, 12).Value = f.HashMd5 ?? string.Empty;
+                    ws.Cell(currentRow, 13).Value = f.IsPremiazione;
 
                     currentRow++;
                 }
@@ -1375,20 +1384,27 @@ public class ExcelRepository : IExcelRepository
                             if (r.Cell(2).GetString() != evIdStr) continue;
                             if (!Guid.TryParse(r.Cell(1).GetString(), out var id)) continue;
 
+                            var aid = Guid.TryParse(r.Cell(3).GetString(), out var parsedAid) ? parsedAid : Guid.Empty;
+                            var relPath = r.Cell(6).GetString();
+                            var isPrem = bool.TryParse(r.Cell(13).GetString(), out var p)
+                                ? p
+                                : (relPath.Replace('/', '\\').Contains(@"\Premiazioni\") || relPath.StartsWith("Premiazioni", StringComparison.OrdinalIgnoreCase));
+
                             bundle.Foto.Add(new Foto
                             {
                                 Id = id,
                                 EventoId = eventoId,
-                                AtletaId = Guid.TryParse(r.Cell(3).GetString(), out var aid) ? aid : Guid.Empty,
+                                AtletaId = aid,
                                 DisciplinaId = Guid.TryParse(r.Cell(4).GetString(), out var did) ? did : Guid.Empty,
                                 NomeFileOriginale = r.Cell(5).GetString(),
-                                PathRelativo = r.Cell(6).GetString(),
+                                PathRelativo = relPath,
                                 Formato = r.Cell(7).GetString(),
                                 DataScatto = ParseNullableDateTime(r.Cell(8).GetString()),
                                 Fotografo = r.Cell(9).GetString(),
                                 WatermarkApplicato = bool.TryParse(r.Cell(10).GetString(), out var w) && w,
                                 DimensioneByte = long.TryParse(r.Cell(11).GetString(), out var s) ? s : 0,
-                                HashMd5 = r.Cell(12).GetString()
+                                HashMd5 = r.Cell(12).GetString(),
+                                IsPremiazione = isPrem
                             });
                         }
                     }

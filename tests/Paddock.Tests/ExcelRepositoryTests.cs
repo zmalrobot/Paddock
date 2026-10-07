@@ -369,5 +369,44 @@ public class ExcelRepositoryTests : IDisposable
         bundle.CatalogoPrezzi.Should().NotBeEmpty();
         bundle.CatalogoPrezzi.Should().HaveCount(9);
     }
+
+    [Fact]
+    public async Task Foto_IsPremiazione_PersistsAndReadsCorrectly()
+    {
+        // Arrange
+        var repo = new ExcelRepository(_testDbPath);
+        var eventoId = Guid.NewGuid();
+        var evento = new Evento { Id = eventoId, NomeEvento = "Coppa del Mondo 2026" };
+        await repo.UpsertEventoAsync(evento);
+
+        var fotoAtleta = new Foto
+        {
+            EventoId = eventoId,
+            AtletaId = Guid.NewGuid(),
+            NomeFileOriginale = "ATLETA_001.JPG",
+            PathRelativo = @"Coppa del Mondo 2026\10_Rossi_Mario\Gigante\Jpeg\ATLETA_001.JPG",
+            IsPremiazione = false
+        };
+
+        var fotoPremiazione = new Foto
+        {
+            EventoId = eventoId,
+            NomeFileOriginale = "PODIO_001.JPG",
+            PathRelativo = @"Coppa del Mondo 2026\Premiazioni\PODIO_001.JPG",
+            IsPremiazione = true
+        };
+
+        // Act
+        await repo.AddFotoBatchAsync(new[] { fotoAtleta, fotoPremiazione });
+        var fotoList = await repo.GetFotoByEventoAsync(eventoId);
+
+        // Assert
+        fotoList.Should().HaveCount(2);
+        var reloadedAtleta = fotoList.First(f => f.NomeFileOriginale == "ATLETA_001.JPG");
+        var reloadedPremiazione = fotoList.First(f => f.NomeFileOriginale == "PODIO_001.JPG");
+
+        reloadedAtleta.IsPremiazione.Should().BeFalse();
+        reloadedPremiazione.IsPremiazione.Should().BeTrue();
+    }
 }
 

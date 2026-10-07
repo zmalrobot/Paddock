@@ -29,6 +29,9 @@ public partial class SlideshowConfigViewModel : ViewModelBase
     private bool _includeRaw = false;
 
     [ObservableProperty]
+    private bool _includePremiazioni = false;
+
+    [ObservableProperty]
     private int _durationSeconds = 5;
 
     [ObservableProperty]
@@ -242,9 +245,9 @@ public partial class SlideshowConfigViewModel : ViewModelBase
         }
 
         var selectedAtletiIds = Atleti.Where(a => a.IsSelected).Select(a => a.Id).ToList();
-        if (selectedAtletiIds.Count == 0)
+        if (selectedAtletiIds.Count == 0 && !IncludePremiazioni)
         {
-            ErrorMessage = "Selezionare almeno un partecipante/atleta per lo slideshow.";
+            ErrorMessage = "Selezionare almeno un partecipante/atleta per lo slideshow o attivare le premiazioni.";
             return;
         }
 
@@ -272,11 +275,29 @@ public partial class SlideshowConfigViewModel : ViewModelBase
             IsBusy = true;
             var allFoto = await _excelRepo.GetFotoByEventoAsync(SelectedEvento.Id);
             var matchingFoto = allFoto.Where(f =>
-                selectedAtletiIds.Contains(f.AtletaId) &&
+                (selectedAtletiIds.Contains(f.AtletaId) || (IncludePremiazioni && f.IsPremiazione)) &&
                 ((IncludeJpegPng && !f.IsRaw) || (IncludeRaw && f.IsRaw))
             ).ToList();
 
-            if (matchingFoto.Count == 0)
+            if (matchingFoto.Count == 0 && IncludePremiazioni)
+            {
+                var basePath = await _excelRepo.GetBasePathAsync();
+                if (string.IsNullOrWhiteSpace(basePath))
+                {
+                    basePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "Paddock");
+                }
+                var eventFolder = !string.IsNullOrWhiteSpace(SelectedEvento.CartellaDestinazioneRoot)
+                    ? SelectedEvento.CartellaDestinazioneRoot
+                    : Path.Combine(basePath, SelectedEvento.NomeEvento);
+                var premDir = Path.Combine(eventFolder, "Premiazioni");
+
+                if (!Directory.Exists(premDir) || !Directory.EnumerateFiles(premDir, "*.*").Any())
+                {
+                    ErrorMessage = "Nessuna foto trovata per i criteri selezionati in questo evento.";
+                    return;
+                }
+            }
+            else if (matchingFoto.Count == 0)
             {
                 ErrorMessage = "Nessuna foto trovata per gli atleti e i formati selezionati in questo evento.";
                 return;
@@ -289,6 +310,7 @@ public partial class SlideshowConfigViewModel : ViewModelBase
                 SelectedAtletiIds = selectedAtletiIds,
                 IncludeJpegPng = IncludeJpegPng,
                 IncludeRaw = IncludeRaw,
+                IncludePremiazioni = IncludePremiazioni,
                 TargetScreenIndex = SelectedScreen?.Index ?? 0,
                 TargetScreen = SelectedScreen,
                 DurationSeconds = Math.Max(1, DurationSeconds),

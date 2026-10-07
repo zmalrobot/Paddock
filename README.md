@@ -53,12 +53,12 @@ I software di catalogazione convenzionali risultano spesso rigidi, impongono for
 - Sanitizzazione automatica dei caratteri non consentiti nei percorsi di sistema (con fallback a `Generale` o `Atleta_Sconosciuto`).
 - Verifica di integrità tramite calcolo hash MD5 per ciascun file copiato.
 
-### 4. Browser Foto Gerarchico & Lightbox Standalone
-- Raggruppamento strutturato a 3 livelli: **Evento** $\rightarrow$ **Atleta** $\rightarrow$ **Disciplina** $\rightarrow$ **Miniature Foto**.
-- **Pannelli Collassati di Default**: I gruppi atleta e disciplina partono chiusi per un caricamento istantaneo senza code di rendering preventive. Pulsanti dedicati per "Espandi tutto" e "Collassa tutto".
-- **Ricerca e Filtro Atleta in Tempo Reale**: Casella di testo dedicata per filtrare istantaneamente per nome, cognome o numero di pettorale (`PhotoAthleteFilter`).
+### 4. Browser Foto a Doppio Tab & Lightbox Standalone
+- **Struttura a 2 Tab Dedicati**:
+  - **Atleti**: Raggruppamento strutturato a 3 livelli (**Evento** $\rightarrow$ **Atleta** $\rightarrow$ **Disciplina** $\rightarrow$ **Miniature Foto**), filtri formato (Tutti / JPEG / RAW), casella di ricerca rapida atleta per nome o pettorale e pannelli collassati di default per avvio istantaneo.
+  - **Premiazioni**: Scheda dedicata che visualizza tutte le foto delle premiazioni e del podio senza filtri, con conteggio rapido e pulsante di aggiornamento.
 - **Visore Standalone Lightbox a Schermo Intero (`PhotoViewerWindow`)**:
-  - Apertura rapida con doppio clic su qualsiasi miniatura o pulsante dedicato.
+  - Apertura rapida con doppio clic su qualsiasi miniatura o pulsante dedicato (sia per foto atleti che premiazioni).
   - Zoom progressivo continuo con rotella del mouse, pulsanti dedicati zoom +/- e centratura/reset.
   - Panning fluido dell'immagine ingrandita tramite trascinamento con il mouse (click & drag).
   - Navigazione rapida avanti/indietro tramite frecce tastiera, Spazio/Backspace o pulsanti a schermo.
@@ -81,12 +81,13 @@ I software di catalogazione convenzionali risultano spesso rigidi, impongono for
 ### 6. Presentazione Slideshow Multi-Monitor Resiliente
 - Finestra di proiezione dedicata a schermo intero (`SlideshowWindow`) per proiettori o monitor secondari esterni rivolti al pubblico.
 - Selezione granulare dei partecipanti/atleti con pulsanti rapidi "Seleziona tutti" e "Deseleziona tutti".
+- Flag dedicato **"Visualizza premiazioni"**: include sia le foto delle premiazioni registrate a catalogo sia i file presenti nella cartella `[Evento]/Premiazioni`, con badge HUD dedicato (*Premiazioni* / *Podio & Premiazioni*).
 - Filtro formati indipendente e combinabile ("Usa Jpeg / PNG" e "Usa RAW").
 - Rilevamento automatico monitor (`Screens.All`) con preselezione dello schermo secondario se disponibile.
 - Tempo di permanenza configurabile (da 2 a 30 secondi) e ordinamento casuale (Shuffle) o sequenziale.
 - **10 Effetti di Transizione Visivi Moderni** (rotazione ciclica o selezione specifica):
   *Dissolvenza Incrociata*, *Scorrimento Dinamico*, *Ken Burns Cinematic*, *Zoom Esplosivo Sfumato*, *Flash Sportivo Paddock*, *Sfumatura a Tendina*, *Espansione Circolare a Iride*, *Glitch Digitale Azione*, *Mosaico a Blocchi*, *Sfocatura Direzionale Rapida*.
-- **HUD Darkroom Arricchito**: Badge informativi inferiori ad alto contrasto per `[PADDOCK LIVE]`, `[Nome Evento]`, `Nome Atleta`, `[Disciplina]`, `[Nome File Foto]` e contatore scatti.
+- **HUD Darkroom Arricchito**: Badge informativi inferiori ad alto contrasto per `[PADDOCK LIVE]`, `[Nome Evento]`, `Nome Atleta` (o `Premiazioni`), `[Disciplina]`, `[Nome File Foto]` e contatore scatti.
 - **Fallback Resiliente Senza Transizione**: In presenza di file non standard, errori di rendering o problemi grafici, la presentazione esegue un fallback istantaneo senza transizione, evitando qualunque blocco o freeze dello scorrimento.
 - Decodifica streaming non bloccante testata su archivi con centinaia di fotografie.
 
