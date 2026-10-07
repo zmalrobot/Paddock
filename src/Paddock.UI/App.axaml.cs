@@ -47,7 +47,8 @@ public partial class App : Application
 
             var mainWindow = new MainWindow
             {
-                DataContext = mainVm
+                DataContext = mainVm,
+                WindowState = Avalonia.Controls.WindowState.Maximized
             };
 
             mainWindow.Loaded += async (s, e) =>
