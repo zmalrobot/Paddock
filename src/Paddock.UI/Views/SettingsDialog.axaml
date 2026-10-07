@@ -19,20 +19,16 @@
         <Grid RowDefinitions="Auto,*,Auto">
 
             <!-- 1. Header -->
-            <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,16">
-                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                    <Border CornerRadius="6" ClipToBounds="True" Width="36" Height="36" Background="#16181C"
-                            BorderBrush="#2E323B" BorderThickness="1">
-                        <Image Source="/Assets/logo.jpg" Stretch="UniformToFill"/>
-                    </Border>
-                    <StackPanel Spacing="3" VerticalAlignment="Center">
-                        <TextBlock Text="IMPOSTAZIONI E CATALOGO PREZZI" FontSize="15" FontWeight="Bold" Foreground="#EDEDED" LetterSpacing="0.8"/>
-                        <TextBlock Text="Configurazione del database Excel, archivio foto e listino prezzi di vendita" FontSize="11" Foreground="#9EA3AE"/>
-                    </StackPanel>
+            <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center" Margin="0,0,0,16">
+                <Border CornerRadius="6" ClipToBounds="True" Width="36" Height="36" Background="#16181C"
+                        BorderBrush="#2E323B" BorderThickness="1">
+                    <Image Source="/Assets/logo.jpg" Stretch="UniformToFill"/>
+                </Border>
+                <StackPanel Spacing="3" VerticalAlignment="Center">
+                    <TextBlock Text="IMPOSTAZIONI E CATALOGO PREZZI" FontSize="15" FontWeight="Bold" Foreground="#EDEDED" LetterSpacing="0.8"/>
+                    <TextBlock Text="Configurazione del database Excel, archivio foto e listino prezzi di vendita" FontSize="11" Foreground="#9EA3AE"/>
                 </StackPanel>
-                <Button Grid.Column="1" Classes="secondary" Content="Chiudi" Padding="12,5" FontSize="11"
-                        Command="{Binding CloseCommand}"/>
-            </Grid>
+            </StackPanel>
 
             <!-- 2. TabControl Principale -->
             <TabControl Grid.Row="1" SelectedIndex="{Binding SelectedTabIndex}">
