@@ -54,6 +54,9 @@ public interface IExcelRepository
     Task<List<AcquistoFoto>> GetAcquistiByEventoAsync(Guid eventoId, CancellationToken cancellationToken = default);
     Task UpsertAcquistoFotoAsync(AcquistoFoto acquisto, CancellationToken cancellationToken = default);
     Task DeleteAcquistoFotoAsync(Guid acquistoId, CancellationToken cancellationToken = default);
+
+    // Caricamento Consolidato Single-Pass
+    Task<EventDataBundle> GetEventDataBundleAsync(Guid eventoId, CancellationToken cancellationToken = default);
 }
 
 public interface IAppPreferencesService

@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Threading;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -10,6 +11,8 @@ namespace Paddock.UI.ViewModels;
 
 public partial class PhotoItemViewModel : ObservableObject
 {
+    private static readonly SemaphoreSlim _decodingThrottle = new(4, 4);
+
     public Foto Foto { get; }
     public string FullPath { get; }
 
@@ -42,13 +45,17 @@ public partial class PhotoItemViewModel : ObservableObject
         FullPath = fullPath;
     }
 
-    public async Task LoadThumbnailAsync(IImageProcessingService? imageService)
+    public async Task LoadThumbnailAsync(IImageProcessingService? imageService, CancellationToken cancellationToken = default)
     {
         if (ThumbnailBitmap != null || !File.Exists(FullPath))
             return;
 
+        await _decodingThrottle.WaitAsync(cancellationToken);
         try
         {
+            if (ThumbnailBitmap != null || cancellationToken.IsCancellationRequested)
+                return;
+
             IsLoadingThumbnail = true;
 
             if (!IsRaw)
@@ -65,13 +72,13 @@ public partial class PhotoItemViewModel : ObservableObject
                         ThumbnailBitmap = bmp;
                         OnPropertyChanged(nameof(ShowRawPlaceholder));
                     });
-                });
+                }, cancellationToken);
             }
             else
             {
                 if (imageService != null)
                 {
-                    var bytes = await imageService.GenerateThumbnailAsync(FullPath, 260, 160);
+                    var bytes = await imageService.GenerateThumbnailAsync(FullPath, 260, 160, cancellationToken);
                     if (bytes != null && bytes.Length > 0)
                     {
                         using var ms = new MemoryStream(bytes);
@@ -85,12 +92,17 @@ public partial class PhotoItemViewModel : ObservableObject
                 }
             }
         }
+        catch (OperationCanceledException)
+        {
+            // Richiesta annullata
+        }
         catch
         {
             HasThumbnailError = true;
         }
         finally
         {
+            _decodingThrottle.Release();
             IsLoadingThumbnail = false;
             OnPropertyChanged(nameof(ShowRawPlaceholder));
         }
@@ -99,6 +111,8 @@ public partial class PhotoItemViewModel : ObservableObject
 
 public partial class PhotoBrowserDisciplinaGroup : ObservableObject
 {
+    private IImageProcessingService? _imageService;
+
     public Disciplina Disciplina { get; }
     public string NomeDisciplina => string.IsNullOrWhiteSpace(Disciplina.NomeDisciplina) ? "Generale" : Disciplina.NomeDisciplina;
 
@@ -114,10 +128,37 @@ public partial class PhotoBrowserDisciplinaGroup : ObservableObject
         Disciplina = disciplina;
         Photos.CollectionChanged += (s, e) => OnPropertyChanged(nameof(PhotosCount));
     }
+
+    public void SetImageService(IImageProcessingService? imageService)
+    {
+        _imageService = imageService;
+    }
+
+    public void LoadThumbnails(IImageProcessingService? imageService = null)
+    {
+        var svc = imageService ?? _imageService;
+        foreach (var p in Photos)
+        {
+            if (p.ThumbnailBitmap == null && !p.IsLoadingThumbnail)
+            {
+                _ = p.LoadThumbnailAsync(svc);
+            }
+        }
+    }
+
+    partial void OnIsExpandedChanged(bool value)
+    {
+        if (value)
+        {
+            LoadThumbnails(_imageService);
+        }
+    }
 }
 
 public partial class PhotoBrowserAthleteGroup : ObservableObject
 {
+    private IImageProcessingService? _imageService;
+
     public Atleta Atleta { get; }
     public string DisplayTitle => Atleta.DisplayPettoraleNome;
 
@@ -132,6 +173,37 @@ public partial class PhotoBrowserAthleteGroup : ObservableObject
     {
         Atleta = atleta;
         DisciplineGroups.CollectionChanged += (s, e) => OnPropertyChanged(nameof(TotalPhotosCount));
+    }
+
+    public void SetImageService(IImageProcessingService? imageService)
+    {
+        _imageService = imageService;
+        foreach (var dg in DisciplineGroups)
+        {
+            dg.SetImageService(imageService);
+        }
+    }
+
+    public void LoadThumbnails(IImageProcessingService? imageService = null)
+    {
+        var svc = imageService ?? _imageService;
+        if (!IsExpanded) return;
+
+        foreach (var dg in DisciplineGroups)
+        {
+            if (dg.IsExpanded)
+            {
+                dg.LoadThumbnails(svc);
+            }
+        }
+    }
+
+    partial void OnIsExpandedChanged(bool value)
+    {
+        if (value)
+        {
+            LoadThumbnails(_imageService);
+        }
     }
 
     public void NotifyCountChanged()

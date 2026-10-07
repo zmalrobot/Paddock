@@ -5,6 +5,7 @@ using Polly;
 using Polly.Retry;
 using Paddock.Core.Interfaces;
 using Paddock.Core.Models;
+using Paddock.Core.DTOs;
 
 namespace Paddock.Infrastructure.Excel;
 
@@ -1292,6 +1293,228 @@ public class ExcelRepository : IExcelRepository
                     .FirstOrDefault(r => r.Cell(1).GetString() == acquistoId.ToString());
                 row?.Delete();
                 wb.Save();
+            }, cancellationToken).ConfigureAwait(false);
+        }).ConfigureAwait(false);
+    }
+
+    #endregion
+
+    #region Consolidamento Single-Pass
+
+    public async Task<EventDataBundle> GetEventDataBundleAsync(Guid eventoId, CancellationToken cancellationToken = default)
+    {
+        await EnsureDatabaseInitializedAsync(cancellationToken).ConfigureAwait(false);
+
+        return await ExecuteWithLockAndRetryAsync(async () =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return await Task.Run(() =>
+            {
+                using var wb = new XLWorkbook(DatabaseFilePath);
+                var bundle = new EventDataBundle();
+                var evIdStr = eventoId.ToString();
+
+                // 1. Atleti
+                if (wb.Worksheets.Contains("Atleti"))
+                {
+                    var ws = wb.Worksheet("Atleti");
+                    var rows = ws.RangeUsed()?.RowsUsed().Skip(1);
+                    if (rows != null)
+                    {
+                        foreach (var r in rows)
+                        {
+                            if (r.Cell(2).GetString() != evIdStr) continue;
+                            if (!Guid.TryParse(r.Cell(1).GetString(), out var id)) continue;
+
+                            bundle.Atleti.Add(new Atleta
+                            {
+                                Id = id,
+                                EventoId = eventoId,
+                                NumeroPettorale = r.Cell(3).GetString(),
+                                Nome = r.Cell(4).GetString(),
+                                Cognome = r.Cell(5).GetString(),
+                                Categoria = r.Cell(6).GetString(),
+                                Note = r.Cell(7).GetString()
+                            });
+                        }
+                    }
+                }
+
+                // 2. Discipline
+                if (wb.Worksheets.Contains("Discipline"))
+                {
+                    var ws = wb.Worksheet("Discipline");
+                    var rows = ws.RangeUsed()?.RowsUsed().Skip(1);
+                    if (rows != null)
+                    {
+                        foreach (var r in rows)
+                        {
+                            if (r.Cell(2).GetString() != evIdStr) continue;
+                            if (!Guid.TryParse(r.Cell(1).GetString(), out var id)) continue;
+
+                            bundle.Discipline.Add(new Disciplina
+                            {
+                                Id = id,
+                                EventoId = eventoId,
+                                NomeDisciplina = r.Cell(3).GetString(),
+                                Descrizione = r.Cell(4).GetString()
+                            });
+                        }
+                    }
+                }
+
+                // 3. Foto
+                if (wb.Worksheets.Contains("Foto"))
+                {
+                    var ws = wb.Worksheet("Foto");
+                    var rows = ws.RangeUsed()?.RowsUsed().Skip(1);
+                    if (rows != null)
+                    {
+                        foreach (var r in rows)
+                        {
+                            if (r.Cell(2).GetString() != evIdStr) continue;
+                            if (!Guid.TryParse(r.Cell(1).GetString(), out var id)) continue;
+
+                            bundle.Foto.Add(new Foto
+                            {
+                                Id = id,
+                                EventoId = eventoId,
+                                AtletaId = Guid.TryParse(r.Cell(3).GetString(), out var aid) ? aid : Guid.Empty,
+                                DisciplinaId = Guid.TryParse(r.Cell(4).GetString(), out var did) ? did : Guid.Empty,
+                                NomeFileOriginale = r.Cell(5).GetString(),
+                                PathRelativo = r.Cell(6).GetString(),
+                                Formato = r.Cell(7).GetString(),
+                                DataScatto = ParseNullableDateTime(r.Cell(8).GetString()),
+                                Fotografo = r.Cell(9).GetString(),
+                                WatermarkApplicato = bool.TryParse(r.Cell(10).GetString(), out var w) && w,
+                                DimensioneByte = long.TryParse(r.Cell(11).GetString(), out var s) ? s : 0,
+                                HashMd5 = r.Cell(12).GetString()
+                            });
+                        }
+                    }
+                }
+
+                // 4. Catalogo Prezzi
+                if (wb.Worksheets.Contains("ListinoPrezzi"))
+                {
+                    var ws = wb.Worksheet("ListinoPrezzi");
+                    var rows = ws.RangeUsed()?.RowsUsed().Skip(1);
+                    if (rows != null)
+                    {
+                        foreach (var row in rows)
+                        {
+                            var idStr = row.Cell(1).GetString();
+                            if (!Guid.TryParse(idStr, out var id)) continue;
+
+                            var catStr = row.Cell(2).GetString();
+                            if (!Enum.TryParse<CategoriaPrezzo>(catStr, true, out var cat))
+                            {
+                                cat = CategoriaPrezzo.FotoSingola;
+                            }
+
+                            var nome = row.Cell(3).GetString();
+                            var prezzo = (decimal)row.Cell(4).GetDouble();
+                            var qta = (int)row.Cell(5).GetDouble();
+                            var desc = row.Cell(6).GetString();
+
+                            bundle.CatalogoPrezzi.Add(new PrezzoCatalogoItem
+                            {
+                                Id = id,
+                                Categoria = cat,
+                                Nome = nome,
+                                Prezzo = prezzo,
+                                QuantitaFotoIncluse = qta > 0 ? qta : 1,
+                                Descrizione = desc
+                            });
+                        }
+                    }
+                }
+                if (bundle.CatalogoPrezzi.Count == 0)
+                {
+                    bundle.CatalogoPrezzi.AddRange(GetDefaultCatalogoItems());
+                }
+
+                // 5. Acquisti
+                if (wb.Worksheets.Contains("Acquisti"))
+                {
+                    var ws = wb.Worksheet("Acquisti");
+                    var rows = ws.RangeUsed()?.RowsUsed().Skip(1);
+                    if (rows != null)
+                    {
+                        foreach (var row in rows)
+                        {
+                            if (row.Cell(2).GetString() != evIdStr) continue;
+
+                            var idStr = row.Cell(1).GetString();
+                            if (!Guid.TryParse(idStr, out var id)) continue;
+
+                            var data = ParseDateTime(row.Cell(3).GetString());
+                            var atletaIdStr = row.Cell(4).GetString();
+                            Guid.TryParse(atletaIdStr, out var atletaId);
+                            var nomeAtleta = row.Cell(5).GetString();
+                            var pettorale = row.Cell(6).GetString();
+
+                            var discIdStr = row.Cell(7).GetString();
+                            Guid? discId = Guid.TryParse(discIdStr, out var parsedDiscId) ? parsedDiscId : null;
+                            var nomeDisc = row.Cell(8).GetString();
+
+                            var totQta = (int)row.Cell(9).GetDouble();
+                            var totCalc = (decimal)row.Cell(10).GetDouble();
+                            var totPagato = (decimal)row.Cell(11).GetDouble();
+
+                            var email = row.Cell(12).GetString();
+                            var tel = row.Cell(13).GetString();
+
+                            var interaCartellaStr = row.Cell(14).GetString();
+                            var interaCartella = bool.TryParse(interaCartellaStr, out var ic) ? ic : true;
+
+                            var fileFotoStr = row.Cell(15).GetString();
+                            var files = !string.IsNullOrWhiteSpace(fileFotoStr)
+                                ? fileFotoStr.Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList()
+                                : new List<string>();
+
+                            var cartellaRef = row.Cell(16).GetString();
+                            var vociJson = row.Cell(17).GetString();
+                            var voci = new List<VoceAcquisto>();
+                            if (!string.IsNullOrWhiteSpace(vociJson))
+                            {
+                                try
+                                {
+                                    voci = JsonSerializer.Deserialize<List<VoceAcquisto>>(vociJson) ?? new();
+                                }
+                                catch
+                                {
+                                    voci = new();
+                                }
+                            }
+
+                            bundle.Acquisti.Add(new AcquistoFoto
+                            {
+                                Id = id,
+                                EventoId = eventoId,
+                                DataAcquisto = data,
+                                AtletaId = atletaId,
+                                NomeAtleta = nomeAtleta,
+                                NumeroPettorale = pettorale,
+                                DisciplinaId = discId,
+                                NomeDisciplina = nomeDisc,
+                                TotaleQuantita = totQta,
+                                TotaleCalcolato = totCalc,
+                                TotalePagato = totPagato,
+                                EmailCliente = email,
+                                TelefonoCliente = tel,
+                                InteraCartella = interaCartella,
+                                FileFotoSelezionate = files,
+                                CartellaPathRiferimento = cartellaRef,
+                                Voci = voci,
+                                Note = row.Cell(19).GetString(),
+                                Stato = row.Cell(20).GetString()
+                            });
+                        }
+                    }
+                }
+
+                return bundle;
             }, cancellationToken).ConfigureAwait(false);
         }).ConfigureAwait(false);
     }

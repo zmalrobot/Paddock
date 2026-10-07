@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Paddock.Core.Models;
+using Paddock.Core.DTOs;
 using Paddock.Infrastructure.Excel;
 using Xunit;
 
@@ -306,6 +307,67 @@ public class ExcelRepositoryTests : IDisposable
         await repo.DeleteAcquistoFotoAsync(acquisto.Id);
         var emptyList = await repo.GetAcquistiByEventoAsync(eventoId);
         emptyList.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ExcelRepository_GetEventDataBundleAsync_RetrievesAllData_InSinglePass()
+    {
+        // Arrange
+        var repo = new ExcelRepository(_testDbPath);
+        await repo.EnsureDatabaseInitializedAsync();
+
+        var eventoId = Guid.NewGuid();
+        var altroEventoId = Guid.NewGuid();
+
+        var evento = new Evento { Id = eventoId, NomeEvento = "Coppa del Mondo 2026" };
+        await repo.UpsertEventoAsync(evento);
+
+        var atleta1 = new Atleta { EventoId = eventoId, NumeroPettorale = "101", Nome = "Sofia", Cognome = "Goggia" };
+        var atleta2 = new Atleta { EventoId = altroEventoId, NumeroPettorale = "999", Nome = "Altro", Cognome = "Atleta" };
+        await repo.UpsertAtletaAsync(atleta1);
+        await repo.UpsertAtletaAsync(atleta2);
+
+        var disciplina1 = new Disciplina { EventoId = eventoId, NomeDisciplina = "Discesa Libera" };
+        var disciplina2 = new Disciplina { EventoId = altroEventoId, NomeDisciplina = "Altra Disciplina" };
+        await repo.UpsertDisciplinaAsync(disciplina1);
+        await repo.UpsertDisciplinaAsync(disciplina2);
+
+        var foto1 = new Foto { EventoId = eventoId, AtletaId = atleta1.Id, DisciplinaId = disciplina1.Id, NomeFileOriginale = "SG01.jpg", PathRelativo = "SG01.jpg" };
+        var foto2 = new Foto { EventoId = altroEventoId, NomeFileOriginale = "OTHER.jpg", PathRelativo = "OTHER.jpg" };
+        await repo.AddFotoBatchAsync(new[] { foto1, foto2 });
+
+        var acquisto1 = new AcquistoFoto
+        {
+            EventoId = eventoId,
+            AtletaId = atleta1.Id,
+            NomeAtleta = "Sofia Goggia",
+            NumeroPettorale = "101",
+            TotalePagato = 35.00m
+        };
+        var acquisto2 = new AcquistoFoto { EventoId = altroEventoId, NomeAtleta = "Altro", TotalePagato = 10.00m };
+        await repo.UpsertAcquistoFotoAsync(acquisto1);
+        await repo.UpsertAcquistoFotoAsync(acquisto2);
+
+        // Act
+        var bundle = await repo.GetEventDataBundleAsync(eventoId);
+
+        // Assert
+        bundle.Should().NotBeNull();
+        bundle.Atleti.Should().HaveCount(1);
+        bundle.Atleti[0].NumeroPettorale.Should().Be("101");
+
+        bundle.Discipline.Should().HaveCount(1);
+        bundle.Discipline[0].NomeDisciplina.Should().Be("Discesa Libera");
+
+        bundle.Foto.Should().HaveCount(1);
+        bundle.Foto[0].NomeFileOriginale.Should().Be("SG01.jpg");
+
+        bundle.Acquisti.Should().HaveCount(1);
+        bundle.Acquisti[0].NomeAtleta.Should().Be("Sofia Goggia");
+        bundle.Acquisti[0].TotalePagato.Should().Be(35.00m);
+
+        bundle.CatalogoPrezzi.Should().NotBeEmpty();
+        bundle.CatalogoPrezzi.Should().HaveCount(9);
     }
 }
 

@@ -592,5 +592,30 @@
 
         </TabControl>
 
+        <!-- Loading Overlay (Busy Indicator) -->
+        <Border Grid.Row="0" Grid.RowSpan="2"
+                Background="#B0121316"
+                IsVisible="{Binding IsBusy}"
+                ZIndex="999">
+            <Border Background="#1A1C20"
+                    BorderBrush="#2E323B"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="28,24"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    BoxShadow="0 4 20 #40000000">
+                <StackPanel Spacing="16" HorizontalAlignment="Center" Width="280">
+                    <ProgressBar IsIndeterminate="True" Height="4" Foreground="#FF8C32" Background="#2E323B"/>
+                    <TextBlock Text="{Binding BusyMessage}"
+                               FontSize="13"
+                               FontWeight="SemiBold"
+                               Foreground="#EDEDED"
+                               HorizontalAlignment="Center"
+                               TextAlignment="Center"/>
+                </StackPanel>
+            </Border>
+        </Border>
+
     </Grid>
 </UserControl>

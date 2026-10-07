@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Paddock.Core.Interfaces;
 using Paddock.Core.Models;
+using Paddock.Core.DTOs;
 
 namespace Paddock.UI.ViewModels;
 
@@ -15,6 +16,12 @@ public partial class EventDetailViewModel : ViewModelBase
 
     [ObservableProperty]
     private Evento _evento;
+
+    [ObservableProperty]
+    private bool _isBusy;
+
+    [ObservableProperty]
+    private string _busyMessage = "Caricamento evento in corso...";
 
     [ObservableProperty]
     private int _selectedTabIndex = 0; // 0 = Atleti, 1 = Discipline, 2 = Browser Foto
@@ -124,32 +131,64 @@ public partial class EventDetailViewModel : ViewModelBase
 
     public async Task LoadEventDataAsync()
     {
-        // 1. Carica atleti
-        var atleti = await _excelRepo.GetAtletiByEventoAsync(Evento.Id);
-        AllAtleti.Clear();
-        foreach (var a in atleti) AllAtleti.Add(a);
-        ApplyAthleteFilter();
+        IsBusy = true;
+        BusyMessage = "Caricamento evento in corso...";
+        try
+        {
+            var bundle = await _excelRepo.GetEventDataBundleAsync(Evento.Id);
+            if (bundle == null)
+            {
+                var atleti = await _excelRepo.GetAtletiByEventoAsync(Evento.Id);
+                var disc = await _excelRepo.GetDisciplineByEventoAsync(Evento.Id);
+                var foto = await _excelRepo.GetFotoByEventoAsync(Evento.Id);
+                var catalogo = await _excelRepo.GetCatalogoPrezziAsync();
+                var acquisti = await _excelRepo.GetAcquistiByEventoAsync(Evento.Id);
+                bundle = new EventDataBundle
+                {
+                    Atleti = atleti,
+                    Discipline = disc,
+                    Foto = foto,
+                    CatalogoPrezzi = catalogo,
+                    Acquisti = acquisti
+                };
+            }
 
-        // 2. Carica discipline
-        var disc = await _excelRepo.GetDisciplineByEventoAsync(Evento.Id);
-        Discipline.Clear();
-        foreach (var d in disc) Discipline.Add(d);
+            // 1. Carica atleti
+            AllAtleti.Clear();
+            foreach (var a in bundle.Atleti ?? Enumerable.Empty<Atleta>()) AllAtleti.Add(a);
+            ApplyAthleteFilter();
 
-        // 3. Carica foto
-        var foto = await _excelRepo.GetFotoByEventoAsync(Evento.Id);
-        AllFoto.Clear();
-        foreach (var f in foto) AllFoto.Add(f);
-        await RebuildHierarchicalPhotoGroupsAsync();
+            // 2. Carica discipline
+            Discipline.Clear();
+            foreach (var d in bundle.Discipline ?? Enumerable.Empty<Disciplina>()) Discipline.Add(d);
 
-        // 4. Carica catalogo e acquisti evento
-        await LoadAcquistiDataAsync();
+            // 3. Carica foto
+            AllFoto.Clear();
+            foreach (var f in bundle.Foto ?? Enumerable.Empty<Foto>()) AllFoto.Add(f);
+            await RebuildHierarchicalPhotoGroupsAsync();
 
-        // Aggiorna metriche evento
-        Evento.TotaleAtleti = AllAtleti.Count;
-        Evento.TotaleDiscipline = Discipline.Count;
-        Evento.TotaleFoto = AllFoto.Count;
-        Evento.TotaleByteOccupati = AllFoto.Sum(f => f.DimensioneByte);
-        OnPropertyChanged(nameof(Evento));
+            // 4. Carica catalogo e acquisti evento
+            CatalogoDisponibile.Clear();
+            foreach (var c in bundle.CatalogoPrezzi ?? Enumerable.Empty<PrezzoCatalogoItem>()) CatalogoDisponibile.Add(c);
+            SelectedCatalogoItemToAdd = CatalogoDisponibile.FirstOrDefault();
+
+            Acquisti.Clear();
+            foreach (var a in bundle.Acquisti ?? Enumerable.Empty<AcquistoFoto>()) Acquisti.Add(a);
+
+            TotaleIncassatoEvento = Acquisti.Sum(a => a.TotalePagato);
+            TotaleOrdiniEvento = Acquisti.Count;
+
+            // Aggiorna metriche evento
+            Evento.TotaleAtleti = AllAtleti.Count;
+            Evento.TotaleDiscipline = Discipline.Count;
+            Evento.TotaleFoto = AllFoto.Count;
+            Evento.TotaleByteOccupati = AllFoto.Sum(f => f.DimensioneByte);
+            OnPropertyChanged(nameof(Evento));
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     partial void OnAthleteSearchFilterChanged(string value)
@@ -247,10 +286,15 @@ public partial class EventDetailViewModel : ViewModelBase
                 foreach (var photoItem in disciplinaGroup)
                 {
                     disciplinaGroupVm.Photos.Add(photoItem);
-                    _ = photoItem.LoadThumbnailAsync(_imageService);
                 }
 
                 athleteGroupVm.DisciplineGroups.Add(disciplinaGroupVm);
+            }
+
+            athleteGroupVm.SetImageService(_imageService);
+            if (athleteGroupVm.IsExpanded)
+            {
+                athleteGroupVm.LoadThumbnails(_imageService);
             }
 
             AthletePhotoGroups.Add(athleteGroupVm);
@@ -474,14 +518,23 @@ public partial class EventDetailViewModel : ViewModelBase
     [RelayCommand]
     private async Task RefreshPhotosAsync()
     {
-        var foto = await _excelRepo.GetFotoByEventoAsync(Evento.Id);
-        AllFoto.Clear();
-        foreach (var f in foto) AllFoto.Add(f);
-        await RebuildHierarchicalPhotoGroupsAsync();
+        IsBusy = true;
+        BusyMessage = "Aggiornamento foto in corso...";
+        try
+        {
+            var foto = await _excelRepo.GetFotoByEventoAsync(Evento.Id);
+            AllFoto.Clear();
+            foreach (var f in foto) AllFoto.Add(f);
+            await RebuildHierarchicalPhotoGroupsAsync();
 
-        Evento.TotaleFoto = AllFoto.Count;
-        Evento.TotaleByteOccupati = AllFoto.Sum(f => f.DimensioneByte);
-        OnPropertyChanged(nameof(Evento));
+            Evento.TotaleFoto = AllFoto.Count;
+            Evento.TotaleByteOccupati = AllFoto.Sum(f => f.DimensioneByte);
+            OnPropertyChanged(nameof(Evento));
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     #endregion

@@ -808,5 +808,50 @@ public class ViewModelTests
 
         vm.CloseSlideshow();
     }
+
+    [Fact]
+    public async Task EventDetailViewModel_LoadEventDataAsync_ConsumesSinglePassBundleAndSetsBusyState()
+    {
+        var evento = new Evento { Id = Guid.NewGuid(), NomeEvento = "Enduro Cup" };
+        var atleta = new Atleta { Id = Guid.NewGuid(), EventoId = evento.Id, NumeroPettorale = "55", Nome = "Marco", Cognome = "Melis" };
+        var disciplina = new Disciplina { Id = Guid.NewGuid(), EventoId = evento.Id, NomeDisciplina = "E-Bike" };
+        var foto = new Foto { Id = Guid.NewGuid(), EventoId = evento.Id, AtletaId = atleta.Id, DisciplinaId = disciplina.Id, PathRelativo = "55_Melis/E-Bike/img.jpg", DimensioneByte = 5000 };
+        var acquisto = new AcquistoFoto { Id = Guid.NewGuid(), EventoId = evento.Id, TotalePagato = 45.00m };
+        var catalogo = new List<PrezzoCatalogoItem>
+        {
+            new() { Nome = "Foto Singola", Prezzo = 5.00m }
+        };
+
+        var bundle = new EventDataBundle
+        {
+            Atleti = new List<Atleta> { atleta },
+            Discipline = new List<Disciplina> { disciplina },
+            Foto = new List<Foto> { foto },
+            Acquisti = new List<AcquistoFoto> { acquisto },
+            CatalogoPrezzi = catalogo
+        };
+
+        var mockExcel = new Mock<IExcelRepository>();
+        var mockFileOrg = new Mock<IFileOrganizationService>();
+
+        mockExcel.Setup(x => x.GetEventDataBundleAsync(evento.Id, default)).ReturnsAsync(bundle);
+        mockExcel.Setup(x => x.GetBasePathAsync(default)).ReturnsAsync(@"C:\PaddockRepo");
+
+        var vm = new EventDetailViewModel(evento, mockExcel.Object, mockFileOrg.Object);
+        await vm.LoadEventDataAsync();
+
+        vm.IsBusy.Should().BeFalse();
+        vm.AllAtleti.Should().HaveCount(1);
+        vm.AllAtleti[0].NumeroPettorale.Should().Be("55");
+        vm.Discipline.Should().HaveCount(1);
+        vm.AllFoto.Should().HaveCount(1);
+        vm.Acquisti.Should().HaveCount(1);
+        vm.TotaleIncassatoEvento.Should().Be(45.00m);
+        vm.TotaleOrdiniEvento.Should().Be(1);
+        vm.CatalogoDisponibile.Should().HaveCount(1);
+        vm.Evento.TotaleAtleti.Should().Be(1);
+        vm.Evento.TotaleFoto.Should().Be(1);
+        vm.Evento.TotaleByteOccupati.Should().Be(5000);
+    }
 }
 
