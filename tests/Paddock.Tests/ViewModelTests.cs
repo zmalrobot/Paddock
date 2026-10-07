@@ -199,5 +199,173 @@ public class ViewModelTests
         var assetFile = Path.Combine(currentDir!.FullName, "src", "Paddock.UI", "Assets", "logo.jpg");
         File.Exists(assetFile).Should().BeTrue();
     }
+
+    [Fact]
+    public void SlideshowConfigViewModel_Initializes10Transitions_WithGpuCpuBadges()
+    {
+        var mockRepo = new Mock<IExcelRepository>();
+        var ev = new Evento { NomeEvento = "Rally Legend" };
+        var screens = new List<DisplayScreenInfo>
+        {
+            new DisplayScreenInfo { Index = 0, DisplayName = "Monitor 1", Width = 1920, Height = 1080, IsPrimary = true },
+            new DisplayScreenInfo { Index = 1, DisplayName = "Monitor 2", Width = 2560, Height = 1440, IsPrimary = false }
+        };
+
+        var vm = new SlideshowConfigViewModel(mockRepo.Object, new[] { ev }, screens, ev);
+
+        // 10 transizioni
+        vm.Transitions.Should().HaveCount(10);
+        vm.Transitions.Should().AllSatisfy(t =>
+        {
+            t.Nome.Should().NotBeNullOrWhiteSpace();
+            t.Descrizione.Should().NotBeNullOrWhiteSpace();
+            t.BadgeText.Should().Match(b => b == "GPU" || b == "CPU" || b == "CPU / GPU");
+        });
+
+        // Schermo esterno pre-selezionato se disponibile
+        vm.SelectedScreen.Should().NotBeNull();
+        vm.SelectedScreen!.Index.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task SlideshowConfigViewModel_SelectAndDeselectAll_Works()
+    {
+        var mockRepo = new Mock<IExcelRepository>();
+        var ev = new Evento { NomeEvento = "GP Monza" };
+        var atleti = new List<Atleta>
+        {
+            new Atleta { Id = Guid.NewGuid(), NumeroPettorale = "1", Nome = "Max", Cognome = "Verstappen" },
+            new Atleta { Id = Guid.NewGuid(), NumeroPettorale = "16", Nome = "Charles", Cognome = "Leclerc" },
+            new Atleta { Id = Guid.NewGuid(), NumeroPettorale = "44", Nome = "Lewis", Cognome = "Hamilton" }
+        };
+
+        mockRepo.Setup(r => r.GetAtletiByEventoAsync(ev.Id, default)).ReturnsAsync(atleti);
+
+        var vm = new SlideshowConfigViewModel(mockRepo.Object, new[] { ev }, Array.Empty<DisplayScreenInfo>(), ev);
+        await vm.LoadAtletiForSelectedEventoAsync(ev.Id);
+
+        vm.Atleti.Should().HaveCount(3);
+        vm.Atleti.Should().AllSatisfy(a => a.IsSelected.Should().BeTrue());
+
+        // Deseleziona tutti
+        vm.DeselectAllAtletiCommand.Execute(null);
+        vm.Atleti.Should().AllSatisfy(a => a.IsSelected.Should().BeFalse());
+
+        // Seleziona tutti
+        vm.SelectAllAtletiCommand.Execute(null);
+        vm.Atleti.Should().AllSatisfy(a => a.IsSelected.Should().BeTrue());
+
+        // Deseleziona transizioni
+        vm.DeselectAllTransitionsCommand.Execute(null);
+        vm.Transitions.Should().AllSatisfy(t => t.IsSelected.Should().BeFalse());
+
+        // Seleziona transizioni
+        vm.SelectAllTransitionsCommand.Execute(null);
+        vm.Transitions.Should().AllSatisfy(t => t.IsSelected.Should().BeTrue());
+    }
+
+    [Fact]
+    public async Task SlideshowConfigViewModel_Validation_HandlesMissingSelections()
+    {
+        var mockRepo = new Mock<IExcelRepository>();
+        var ev = new Evento { NomeEvento = "Dolomiti Skyrace" };
+        var atleta = new Atleta { Id = Guid.NewGuid(), NumeroPettorale = "10", Nome = "Alex", Cognome = "Rossi" };
+
+        mockRepo.Setup(r => r.GetAtletiByEventoAsync(ev.Id, default)).ReturnsAsync(new List<Atleta> { atleta });
+        mockRepo.Setup(r => r.GetFotoByEventoAsync(ev.Id, default)).ReturnsAsync(new List<Foto>());
+
+        var vm = new SlideshowConfigViewModel(mockRepo.Object, new[] { ev }, Array.Empty<DisplayScreenInfo>(), ev);
+        await vm.LoadAtletiForSelectedEventoAsync(ev.Id);
+
+        SlideshowConfig? startedConfig = null;
+        vm.RequestStartSlideshow += c => startedConfig = c;
+
+        // Caso 1: Nessun atleta selezionato
+        vm.DeselectAllAtletiCommand.Execute(null);
+        await vm.StartSlideshowAsync();
+        startedConfig.Should().BeNull();
+        vm.ErrorMessage.Should().Contain("partecipante");
+
+        // Caso 2: Nessun formato selezionato
+        vm.SelectAllAtletiCommand.Execute(null);
+        vm.IncludeJpegPng = false;
+        vm.IncludeRaw = false;
+        await vm.StartSlideshowAsync();
+        startedConfig.Should().BeNull();
+        vm.ErrorMessage.Should().Contain("formato");
+
+        // Caso 3: Nessuna transizione selezionata
+        vm.IncludeJpegPng = true;
+        vm.DeselectAllTransitionsCommand.Execute(null);
+        await vm.StartSlideshowAsync();
+        startedConfig.Should().BeNull();
+        vm.ErrorMessage.Should().Contain("transizione");
+
+        // Caso 4: Nessuna foto trovata
+        vm.SelectAllTransitionsCommand.Execute(null);
+        await vm.StartSlideshowAsync();
+        startedConfig.Should().BeNull();
+        vm.ErrorMessage.Should().Contain("Nessuna foto trovata");
+    }
+
+    [Fact]
+    public async Task SlideshowConfigViewModel_Validation_SuccessTriggersStart()
+    {
+        var mockRepo = new Mock<IExcelRepository>();
+        var ev = new Evento { NomeEvento = "Giro 2026" };
+        var atletaId = Guid.NewGuid();
+        var atleta = new Atleta { Id = atletaId, NumeroPettorale = "7", Nome = "Fausto", Cognome = "Coppi" };
+        var foto = new Foto { Id = Guid.NewGuid(), EventoId = ev.Id, AtletaId = atletaId, Formato = "JPEG" };
+
+        mockRepo.Setup(r => r.GetAtletiByEventoAsync(ev.Id, default)).ReturnsAsync(new List<Atleta> { atleta });
+        mockRepo.Setup(r => r.GetFotoByEventoAsync(ev.Id, default)).ReturnsAsync(new List<Foto> { foto });
+
+        var screens = new List<DisplayScreenInfo>
+        {
+            new DisplayScreenInfo { Index = 0, DisplayName = "Monitor TV", Width = 3840, Height = 2160, IsPrimary = false }
+        };
+
+        var vm = new SlideshowConfigViewModel(mockRepo.Object, new[] { ev }, screens, ev);
+        await vm.LoadAtletiForSelectedEventoAsync(ev.Id);
+
+        SlideshowConfig? startedConfig = null;
+        vm.RequestStartSlideshow += c => startedConfig = c;
+
+        await vm.StartSlideshowAsync();
+
+        startedConfig.Should().NotBeNull();
+        startedConfig!.EventoId.Should().Be(ev.Id);
+        startedConfig.SelectedAtletiIds.Should().Contain(atletaId);
+        startedConfig.SelectedTransitionIds.Should().HaveCount(10);
+        startedConfig.TargetScreen!.DisplayName.Should().Be("Monitor TV");
+    }
+
+    [Fact]
+    public void MainViewModel_SlideshowControls_OpenAndStopWork()
+    {
+        var mockExcel = new Mock<IExcelRepository>();
+        var mockFileOrg = new Mock<IFileOrganizationService>();
+        var mockPipeline = new Mock<IIngestionPipelineService>();
+        var mockSd = new Mock<ISdCardWatcherService>();
+
+        var mainVm = new MainViewModel(mockExcel.Object, mockFileOrg.Object, mockPipeline.Object, mockSd.Object);
+
+        // Apertura schermata configurazione
+        mainVm.IsModalOpen.Should().BeFalse();
+        mainVm.OpenSlideshowConfigCommand.Execute(null);
+
+        mainVm.IsModalOpen.Should().BeTrue();
+        mainVm.CurrentModal.Should().BeOfType<SlideshowConfigViewModel>();
+
+        // Avvio simulato e interruzione
+        bool stopRequested = false;
+        mainVm.RequestStopSlideshow += () => stopRequested = true;
+
+        mainVm.IsSlideshowActive = true;
+        mainVm.StopSlideshowCommand.Execute(null);
+
+        mainVm.IsSlideshowActive.Should().BeFalse();
+        stopRequested.Should().BeTrue();
+    }
 }
 

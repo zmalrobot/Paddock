@@ -1,0 +1,105 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Paddock.UI.ViewModels"
+        x:Class="Paddock.UI.Views.SlideshowWindow"
+        x:DataType="vm:SlideshowWindowViewModel"
+        Title="Paddock — Slideshow Clienti"
+        Icon="/Assets/logo.jpg"
+        Background="#000000"
+        WindowDecorations="None"
+        WindowState="FullScreen"
+        WindowStartupLocation="Manual">
+
+    <Grid Background="#000000">
+
+        <!-- Layer A (Foto Base) -->
+        <Image Source="{Binding CurrentImage}"
+               Stretch="Uniform"
+               HorizontalAlignment="Center"
+               VerticalAlignment="Center">
+            <Image.Transitions>
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.7"/>
+                </Transitions>
+            </Image.Transitions>
+            <Image.Styles>
+                <Style Selector="Image">
+                    <Setter Property="Opacity" Value="1.0"/>
+                </Style>
+            </Image.Styles>
+        </Image>
+
+        <!-- Layer B (Foto Successiva con Transizione Dinamica) -->
+        <Image Source="{Binding NextImage}"
+               Stretch="Uniform"
+               HorizontalAlignment="Center"
+               VerticalAlignment="Center">
+            <Image.Transitions>
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.7"/>
+                </Transitions>
+            </Image.Transitions>
+            <Image.Styles>
+                <Style Selector="Image">
+                    <Setter Property="Opacity" Value="0.0"/>
+                </Style>
+            </Image.Styles>
+        </Image>
+
+        <!-- Flash Strobe Overlay per effetto Flash Sportivo -->
+        <Rectangle x:Name="FlashOverlay"
+                   Fill="#FFFFFF"
+                   Opacity="0"
+                   IsHitTestVisible="False">
+            <Rectangle.Transitions>
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.25"/>
+                </Transitions>
+            </Rectangle.Transitions>
+        </Rectangle>
+
+        <!-- Overlay HUD Discreto per Info Atleta & Istruzioni ESC -->
+        <Border VerticalAlignment="Bottom"
+                HorizontalAlignment="Stretch"
+                Margin="32,0,32,24"
+                Opacity="{Binding IsHudVisible, Converter={x:Static ObjectConverters.IsNotNull}}"
+                IsVisible="{Binding IsHudVisible}">
+            <Border.Transitions>
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.5"/>
+                </Transitions>
+            </Border.Transitions>
+
+            <Border Background="#D0121316"
+                    BorderBrush="#40FFFFFF"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="16,10"
+                    BoxShadow="0 4 20 #80000000">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                    
+                    <!-- Dettaglio Atleta -->
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                        <Border Background="#FF8C32" CornerRadius="4" Padding="6,2">
+                            <TextBlock Text="PADDOCK LIVE" FontSize="10" FontWeight="Bold" Foreground="#121316"/>
+                        </Border>
+                        <TextBlock Text="{Binding CurrentAtletaText}" FontSize="13" FontWeight="SemiBold" Foreground="#EDEDED" VerticalAlignment="Center"/>
+                    </StackPanel>
+
+                    <!-- Contatore Foto & Istruzione ESC -->
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                        <Border Background="#22252B" CornerRadius="4" Padding="8,3">
+                            <TextBlock Text="{Binding CurrentCounterText}" FontSize="11" Foreground="#9EA3AE" FontWeight="SemiBold"/>
+                        </Border>
+                        <Border Background="#30000000" BorderBrush="#50FFFFFF" BorderThickness="1" CornerRadius="4" Padding="8,3">
+                            <TextBlock Text="Premi ESC per uscire" FontSize="11" Foreground="#EDEDED"/>
+                        </Border>
+                    </StackPanel>
+
+                </Grid>
+            </Border>
+        </Border>
+
+    </Grid>
+
+</Window>

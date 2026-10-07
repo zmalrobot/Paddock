@@ -32,18 +32,25 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isModalOpen;
 
-    // Banner non-bloccante conflitti Excel
     [ObservableProperty]
     private bool _isLockBannerVisible;
 
     [ObservableProperty]
     private string _lockBannerMessage = string.Empty;
 
+    [ObservableProperty]
+    private bool _isSlideshowActive;
+
+    public Func<List<DisplayScreenInfo>>? GetAvailableScreens { get; set; }
+    public event Action<SlideshowConfig>? RequestLaunchSlideshow;
+    public event Action? RequestStopSlideshow;
+
     public ObservableCollection<Evento> AllEventi { get; } = new();
     public ObservableCollection<Evento> FilteredEventi { get; } = new();
     public JobManagerViewModel JobManager { get; }
 
     public string DatabasePath => _excelRepo.DatabaseFilePath;
+    public IExcelRepository ExcelRepo => _excelRepo;
 
     public MainViewModel(
         IExcelRepository excelRepo,
@@ -274,6 +281,33 @@ public partial class MainViewModel : ViewModelBase
 
         CurrentModal = settingsVm;
         IsModalOpen = true;
+    }
+
+    [RelayCommand]
+    public void OpenSlideshowConfig()
+    {
+        var screens = GetAvailableScreens?.Invoke() ?? new List<DisplayScreenInfo>
+        {
+            new DisplayScreenInfo { Index = 0, DisplayName = "Schermo 1", Width = 1920, Height = 1080, IsPrimary = true }
+        };
+
+        var configVm = new SlideshowConfigViewModel(_excelRepo, AllEventi, screens, SelectedEvento);
+        configVm.RequestClose += CloseModal;
+        configVm.RequestStartSlideshow += config =>
+        {
+            CloseModal();
+            RequestLaunchSlideshow?.Invoke(config);
+        };
+
+        CurrentModal = configVm;
+        IsModalOpen = true;
+    }
+
+    [RelayCommand]
+    public void StopSlideshow()
+    {
+        RequestStopSlideshow?.Invoke();
+        IsSlideshowActive = false;
     }
 
     private async void OnStartIngestionRequested(Evento evento)

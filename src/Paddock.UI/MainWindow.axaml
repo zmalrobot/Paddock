@@ -39,8 +39,26 @@
                         </Grid>
                     </Border>
 
-                    <!-- Stato Database Excel & Impostazioni -->
+                    <!-- Stato Database Excel, Slideshow & Impostazioni -->
                     <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <!-- Pulsante Stop Presentazione (visibile solo se attiva) -->
+                        <Button Classes="danger" Padding="10,4" FontSize="11"
+                                IsVisible="{Binding IsSlideshowActive}"
+                                Command="{Binding StopSlideshowCommand}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBlock Text="⏹" VerticalAlignment="Center" Foreground="#FFFFFF"/>
+                                <TextBlock Text="Interrompi Presentazione" FontWeight="Bold" Foreground="#FFFFFF" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Pulsante Apri Presentazione -->
+                        <Button Classes="secondary" Padding="8,4" FontSize="11" Command="{Binding OpenSlideshowConfigCommand}">
+                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                <TextBlock Text="📺" FontSize="11" VerticalAlignment="Center"/>
+                                <TextBlock Text="Presentazione" FontSize="11" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
                         <Border Background="#1A1C20" BorderBrush="#2E323B" BorderThickness="1" CornerRadius="4" Padding="8,4">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <Ellipse Width="8" Height="8" Fill="#2ECC71" VerticalAlignment="Center"/>
@@ -155,6 +173,9 @@
                     </DataTemplate>
                     <DataTemplate DataType="vm:DatabaseStartupDialogViewModel">
                         <views:DatabaseStartupDialog/>
+                    </DataTemplate>
+                    <DataTemplate DataType="vm:SlideshowConfigViewModel">
+                        <views:SlideshowConfigDialog/>
                     </DataTemplate>
                 </ContentControl.DataTemplates>
             </ContentControl>

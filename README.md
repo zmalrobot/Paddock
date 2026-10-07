@@ -41,6 +41,15 @@ I software di catalogazione convenzionali risultano spesso rigidi, impongono for
   - Risoluzione intelligente dell'eseguibile `exiftool` su 3 livelli: percorso personalizzato, cartella dell'applicazione locale o variabile di ambiente `PATH`.
   - Estrazione istantanea della data di scatto tramite `MetadataExtractor` con fallback su metadati di filesystem.
 - **Eliminazione Sicura a 3 Vie**: Finestra modale vincolante per l'eliminazione di un evento con opzioni esplicite: eliminazione del solo record su Excel, cancellazione sia dal database sia dei file fisici dal disco (con checkbox di sicurezza obbligatoria) o annullamento.
+- **Presentazione / Slideshow Clienti Multi-Monitor**:
+  - Finestra di proiezione dedicata a schermo intero (`SlideshowWindow`) pensata per proiettori, monitor esterni o display secondari/principali.
+  - Selezione granulare dei partecipanti/atleti con pulsanti rapidi "Seleziona tutti" e "Deseleziona tutti".
+  - Filtro formati indipendente e combinabile ("Usa Jpeg / PNG" e "Usa RAW").
+  - Rilevamento automatico e menu di selezione monitor (`Screens.All`) con preselezione dello schermo secondario se disponibile.
+  - Tempo di permanenza configurabile (da 2 a 30 secondi) e ordinamento casuale (Shuffle continuo) o sequenziale per nome file.
+  - **10 Effetti di Transizione Visivi Moderni** (selezionabili da 1 a N con rotazione ciclica e badge hardware CPU/GPU): *Dissolvenza Incrociata*, *Scorrimento Dinamico*, *Ken Burns Cinematic*, *Zoom Esplosivo Sfumato*, *Flash Sportivo Paddock*, *Sfumatura a Tendina*, *Espansione Circolare a Iride*, *Glitch Digitale Azione*, *Mosaico a Blocchi*, *Sfocatura Direzionale Rapida*.
+  - Operatività parallela garantita: l'operatore può continuare ad usare liberamente l'app principale mentre la presentazione scorre sul monitor esterno.
+  - Interruzione immediata tramite tasto `ESC` sulla presentazione o pulsante dedicato `⏹ Interrompi Presentazione` nella barra superiore dell'applicazione.
 - **Interfaccia Utente "Pro Darkroom"**: GUI Avalonia UI a tema scuro a basso contrasto (`#121316`, `#16181C`, `#22252B`), accenti arancio studio (`#FF8C32`) e ciano (`#00B4D8`), layout HUD a 3 pannelli e cassetto a scomparsa per il Job Manager.
 
 ---
@@ -55,11 +64,12 @@ flowchart TD
         MainWindow["MainWindow (HUD a 3 pannelli)"]
         EventDetail["EventDetailView (Atleti / Discipline / Browser Foto)"]
         JobDrawer["JobManagerDrawer (Telemetria Ingestione MB/s)"]
-        Modals["Modali: Startup, Settings, Wizard Ingestione, Delete"]
+        Modals["Modali: Startup, Settings, Ingestion Wizard, Delete, Slideshow Config"]
+        SlideshowWin["SlideshowWindow (Proiezione Full Screen Esterna)"]
     end
 
     subgraph Core ["Paddock.Core (Domain & Abstractions)"]
-        Models["Modelli: Evento, Atleta, Disciplina, Foto"]
+        Models["Modelli: Evento, Atleta, Disciplina, Foto, Slideshow"]
         Interfaces["Interfacce: IExcelRepository, IIngestionPipelineService, ..."]
         DTOs["DTO: IngestionJobRequest, WatermarkOptions, ProgressReport"]
     end

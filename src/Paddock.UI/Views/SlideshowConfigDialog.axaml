@@ -1,0 +1,193 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Paddock.UI.ViewModels"
+             xmlns:models="using:Paddock.Core.Models"
+             x:Class="Paddock.UI.Views.SlideshowConfigDialog"
+             x:DataType="vm:SlideshowConfigViewModel"
+             Width="780" MaxHeight="800">
+
+    <Border Background="#1A1C20" BorderBrush="#2E323B" BorderThickness="1" CornerRadius="8" Padding="24" BoxShadow="0 8 32 #50000000">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="18">
+
+                <!-- 1. Header Dialogo -->
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                        <Border CornerRadius="6" ClipToBounds="True" Width="36" Height="36" Background="#16181C" BorderBrush="#2E323B" BorderThickness="1">
+                            <Image Source="/Assets/logo.jpg" Stretch="UniformToFill"/>
+                        </Border>
+                        <StackPanel Spacing="3" VerticalAlignment="Center">
+                            <TextBlock Text="CONFIGURAZIONE PRESENTAZIONE SLIDESHOW" FontSize="15" FontWeight="Bold" Foreground="#EDEDED" LetterSpacing="0.8"/>
+                            <TextBlock Text="Proiezione a tutto schermo per clienti su secondo monitor o display principale" FontSize="11" Foreground="#9EA3AE"/>
+                        </StackPanel>
+                    </StackPanel>
+                    <Button Grid.Column="1" Classes="secondary" Content="✕" Padding="8,4" FontSize="12"
+                            Command="{Binding CloseCommand}"/>
+                </Grid>
+
+                <Rectangle Height="1" Fill="#2E323B"/>
+
+                <!-- 2. Contenuto a Due Colonne -->
+                <Grid ColumnDefinitions="*,16,*">
+
+                    <!-- Colonna Sinistra: Parametri Generali & Schermo -->
+                    <StackPanel Grid.Column="0" Spacing="14">
+
+                        <!-- Selezione Evento -->
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Evento Sportivo *" FontSize="12" FontWeight="SemiBold" Foreground="#EDEDED"/>
+                            <ComboBox ItemsSource="{Binding Eventi}"
+                                      SelectedItem="{Binding SelectedEvento}"
+                                      HorizontalAlignment="Stretch">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate DataType="models:Evento">
+                                        <TextBlock Text="{Binding NomeEvento}"/>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </StackPanel>
+
+                        <!-- Selezione Monitor -->
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Monitor di Destinazione *" FontSize="12" FontWeight="SemiBold" Foreground="#EDEDED"/>
+                            <ComboBox ItemsSource="{Binding Screens}"
+                                      SelectedItem="{Binding SelectedScreen}"
+                                      HorizontalAlignment="Stretch">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate DataType="models:DisplayScreenInfo">
+                                        <TextBlock Text="{Binding Description}"/>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </StackPanel>
+
+                        <!-- Formati Foto -->
+                        <Border Background="#16181C" BorderBrush="#2E323B" BorderThickness="1" CornerRadius="6" Padding="12,10">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Formati Inclusi" FontSize="11" FontWeight="SemiBold" Foreground="#FF8C32"/>
+                                <CheckBox Content="Usa Jpeg / PNG" IsChecked="{Binding IncludeJpegPng}" FontSize="12" Foreground="#EDEDED"/>
+                                <CheckBox Content="Usa RAW (estrazione anteprima)" IsChecked="{Binding IncludeRaw}" FontSize="12" Foreground="#EDEDED"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Tempo di Permanenza -->
+                        <Border Background="#16181C" BorderBrush="#2E323B" BorderThickness="1" CornerRadius="6" Padding="12,10">
+                            <StackPanel Spacing="6">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Permanenza Foto:" FontSize="11" FontWeight="SemiBold" Foreground="#EDEDED"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding DurationSeconds, StringFormat='{}{0} secondi'}" FontSize="11" FontWeight="Bold" Foreground="#00B4D8"/>
+                                </Grid>
+                                <ComboBox ItemsSource="{Binding DurationOptions}"
+                                          SelectedItem="{Binding DurationSeconds}"
+                                          HorizontalAlignment="Stretch">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding StringFormat='{}{0} secondi'}"/>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Ordinamento Foto -->
+                        <Border Background="#16181C" BorderBrush="#2E323B" BorderThickness="1" CornerRadius="6" Padding="12,10">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Ordinamento Sequenza" FontSize="11" FontWeight="SemiBold" Foreground="#EDEDED"/>
+                                <RadioButton GroupName="SortOrder" Content="Casuale (Shuffle continuo)"
+                                             IsChecked="{Binding IsRandomOrder}" FontSize="12" Foreground="#EDEDED"/>
+                                <RadioButton GroupName="SortOrder" Content="Sequenziale (Per nome file / ordine scatto)"
+                                             IsChecked="{Binding !IsRandomOrder}" FontSize="12" Foreground="#EDEDED"/>
+                            </StackPanel>
+                        </Border>
+
+                    </StackPanel>
+
+                    <!-- Colonna Destra: Atleti & Tabella 10 Transizioni -->
+                    <StackPanel Grid.Column="2" Spacing="14">
+
+                        <!-- Selezione Atleti / Partecipanti -->
+                        <Border Background="#16181C" BorderBrush="#2E323B" BorderThickness="1" CornerRadius="6" Padding="12">
+                            <StackPanel Spacing="8">
+                                <Grid ColumnDefinitions="*,Auto,Auto">
+                                    <TextBlock Grid.Column="0" Text="Partecipanti / Atleti" FontSize="12" FontWeight="SemiBold" Foreground="#EDEDED" VerticalAlignment="Center"/>
+                                    <Button Grid.Column="1" Classes="secondary" Content="Tutti" Padding="6,2" FontSize="10" Margin="0,0,4,0"
+                                            Command="{Binding SelectAllAtletiCommand}"/>
+                                    <Button Grid.Column="2" Classes="secondary" Content="Nessuno" Padding="6,2" FontSize="10"
+                                            Command="{Binding DeselectAllAtletiCommand}"/>
+                                </Grid>
+
+                                <ScrollViewer MaxHeight="140" VerticalScrollBarVisibility="Auto">
+                                    <ItemsControl ItemsSource="{Binding Atleti}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="models:AtletaSelectionItem">
+                                                <CheckBox IsChecked="{Binding IsSelected}" Margin="0,1" HorizontalAlignment="Stretch">
+                                                    <TextBlock Text="{Binding DisplayText}" FontSize="11" Foreground="#EDEDED" TextTrimming="CharacterEllipsis"/>
+                                                </CheckBox>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Tabella 10 Effetti di Transizione con Badge GPU/CPU -->
+                        <Border Background="#16181C" BorderBrush="#2E323B" BorderThickness="1" CornerRadius="6" Padding="12">
+                            <StackPanel Spacing="8">
+                                <Grid ColumnDefinitions="*,Auto,Auto">
+                                    <TextBlock Grid.Column="0" Text="Effetti di Transizione (1-N)" FontSize="12" FontWeight="SemiBold" Foreground="#EDEDED" VerticalAlignment="Center"/>
+                                    <Button Grid.Column="1" Classes="secondary" Content="Tutte" Padding="6,2" FontSize="10" Margin="0,0,4,0"
+                                            Command="{Binding SelectAllTransitionsCommand}"/>
+                                    <Button Grid.Column="2" Classes="secondary" Content="Nessuna" Padding="6,2" FontSize="10"
+                                            Command="{Binding DeselectAllTransitionsCommand}"/>
+                                </Grid>
+
+                                <ScrollViewer MaxHeight="220" VerticalScrollBarVisibility="Auto">
+                                    <ItemsControl ItemsSource="{Binding Transitions}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="models:TransitionEffectInfo">
+                                                <Border BorderBrush="#22252B" BorderThickness="0,0,0,1" Padding="0,4" Margin="0,2">
+                                                    <Grid ColumnDefinitions="Auto,*,Auto">
+                                                        <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}" VerticalAlignment="Top" Margin="0,0,8,0"/>
+                                                        <StackPanel Grid.Column="1" Spacing="2">
+                                                            <TextBlock Text="{Binding Nome}" FontSize="11" FontWeight="SemiBold" Foreground="#EDEDED"/>
+                                                            <TextBlock Text="{Binding Descrizione}" FontSize="10" Foreground="#9EA3AE" TextWrapping="Wrap"/>
+                                                        </StackPanel>
+                                                        <Border Grid.Column="2" CornerRadius="3" Background="#22252B" BorderBrush="#2E323B" BorderThickness="1"
+                                                                Padding="5,1" VerticalAlignment="Center" Margin="6,0,0,0">
+                                                            <TextBlock Text="{Binding BadgeText}" FontSize="9" FontWeight="Bold" Foreground="{Binding BadgeColor}"/>
+                                                        </Border>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </StackPanel>
+                        </Border>
+
+                    </StackPanel>
+
+                </Grid>
+
+                <!-- Feedback Errore / Progresso -->
+                <Border Background="#3D1D1D" BorderBrush="#E74C3C" BorderThickness="1" CornerRadius="4" Padding="10,6"
+                        IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                    <TextBlock Text="{Binding ErrorMessage}" Foreground="#FF6B6B" FontSize="11" TextWrapping="Wrap"/>
+                </Border>
+
+                <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" Height="3" VerticalAlignment="Center"/>
+
+                <!-- 3. Pulsanti Azione Inferiori -->
+                <Grid ColumnDefinitions="*,Auto,Auto">
+                    <Button Grid.Column="1" Classes="secondary" Content="Chiudi" Padding="18,8" FontSize="12" Margin="0,0,10,0"
+                            Command="{Binding CloseCommand}"/>
+                    <Button Grid.Column="2" Classes="primary" Content="📺 Avvia Presentazione" Padding="20,8" FontSize="12"
+                            Command="{Binding StartSlideshowCommand}"/>
+                </Grid>
+
+            </StackPanel>
+        </ScrollViewer>
+    </Border>
+
+</UserControl>
+
