@@ -1197,5 +1197,20 @@ public class ViewModelTests
             Directory.Delete(tempDir, recursive: true);
         }
     }
+
+    [Fact]
+    public void SettingsViewModel_AboutInformation_ExposesComponentVersions_Copyright_And_GitHubUrl()
+    {
+        var mockRepo = new Mock<IExcelRepository>();
+        var mockPrefs = new Mock<IAppPreferencesService>();
+
+        var vm = new SettingsViewModel(mockRepo.Object, mockPrefs.Object);
+
+        vm.CoreVersion.Should().Be("0.5.0");
+        vm.InfrastructureVersion.Should().Be("0.5.0");
+        vm.UiVersion.Should().Be("0.5.0");
+        vm.CopyrightText.Should().Contain("zmalrobot").And.Contain("2026");
+        vm.GitHubUrl.Should().Be("https://github.com/zmalrobot/Paddock");
+    }
 }
 

@@ -315,6 +315,100 @@
                     </ScrollViewer>
                 </TabItem>
 
+                <!-- TAB 4: INFORMAZIONI & VERSIONI -->
+                <TabItem Header="Informazioni">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,12,0,0">
+                        <StackPanel Spacing="16">
+
+                            <!-- Intestazione Applicazione -->
+                            <Border Background="#16181C" CornerRadius="6" Padding="16" BorderBrush="#2E323B" BorderThickness="1">
+                                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="16">
+                                    <Border Grid.Column="0" CornerRadius="8" ClipToBounds="True" Width="56" Height="56" Background="#121316"
+                                            BorderBrush="#2E323B" BorderThickness="1">
+                                        <Image Source="/Assets/logo.jpg" Stretch="UniformToFill"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
+                                        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                            <TextBlock Text="PADDOCK PHOTO ORGANIZER" FontSize="15" FontWeight="Bold" Foreground="#EDEDED" LetterSpacing="0.8"/>
+                                            <Border Background="#1B3A4B" CornerRadius="4" Padding="6,2" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding UiVersion, StringFormat='v{0}'}" FontSize="10" FontWeight="Bold" Foreground="#00B4D8"/>
+                                            </Border>
+                                        </StackPanel>
+                                        <TextBlock Text="Software desktop professionale per l'organizzazione, catalogazione e vendita di scatti fotografici per eventi sportivi."
+                                                   FontSize="11" Foreground="#9EA3AE" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <!-- Versioni dei Componenti -->
+                            <Border Background="#16181C" CornerRadius="6" Padding="16" BorderBrush="#2E323B" BorderThickness="1">
+                                <StackPanel Spacing="12">
+                                    <TextBlock Text="VERSIONI DEI COMPONENTI" FontSize="12" FontWeight="SemiBold" Foreground="#FF8C32" LetterSpacing="0.5"/>
+
+                                    <Border Background="#121316" BorderBrush="#2E323B" BorderThickness="1" CornerRadius="6" Padding="14,10">
+                                        <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+                                            <StackPanel Grid.Column="0" Spacing="2">
+                                                <TextBlock Text="Paddock.Core" FontSize="12" FontWeight="SemiBold" Foreground="#EDEDED"/>
+                                                <TextBlock Text="Modelli di dominio, contratti di interfaccia, DTO e logica di calcolo" FontSize="10" Foreground="#636773"/>
+                                            </StackPanel>
+                                            <Border Grid.Column="1" Background="#22252B" BorderBrush="#2E323B" BorderThickness="1" CornerRadius="4" Padding="8,3" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding CoreVersion}" FontSize="11" FontWeight="Bold" Foreground="#00B4D8"/>
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+
+                                    <Border Background="#121316" BorderBrush="#2E323B" BorderThickness="1" CornerRadius="6" Padding="14,10">
+                                        <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+                                            <StackPanel Grid.Column="0" Spacing="2">
+                                                <TextBlock Text="Paddock.Infrastructure" FontSize="12" FontWeight="SemiBold" Foreground="#EDEDED"/>
+                                                <TextBlock Text="Persistenza database Excel, motore watermark, elaborazione immagini ed Exif" FontSize="10" Foreground="#636773"/>
+                                            </StackPanel>
+                                            <Border Grid.Column="1" Background="#22252B" BorderBrush="#2E323B" BorderThickness="1" CornerRadius="4" Padding="8,3" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding InfrastructureVersion}" FontSize="11" FontWeight="Bold" Foreground="#00B4D8"/>
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+
+                                    <Border Background="#121316" BorderBrush="#2E323B" BorderThickness="1" CornerRadius="6" Padding="14,10">
+                                        <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+                                            <StackPanel Grid.Column="0" Spacing="2">
+                                                <TextBlock Text="Paddock.UI" FontSize="12" FontWeight="SemiBold" Foreground="#EDEDED"/>
+                                                <TextBlock Text="Interfaccia utente grafica desktop Avalonia UI con architettura MVVM" FontSize="10" Foreground="#636773"/>
+                                            </StackPanel>
+                                            <Border Grid.Column="1" Background="#22252B" BorderBrush="#2E323B" BorderThickness="1" CornerRadius="4" Padding="8,3" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding UiVersion}" FontSize="11" FontWeight="Bold" Foreground="#00B4D8"/>
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Copyright & Autore -->
+                            <Border Background="#16181C" CornerRadius="6" Padding="16" BorderBrush="#2E323B" BorderThickness="1">
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="COPYRIGHT &amp; AUTORE" FontSize="12" FontWeight="SemiBold" Foreground="#FF8C32" LetterSpacing="0.5"/>
+                                    <TextBlock Text="{Binding CopyrightText}" FontSize="12" FontWeight="SemiBold" Foreground="#EDEDED"/>
+                                    <TextBlock Text="Tutti i diritti riservati." FontSize="11" Foreground="#9EA3AE"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Codice Sorgente & GitHub -->
+                            <Border Background="#16181C" CornerRadius="6" Padding="16" BorderBrush="#2E323B" BorderThickness="1">
+                                <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+                                    <StackPanel Grid.Column="0" Spacing="4">
+                                        <TextBlock Text="REPOSITORY GITHUB" FontSize="12" FontWeight="SemiBold" Foreground="#FF8C32" LetterSpacing="0.5"/>
+                                        <TextBlock Text="{Binding GitHubUrl}" FontSize="12" Foreground="#00B4D8" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Text="Consulta il codice sorgente, documentazione e rilasci ufficiali." FontSize="10" Foreground="#636773"/>
+                                    </StackPanel>
+                                    <Button Grid.Column="1" Classes="secondary" Content="Apri Repository su GitHub" Command="{Binding OpenGitHubCommand}"
+                                            Padding="14,8" FontSize="11" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                                </Grid>
+                            </Border>
+
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
             </TabControl>
 
             <!-- 3. Feedback Banner & Footer -->

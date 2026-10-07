@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.Reflection;
 using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -15,6 +17,13 @@ public partial class SettingsViewModel : ViewModelBase
     private readonly IExcelRepository _excelRepo;
     private readonly IAppPreferencesService _prefsService;
     private readonly IImageProcessingService? _imageService;
+
+    // Informazioni & Versioni
+    public string CoreVersion { get; }
+    public string InfrastructureVersion { get; }
+    public string UiVersion { get; }
+    public string CopyrightText { get; }
+    public string GitHubUrl { get; } = "https://github.com/zmalrobot/Paddock";
 
     [ObservableProperty]
     private int _selectedTabIndex;
@@ -112,6 +121,12 @@ public partial class SettingsViewModel : ViewModelBase
         DefaultWatermarkScalePercent = _prefsService.DefaultWatermarkScalePercent > 0 ? _prefsService.DefaultWatermarkScalePercent : 0.20f;
         DefaultPhotographerName = _prefsService.DefaultPhotographerName ?? string.Empty;
         DefaultCopyrightNotice = _prefsService.DefaultCopyrightNotice ?? string.Empty;
+
+        // Inizializza Informazioni di Versione e Autore
+        CoreVersion = GetAssemblyVersion(typeof(Evento).Assembly);
+        InfrastructureVersion = GetAssemblyVersion(typeof(ExcelRepository).Assembly);
+        UiVersion = GetAssemblyVersion(typeof(SettingsViewModel).Assembly);
+        CopyrightText = typeof(SettingsViewModel).Assembly.GetCustomAttribute<AssemblyCopyrightAttribute>()?.Copyright ?? "Copyright © 2026 zmalrobot";
 
         RefreshRecentDatabases();
     }
@@ -442,7 +457,44 @@ public partial class SettingsViewModel : ViewModelBase
             IsBusy = false;
         }
     }
+    #endregion
 
+    #region Informazioni & GitHub
+    [RelayCommand]
+    public void OpenGitHub()
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = GitHubUrl,
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Impossibile aprire il browser: {ex.Message}";
+            IsErrorMessage = true;
+        }
+    }
+
+    private static string GetAssemblyVersion(Assembly assembly)
+    {
+        var infoVer = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+        if (!string.IsNullOrWhiteSpace(infoVer))
+        {
+            var plusIndex = infoVer.IndexOf('+');
+            return plusIndex > 0 ? infoVer[..plusIndex] : infoVer;
+        }
+
+        var ver = assembly.GetName().Version;
+        if (ver != null)
+        {
+            return $"{ver.Major}.{ver.Minor}.{ver.Build}";
+        }
+
+        return "0.5.0";
+    }
     #endregion
 
     [RelayCommand]
