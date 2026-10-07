@@ -21,7 +21,7 @@
                             <TextBlock Text="Proiezione a tutto schermo per clienti su secondo monitor o display principale" FontSize="11" Foreground="#9EA3AE"/>
                         </StackPanel>
                     </StackPanel>
-                    <Button Grid.Column="1" Classes="secondary" Content="✕" Padding="8,4" FontSize="12"
+                    <Button Grid.Column="1" Classes="secondary" Content="Chiudi" Padding="12,5" FontSize="11"
                             Command="{Binding CloseCommand}"/>
                 </Grid>
 
@@ -181,7 +181,7 @@
                 <Grid ColumnDefinitions="*,Auto,Auto">
                     <Button Grid.Column="1" Classes="secondary" Content="Chiudi" Padding="18,8" FontSize="12" Margin="0,0,10,0"
                             Command="{Binding CloseCommand}"/>
-                    <Button Grid.Column="2" Classes="primary" Content="📺 Avvia Presentazione" Padding="20,8" FontSize="12"
+                    <Button Grid.Column="2" Classes="primary" Content="Avvia Presentazione" Padding="20,8" FontSize="12"
                             Command="{Binding StartSlideshowCommand}"/>
                 </Grid>
 

@@ -16,8 +16,9 @@
             <!-- Header -->
             <StackPanel Orientation="Horizontal" Spacing="12">
                 <Border Background="#3D1C20" CornerRadius="4" Width="36" Height="36">
-                    <TextBlock Text="⚠" Foreground="#E74C3C" FontSize="20" FontWeight="Bold"
-                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <PathIcon Data="M 12,2 L 1,21 L 23,21 Z M 12,6 L 19.53,19 L 4.47,19 Z M 11,10 L 13,10 L 13,14 L 11,14 Z M 11,16 L 13,16 L 13,18 L 11,18 Z"
+                              Width="18" Height="18" Foreground="#E74C3C"
+                              HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Border>
                 <StackPanel VerticalAlignment="Center">
                     <TextBlock Text="Eliminazione Evento" FontSize="18" FontWeight="SemiBold" Foreground="#EDEDED"/>

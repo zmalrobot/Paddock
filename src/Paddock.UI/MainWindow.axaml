@@ -35,7 +35,7 @@
                             IsVisible="{Binding IsLockBannerVisible}">
                         <Grid ColumnDefinitions="*,Auto">
                             <TextBlock Grid.Column="0" Text="{Binding LockBannerMessage}" Foreground="#FFB703" FontSize="11" VerticalAlignment="Center"/>
-                            <Button Grid.Column="1" Classes="secondary" Content="✕" Padding="6,2" FontSize="10" Margin="8,0,0,0"
+                            <Button Grid.Column="1" Classes="secondary" Content="Chiudi" Padding="8,2" FontSize="10" Margin="8,0,0,0"
                                     Command="{Binding DismissLockBannerCommand}"/>
                         </Grid>
                     </Border>
@@ -43,21 +43,15 @@
                     <!-- Stato Database Excel, Slideshow & Impostazioni -->
                     <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                         <!-- Pulsante Stop Presentazione (visibile solo se attiva) -->
-                        <Button Classes="danger" Padding="10,4" FontSize="11"
+                        <Button Classes="danger" Padding="12,5" FontSize="11"
                                 IsVisible="{Binding IsSlideshowActive}"
                                 Command="{Binding StopSlideshowCommand}">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <TextBlock Text="⏹" VerticalAlignment="Center" Foreground="#FFFFFF"/>
-                                <TextBlock Text="Interrompi Presentazione" FontWeight="Bold" Foreground="#FFFFFF" VerticalAlignment="Center"/>
-                            </StackPanel>
+                            <TextBlock Text="Interrompi Presentazione" FontWeight="Bold" Foreground="#FFFFFF" VerticalAlignment="Center"/>
                         </Button>
 
                         <!-- Pulsante Apri Presentazione -->
-                        <Button Classes="secondary" Padding="8,4" FontSize="11" Command="{Binding OpenSlideshowConfigCommand}">
-                            <StackPanel Orientation="Horizontal" Spacing="5">
-                                <TextBlock Text="📺" FontSize="11" VerticalAlignment="Center"/>
-                                <TextBlock Text="Presentazione" FontSize="11" VerticalAlignment="Center"/>
-                            </StackPanel>
+                        <Button Classes="secondary" Padding="10,5" FontSize="11" Command="{Binding OpenSlideshowConfigCommand}">
+                            <TextBlock Text="Presentazione" FontSize="11" VerticalAlignment="Center"/>
                         </Button>
 
                         <Border Background="#1A1C20" BorderBrush="#2E323B" BorderThickness="1" CornerRadius="4" Padding="8,4">
@@ -66,11 +60,8 @@
                                 <TextBlock Text="Excel Sincronizzato" FontSize="11" Foreground="#9EA3AE" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Border>
-                        <Button Classes="secondary" Padding="8,4" FontSize="11" Command="{Binding OpenSettingsDialogCommand}">
-                            <StackPanel Orientation="Horizontal" Spacing="5">
-                                <TextBlock Text="⚙" FontSize="11" VerticalAlignment="Center"/>
-                                <TextBlock Text="Impostazioni" FontSize="11" VerticalAlignment="Center"/>
-                            </StackPanel>
+                        <Button Classes="secondary" Padding="10,5" FontSize="11" Command="{Binding OpenSettingsDialogCommand}">
+                            <TextBlock Text="Impostazioni" FontSize="11" VerticalAlignment="Center"/>
                         </Button>
                     </StackPanel>
 
@@ -137,7 +128,8 @@
                             HorizontalAlignment="Center" VerticalAlignment="Center">
                         <StackPanel Spacing="12" HorizontalAlignment="Center">
                             <Border Background="#1A1C20" CornerRadius="36" Width="72" Height="72" HorizontalAlignment="Center">
-                                <TextBlock Text="📁" FontSize="32" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <PathIcon Data="M 4,20 L 20,20 C 21.1,20 22,19.1 22,18 L 22,8 C 22,6.9 21.1,6 20,6 L 12.07,6 C 11.45,6 10.87,5.69 10.53,5.17 L 9.47,3.58 C 9.13,3.06 8.55,2.75 7.93,2.75 L 4,2.75 C 2.9,2.75 2,3.65 2,4.75 L 2,18 C 2,19.1 2.9,20 4,20 Z"
+                                          Width="30" Height="30" Foreground="#636773" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
                             <TextBlock Text="Nessun evento selezionato" FontSize="18" FontWeight="SemiBold" Foreground="#EDEDED" HorizontalAlignment="Center"/>
                             <TextBlock Text="Seleziona un evento dalla barra laterale o creane uno nuovo per iniziare l'ingestione."

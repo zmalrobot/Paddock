@@ -21,7 +21,7 @@
                         <TextBlock Text="Configurazione del database Excel, archivio foto e listino prezzi di vendita" FontSize="11" Foreground="#9EA3AE"/>
                     </StackPanel>
                 </StackPanel>
-                <Button Grid.Column="1" Classes="secondary" Content="✕" Padding="8,4" FontSize="12"
+                <Button Grid.Column="1" Classes="secondary" Content="Chiudi" Padding="12,5" FontSize="11"
                         Command="{Binding CloseCommand}"/>
             </Grid>
 
@@ -47,10 +47,10 @@
                                 </Border>
 
                                 <Grid ColumnDefinitions="*,*">
-                                    <Button Grid.Column="0" Classes="secondary" Content="📂 Apri Database Esistente..." Margin="0,0,6,0"
+                                    <Button Grid.Column="0" Classes="secondary" Content="Apri Database Esistente..." Margin="0,0,6,0"
                                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                                             Click="BrowseOpenDatabase_Click"/>
-                                    <Button Grid.Column="1" Classes="secondary" Content="➕ Crea Nuovo Database..." Margin="6,0,0,0"
+                                    <Button Grid.Column="1" Classes="secondary" Content="Crea Nuovo Database..." Margin="6,0,0,0"
                                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                                             Click="BrowseNewDatabase_Click"/>
                                 </Grid>
@@ -63,10 +63,7 @@
                                                 <Button Classes="secondary" HorizontalAlignment="Stretch" Margin="0,2" Padding="8,4"
                                                         Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).SwitchDatabaseCommand}"
                                                         CommandParameter="{Binding}">
-                                                    <Grid ColumnDefinitions="Auto,*">
-                                                        <TextBlock Grid.Column="0" Text="📄 " FontSize="11"/>
-                                                        <TextBlock Grid.Column="1" Text="{Binding}" FontSize="11" Foreground="#EDEDED" TextTrimming="CharacterEllipsis"/>
-                                                    </Grid>
+                                                    <TextBlock Text="{Binding}" FontSize="11" Foreground="#EDEDED" TextTrimming="CharacterEllipsis"/>
                                                 </Button>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
@@ -94,7 +91,7 @@
                                     <TextBlock Text="Cartella Radice Archivio Foto:" FontSize="11" Foreground="#EDEDED"/>
                                     <Grid ColumnDefinitions="*,Auto">
                                         <TextBox Grid.Column="0" Text="{Binding BasePath}" PlaceholderText="C:\Users\...\Pictures\Paddock"/>
-                                        <Button Grid.Column="1" Classes="secondary" Content="📁 Sfoglia..." Margin="8,0,0,0"
+                                        <Button Grid.Column="1" Classes="secondary" Content="Sfoglia..." Margin="8,0,0,0"
                                                 Click="BrowseBasePath_Click"/>
                                     </Grid>
                                 </StackPanel>
@@ -102,10 +99,7 @@
                                 <Button Classes="primary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                                         Padding="12,10" Margin="0,4,0,0"
                                         Command="{Binding UpdateBasePathCommand}">
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <TextBlock Text="💾" FontSize="14" VerticalAlignment="Center"/>
-                                        <TextBlock Text="Aggiorna BasePath nel Database Excel" FontWeight="Bold" FontSize="12" VerticalAlignment="Center"/>
-                                    </StackPanel>
+                                    <TextBlock Text="Aggiorna BasePath nel Database Excel" FontWeight="Bold" FontSize="12" VerticalAlignment="Center"/>
                                 </Button>
                             </StackPanel>
 
@@ -160,7 +154,7 @@
                         <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
                             <TextBlock Grid.Column="0" Text="Listino Prezzi Configurato (memorizzato nel foglio Excel 'ListinoPrezzi')"
                                        FontSize="11" Foreground="#9EA3AE" VerticalAlignment="Center"/>
-                            <Button Grid.Column="1" Classes="secondary" Content="↺ Ripristina Listino Predefinito"
+                            <Button Grid.Column="1" Classes="secondary" Content="Ripristina Listino Predefinito"
                                     FontSize="11" Padding="8,4"
                                     Command="{Binding ResetDefaultCatalogoCommand}"/>
                         </Grid>
@@ -184,15 +178,15 @@
                                                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
                                                     <TextBlock Text="{Binding Nome}" FontSize="12" FontWeight="SemiBold" Foreground="#EDEDED"/>
                                                     <TextBlock Text="{Binding Descrizione}" FontSize="10" Foreground="#9EA3AE"
-                                                               IsVisible="{Binding Descrizione, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                                               TextTrimming="CharacterEllipsis"/>
+                                                                IsVisible="{Binding Descrizione, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                                TextTrimming="CharacterEllipsis"/>
                                                 </StackPanel>
 
                                                 <!-- Quantità Foto Badge -->
                                                 <Border Grid.Column="2" Background="#121316" CornerRadius="4" Padding="6,2"
                                                         Margin="12,0" VerticalAlignment="Center">
                                                     <TextBlock Text="{Binding QuantitaFotoIncluse, StringFormat='Foto: {0}'}"
-                                                               FontSize="10" Foreground="#00B4D8"/>
+                                                                FontSize="10" Foreground="#00B4D8"/>
                                                 </Border>
 
                                                 <!-- Prezzo -->
@@ -201,7 +195,7 @@
                                                            VerticalAlignment="Center" Margin="0,0,12,0"/>
 
                                                 <!-- Elimina -->
-                                                <Button Grid.Column="4" Classes="danger" Content="✕" Padding="6,2" FontSize="11"
+                                                <Button Grid.Column="4" Classes="danger" Content="Elimina" Padding="8,3" FontSize="11"
                                                         Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).DeletePrezzoItemCommand}"
                                                         CommandParameter="{Binding}"/>
                                             </Grid>
@@ -235,7 +229,7 @@
                                             <TextBlock Text="File Immagine Watermark (PNG consigliato):" FontSize="11" Foreground="#9EA3AE"/>
                                             <Grid ColumnDefinitions="*,Auto">
                                                 <TextBox Grid.Column="0" Text="{Binding DefaultWatermarkImagePath}" PlaceholderText="C:\Loghi\WatermarkStudio.png" Margin="0,0,8,0"/>
-                                                <Button Grid.Column="1" Classes="secondary" Content="📁 Sfoglia..." Click="BrowseWatermarkImage_Click"/>
+                                                <Button Grid.Column="1" Classes="secondary" Content="Sfoglia..." Click="BrowseWatermarkImage_Click"/>
                                             </Grid>
                                         </StackPanel>
 
@@ -309,10 +303,7 @@
                             <!-- Pulsante Salva Impostazioni Watermark & Metadati -->
                             <Button Classes="primary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                                     Padding="12,10" Command="{Binding SaveWatermarkSettingsCommand}">
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <TextBlock Text="💾" FontSize="14" VerticalAlignment="Center"/>
-                                    <TextBlock Text="Salva Preferenze Watermark &amp; Metadati" FontWeight="Bold" FontSize="12" VerticalAlignment="Center"/>
-                                </StackPanel>
+                                <TextBlock Text="Salva Preferenze Watermark &amp; Metadati" FontWeight="Bold" FontSize="12" VerticalAlignment="Center"/>
                             </Button>
 
                         </StackPanel>

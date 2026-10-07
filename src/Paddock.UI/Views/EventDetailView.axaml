@@ -22,7 +22,7 @@
 
                     <StackPanel Orientation="Horizontal" Spacing="16"
                                 IsVisible="{Binding Evento.Luogo, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                        <TextBlock Text="{Binding Evento.Luogo, StringFormat='📍 {0}'}" FontSize="12" Foreground="#9EA3AE"/>
+                        <TextBlock Text="{Binding Evento.Luogo, StringFormat='Luogo: {0}'}" FontSize="12" Foreground="#9EA3AE"/>
                     </StackPanel>
 
                     <StackPanel Orientation="Horizontal" Spacing="20" Margin="0,4,0,0">
@@ -54,13 +54,7 @@
 
                 <!-- Actions -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                    <Button Classes="primary" Command="{Binding StartIngestionCommand}">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <TextBlock Text="⚡" VerticalAlignment="Center"/>
-                            <TextBlock Text="Nuova Ingestione SD" VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </Button>
-
+                    <Button Classes="primary" Content="Nuova Ingestione SD" Command="{Binding StartIngestionCommand}"/>
                     <Button Classes="secondary" Content="Modifica" Command="{Binding EditEventCommand}"/>
                     <Button Classes="danger" Content="Elimina Evento" Command="{Binding DeleteEventCommand}"/>
                 </StackPanel>
@@ -103,7 +97,7 @@
                                             </Border>
                                             <TextBlock Grid.Column="1" Text="{Binding NomeCompleto}" FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center"/>
                                             <TextBlock Grid.Column="2" Text="{Binding Categoria}" Foreground="#9EA3AE" FontSize="12" VerticalAlignment="Center"/>
-                                            <Button Grid.Column="3" Classes="danger" Content="✕" Padding="6,2" FontSize="11"
+                                            <Button Grid.Column="3" Classes="danger" Content="Rimuovi" Padding="8,3" FontSize="11"
                                                     Command="{Binding $parent[UserControl].((vm:EventDetailViewModel)DataContext).DeleteAtletaCommand}"
                                                     CommandParameter="{Binding}"/>
                                         </Grid>
@@ -139,7 +133,7 @@
                                         <Grid ColumnDefinitions="*,*,Auto">
                                             <TextBlock Grid.Column="0" Text="{Binding NomeDisciplina}" FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center"/>
                                             <TextBlock Grid.Column="1" Text="{Binding Descrizione}" Foreground="#9EA3AE" FontSize="12" VerticalAlignment="Center"/>
-                                            <Button Grid.Column="2" Classes="danger" Content="✕" Padding="6,2" FontSize="11"
+                                            <Button Grid.Column="2" Classes="danger" Content="Rimuovi" Padding="8,3" FontSize="11"
                                                     Command="{Binding $parent[UserControl].((vm:EventDetailViewModel)DataContext).DeleteDisciplinaCommand}"
                                                     CommandParameter="{Binding}"/>
                                         </Grid>
@@ -166,7 +160,7 @@
                                 <RadioButton Content="RAW" IsChecked="{Binding FotoFormatFilter, Converter={x:Static ObjectConverters.Equal}, ConverterParameter='RAW'}" GroupName="FmtGroup"/>
                             </StackPanel>
 
-                            <Button Grid.Column="2" Classes="secondary" Content="↻ Ricarica Foto" Command="{Binding RefreshPhotosCommand}"/>
+                            <Button Grid.Column="2" Classes="secondary" Content="Ricarica Foto" Command="{Binding RefreshPhotosCommand}"/>
                         </Grid>
                     </Border>
 
@@ -192,8 +186,10 @@
                                                     <TextBlock Text="{Binding Formato}" FontSize="9" FontWeight="Bold" Foreground="#121316"/>
                                                 </Border>
 
-                                                <TextBlock Grid.Column="2" Text="💧" ToolTip.Tip="Watermark applicato"
-                                                           FontSize="11" IsVisible="{Binding WatermarkApplicato}"/>
+                                                <Border Grid.Column="2" Background="#1B3A4B" CornerRadius="3" Padding="4,1"
+                                                        IsVisible="{Binding WatermarkApplicato}" ToolTip.Tip="Watermark applicato">
+                                                    <TextBlock Text="WM" FontSize="8" FontWeight="Bold" Foreground="#00B4D8"/>
+                                                </Border>
                                             </Grid>
 
                                             <!-- Center: File Name -->
@@ -223,7 +219,7 @@
             </TabItem>
 
             <!-- TAB 4: ACQUISTI E VENDITA FOTO -->
-            <TabItem Header="🛒 Acquisti">
+            <TabItem Header="Acquisti">
                 <Grid RowDefinitions="Auto,*" Margin="0,12,0,0">
 
                     <!-- Form Registrazione Nuovo Acquisto -->
@@ -234,7 +230,7 @@
                                     <TextBlock Text="Registrazione Nuovo Acquisto Foto" FontSize="14" FontWeight="Bold" Foreground="#EDEDED"/>
                                     <TextBlock Text="Associa pacchetti o foto ad un atleta e registra i recapiti per l'invio" FontSize="11" Foreground="#9EA3AE"/>
                                 </StackPanel>
-                                <Button Grid.Column="1" Classes="primary" Content="💾 Registra Acquisto"
+                                <Button Grid.Column="1" Classes="primary" Content="Registra Acquisto"
                                         Command="{Binding RegistraAcquistoCommand}" Padding="16,8"/>
                             </Grid>
 
@@ -317,7 +313,7 @@
                                                                 <TextBlock Grid.Column="0" Text="{Binding NomeArticolo}" FontSize="11" Foreground="#EDEDED" TextTrimming="CharacterEllipsis"/>
                                                                 <TextBlock Grid.Column="1" Text="{Binding Quantita, StringFormat='x{0}'}" FontSize="11" Foreground="#9EA3AE" Margin="6,0"/>
                                                                 <TextBlock Grid.Column="2" Text="{Binding Subtotale, StringFormat='€ {0:N2}'}" FontSize="11" FontWeight="Bold" Foreground="#2ECC71" Margin="6,0"/>
-                                                                <Button Grid.Column="3" Classes="danger" Content="✕" Padding="4,1" FontSize="9"
+                                                                <Button Grid.Column="3" Classes="danger" Content="Rimuovi" Padding="6,2" FontSize="10"
                                                                         Command="{Binding $parent[UserControl].((vm:EventDetailViewModel)DataContext).RemoveVoceAcquistoCommand}"
                                                                         CommandParameter="{Binding}"/>
                                                             </Grid>
@@ -457,7 +453,7 @@
                                                 </Border>
 
                                                 <!-- Elimina -->
-                                                <Button Grid.Column="6" Classes="danger" Content="✕" Padding="6,2" FontSize="11"
+                                                <Button Grid.Column="6" Classes="danger" Content="Elimina" Padding="8,3" FontSize="11"
                                                         Command="{Binding $parent[UserControl].((vm:EventDetailViewModel)DataContext).DeleteAcquistoCommand}"
                                                         CommandParameter="{Binding}"/>
 

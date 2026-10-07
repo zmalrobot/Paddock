@@ -38,7 +38,7 @@
                         <TextBlock Text="ULTIMO DATABASE UTILIZZATO" FontSize="11" FontWeight="Bold" Foreground="#FF8C32"/>
                         <TextBlock Text="{Binding LastDatabasePath}" FontSize="12" Foreground="#00B4D8" TextTrimming="CharacterEllipsis"/>
                     </StackPanel>
-                    <Button Grid.Column="1" Classes="primary" Content="Continua ➔" Padding="16,8" FontSize="12"
+                    <Button Grid.Column="1" Classes="primary" Content="Continua" Padding="16,8" FontSize="12"
                             Command="{Binding ContinueWithLastDatabaseCommand}" Margin="12,0,0,0"/>
                 </Grid>
             </Border>
@@ -50,7 +50,7 @@
                 <Border Grid.Column="0" Background="#16181C" BorderBrush="#2E323B" BorderThickness="1"
                         CornerRadius="6" Padding="16" Margin="0,0,6,0">
                     <StackPanel Spacing="10">
-                        <TextBlock Text="➕ Nuovo Archivio" FontWeight="Bold" FontSize="14" Foreground="#EDEDED"/>
+                        <TextBlock Text="Nuovo Archivio" FontWeight="Bold" FontSize="14" Foreground="#EDEDED"/>
                         <TextBlock Text="Crea un nuovo database Excel (.xlsx) vuoto nel percorso che preferisci."
                                    FontSize="11" Foreground="#9EA3AE" TextWrapping="Wrap" MinHeight="32"/>
                         <Button Classes="secondary" Content="Crea Nuovo DB..." HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
@@ -62,7 +62,7 @@
                 <Border Grid.Column="1" Background="#16181C" BorderBrush="#2E323B" BorderThickness="1"
                         CornerRadius="6" Padding="16" Margin="6,0,0,0">
                     <StackPanel Spacing="10">
-                        <TextBlock Text="📂 Apri Esistente" FontWeight="Bold" FontSize="14" Foreground="#EDEDED"/>
+                        <TextBlock Text="Apri Esistente" FontWeight="Bold" FontSize="14" Foreground="#EDEDED"/>
                         <TextBlock Text="Importa o apri un file .xlsx già creato in precedenza o condiviso su cloud."
                                    FontSize="11" Foreground="#9EA3AE" TextWrapping="Wrap" MinHeight="32"/>
                         <Button Classes="secondary" Content="Sfoglia File .xlsx..." HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"

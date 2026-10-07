@@ -33,10 +33,9 @@
                                     <Button Classes="secondary" Margin="0,2,0,2" HorizontalAlignment="Stretch"
                                             Command="{Binding $parent[UserControl].((vm:IngestionWizardViewModel)DataContext).SelectDriveCommand}"
                                             CommandParameter="{Binding}">
-                                        <Grid ColumnDefinitions="Auto,*,Auto">
-                                            <TextBlock Grid.Column="0" Text="💾 " VerticalAlignment="Center"/>
-                                            <TextBlock Grid.Column="1" Text="{Binding DisplayName}" VerticalAlignment="Center" FontWeight="SemiBold"/>
-                                            <TextBlock Grid.Column="2" Text="{Binding AvailableFreeSpace, Converter={StaticResource ByteToSizeConverter}, StringFormat='Liberi: {0}'}"
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <TextBlock Grid.Column="0" Text="{Binding DisplayName}" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding AvailableFreeSpace, Converter={StaticResource ByteToSizeConverter}, StringFormat='Liberi: {0}'}"
                                                        FontSize="11" Foreground="#9EA3AE" VerticalAlignment="Center"/>
                                         </Grid>
                                     </Button>
