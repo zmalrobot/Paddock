@@ -2,6 +2,8 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Paddock.Core.Interfaces;
+using Paddock.Core.Models;
+using Paddock.Infrastructure.Excel;
 
 namespace Paddock.UI.ViewModels;
 
@@ -9,6 +11,9 @@ public partial class SettingsViewModel : ViewModelBase
 {
     private readonly IExcelRepository _excelRepo;
     private readonly IAppPreferencesService _prefsService;
+
+    [ObservableProperty]
+    private int _selectedTabIndex;
 
     [ObservableProperty]
     private string _databaseFilePath = string.Empty;
@@ -29,6 +34,25 @@ public partial class SettingsViewModel : ViewModelBase
     private bool _isBusy;
 
     public ObservableCollection<string> RecentDatabases { get; } = new();
+
+    // Catalogo Prezzi
+    public ObservableCollection<PrezzoCatalogoItem> CatalogoPrezzi { get; } = new();
+    public List<CategoriaPrezzo> AvailableCategorie { get; } = Enum.GetValues<CategoriaPrezzo>().ToList();
+
+    [ObservableProperty]
+    private string _newItemNome = string.Empty;
+
+    [ObservableProperty]
+    private CategoriaPrezzo _newItemCategoria = CategoriaPrezzo.FotoSingola;
+
+    [ObservableProperty]
+    private decimal _newItemPrezzo = 10.00m;
+
+    [ObservableProperty]
+    private int _newItemQuantitaFoto = 1;
+
+    [ObservableProperty]
+    private string _newItemDescrizione = string.Empty;
 
     public event Action? RequestClose;
     public event Func<Task>? DatabaseChanged;
@@ -52,10 +76,11 @@ public partial class SettingsViewModel : ViewModelBase
             IsBusy = true;
             var currentBase = await _excelRepo.GetBasePathAsync();
             BasePath = currentBase ?? string.Empty;
+            await LoadCatalogoPrezziAsync();
         }
         catch (Exception ex)
         {
-            StatusMessage = $"Errore nel caricamento del BasePath: {ex.Message}";
+            StatusMessage = $"Errore nel caricamento delle impostazioni: {ex.Message}";
             IsErrorMessage = true;
         }
         finally
@@ -67,11 +92,14 @@ public partial class SettingsViewModel : ViewModelBase
     private void RefreshRecentDatabases()
     {
         RecentDatabases.Clear();
-        foreach (var p in _prefsService.RecentDatabases)
+        if (_prefsService.RecentDatabases != null)
         {
-            if (!string.Equals(p, DatabaseFilePath, StringComparison.OrdinalIgnoreCase))
+            foreach (var p in _prefsService.RecentDatabases)
             {
-                RecentDatabases.Add(p);
+                if (!string.Equals(p, DatabaseFilePath, StringComparison.OrdinalIgnoreCase))
+                {
+                    RecentDatabases.Add(p);
+                }
             }
         }
     }
@@ -159,6 +187,138 @@ public partial class SettingsViewModel : ViewModelBase
     {
         _prefsService.AutoOpenLastDatabase = AutoOpenLastDatabase;
         await _prefsService.SaveAsync();
+    }
+
+    [RelayCommand]
+    public async Task LoadCatalogoPrezziAsync()
+    {
+        try
+        {
+            var items = await _excelRepo.GetCatalogoPrezziAsync();
+            CatalogoPrezzi.Clear();
+            foreach (var item in items)
+            {
+                CatalogoPrezzi.Add(item);
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Errore nel caricamento del catalogo prezzi: {ex.Message}";
+            IsErrorMessage = true;
+        }
+    }
+
+    [RelayCommand]
+    public async Task AddPrezzoItemAsync()
+    {
+        if (string.IsNullOrWhiteSpace(NewItemNome))
+        {
+            StatusMessage = "Inserire un nome valido per l'articolo o pacchetto.";
+            IsErrorMessage = true;
+            return;
+        }
+
+        if (NewItemPrezzo < 0)
+        {
+            StatusMessage = "Il prezzo non può essere negativo.";
+            IsErrorMessage = true;
+            return;
+        }
+
+        try
+        {
+            IsBusy = true;
+            StatusMessage = null;
+            IsErrorMessage = false;
+
+            var item = new PrezzoCatalogoItem
+            {
+                Nome = NewItemNome.Trim(),
+                Categoria = NewItemCategoria,
+                Prezzo = NewItemPrezzo,
+                QuantitaFotoIncluse = NewItemQuantitaFoto > 0 ? NewItemQuantitaFoto : 1,
+                Descrizione = NewItemDescrizione.Trim()
+            };
+
+            await _excelRepo.UpsertPrezzoCatalogoItemAsync(item);
+            CatalogoPrezzi.Add(item);
+
+            NewItemNome = string.Empty;
+            NewItemPrezzo = 10.00m;
+            NewItemQuantitaFoto = 1;
+            NewItemDescrizione = string.Empty;
+
+            StatusMessage = $"Articolo '{item.Nome}' aggiunto al listino prezzi!";
+            IsErrorMessage = false;
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Errore durante l'aggiunta dell'articolo: {ex.Message}";
+            IsErrorMessage = true;
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    public async Task DeletePrezzoItemAsync(PrezzoCatalogoItem item)
+    {
+        if (item == null) return;
+
+        try
+        {
+            IsBusy = true;
+            StatusMessage = null;
+            IsErrorMessage = false;
+
+            await _excelRepo.DeletePrezzoCatalogoItemAsync(item.Id);
+            CatalogoPrezzi.Remove(item);
+
+            StatusMessage = $"Articolo '{item.Nome}' rimosso dal listino prezzi.";
+            IsErrorMessage = false;
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Errore durante la rimozione dell'articolo: {ex.Message}";
+            IsErrorMessage = true;
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    public async Task ResetDefaultCatalogoAsync()
+    {
+        try
+        {
+            IsBusy = true;
+            StatusMessage = null;
+            IsErrorMessage = false;
+
+            var defaults = ExcelRepository.GetDefaultCatalogoItems();
+            await _excelRepo.SaveCatalogoPrezziAsync(defaults);
+            CatalogoPrezzi.Clear();
+            foreach (var item in defaults)
+            {
+                CatalogoPrezzi.Add(item);
+            }
+
+            StatusMessage = "Listino prezzi ripristinato con i 9 pacchetti predefiniti consigliati.";
+            IsErrorMessage = false;
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Errore nel ripristino del listino: {ex.Message}";
+            IsErrorMessage = true;
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     [RelayCommand]

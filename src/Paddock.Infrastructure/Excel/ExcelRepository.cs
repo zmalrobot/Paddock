@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json;
 using ClosedXML.Excel;
 using Polly;
 using Polly.Retry;
@@ -94,12 +95,14 @@ public class ExcelRepository : IExcelRepository
                 CreateSheetAtleti(workbook);
                 CreateSheetFoto(workbook);
                 CreateSheetImpostazioni(workbook);
+                CreateSheetListinoPrezzi(workbook);
+                CreateSheetAcquisti(workbook);
 
                 await Task.Run(() => workbook.SaveAs(DatabaseFilePath), cancellationToken).ConfigureAwait(false);
             }
             else
             {
-                // Verifica che tutti i 5 fogli esistano
+                // Verifica che tutti i fogli necessari esistano
                 using var workbook = new XLWorkbook(DatabaseFilePath);
                 var modified = false;
 
@@ -108,6 +111,8 @@ public class ExcelRepository : IExcelRepository
                 if (!workbook.Worksheets.Contains("Atleti")) { CreateSheetAtleti(workbook); modified = true; }
                 if (!workbook.Worksheets.Contains("Foto")) { CreateSheetFoto(workbook); modified = true; }
                 if (!workbook.Worksheets.Contains("Impostazioni")) { CreateSheetImpostazioni(workbook); modified = true; }
+                if (!workbook.Worksheets.Contains("ListinoPrezzi")) { CreateSheetListinoPrezzi(workbook); modified = true; }
+                if (!workbook.Worksheets.Contains("Acquisti")) { CreateSheetAcquisti(workbook); modified = true; }
 
                 if (modified)
                 {
@@ -192,6 +197,70 @@ public class ExcelRepository : IExcelRepository
         ws.Cell(1, 12).Value = "HashMd5";
         FormatHeader(ws, 12);
     }
+
+    private static void CreateSheetListinoPrezzi(XLWorkbook wb)
+    {
+        var ws = wb.Worksheets.Add("ListinoPrezzi");
+        ws.Cell(1, 1).Value = "Id";
+        ws.Cell(1, 2).Value = "Categoria";
+        ws.Cell(1, 3).Value = "Nome";
+        ws.Cell(1, 4).Value = "Prezzo";
+        ws.Cell(1, 5).Value = "QuantitaFoto";
+        ws.Cell(1, 6).Value = "Descrizione";
+        FormatHeader(ws, 6);
+
+        var defaultItems = GetDefaultCatalogoItems();
+        var row = 2;
+        foreach (var item in defaultItems)
+        {
+            ws.Cell(row, 1).Value = item.Id.ToString();
+            ws.Cell(row, 2).Value = item.Categoria.ToString();
+            ws.Cell(row, 3).Value = item.Nome;
+            ws.Cell(row, 4).Value = (double)item.Prezzo;
+            ws.Cell(row, 5).Value = item.QuantitaFotoIncluse;
+            ws.Cell(row, 6).Value = item.Descrizione ?? string.Empty;
+            row++;
+        }
+    }
+
+    private static void CreateSheetAcquisti(XLWorkbook wb)
+    {
+        var ws = wb.Worksheets.Add("Acquisti");
+        ws.Cell(1, 1).Value = "Id";
+        ws.Cell(1, 2).Value = "EventoId";
+        ws.Cell(1, 3).Value = "DataAcquisto";
+        ws.Cell(1, 4).Value = "AtletaId";
+        ws.Cell(1, 5).Value = "NomeAtleta";
+        ws.Cell(1, 6).Value = "NumeroPettorale";
+        ws.Cell(1, 7).Value = "DisciplinaId";
+        ws.Cell(1, 8).Value = "NomeDisciplina";
+        ws.Cell(1, 9).Value = "TotaleQuantita";
+        ws.Cell(1, 10).Value = "TotaleCalcolato";
+        ws.Cell(1, 11).Value = "TotalePagato";
+        ws.Cell(1, 12).Value = "EmailCliente";
+        ws.Cell(1, 13).Value = "TelefonoCliente";
+        ws.Cell(1, 14).Value = "InteraCartella";
+        ws.Cell(1, 15).Value = "FileFotoSelezionate";
+        ws.Cell(1, 16).Value = "CartellaPathRiferimento";
+        ws.Cell(1, 17).Value = "VociJson";
+        ws.Cell(1, 18).Value = "VociSommario";
+        ws.Cell(1, 19).Value = "Note";
+        ws.Cell(1, 20).Value = "Stato";
+        FormatHeader(ws, 20);
+    }
+
+    public static List<PrezzoCatalogoItem> GetDefaultCatalogoItems() => new()
+    {
+        new PrezzoCatalogoItem { Nome = "Foto Singola Digitale", Categoria = CategoriaPrezzo.FotoSingola, Prezzo = 10.00m, QuantitaFotoIncluse = 1, Descrizione = "File JPEG ad alta risoluzione senza watermark" },
+        new PrezzoCatalogoItem { Nome = "Pacchetto 5 Foto Digitali", Categoria = CategoriaPrezzo.PacchettoFoto, Prezzo = 40.00m, QuantitaFotoIncluse = 5, Descrizione = "5 foto a scelta in alta risoluzione (8.00€/foto)" },
+        new PrezzoCatalogoItem { Nome = "Pacchetto 10 Foto Digitali", Categoria = CategoriaPrezzo.PacchettoFoto, Prezzo = 70.00m, QuantitaFotoIncluse = 10, Descrizione = "10 foto a scelta in alta risoluzione (7.00€/foto)" },
+        new PrezzoCatalogoItem { Nome = "Pacchetto 20 Foto Digitali", Categoria = CategoriaPrezzo.PacchettoFoto, Prezzo = 120.00m, QuantitaFotoIncluse = 20, Descrizione = "20 foto a scelta in alta risoluzione (6.00€/foto)" },
+        new PrezzoCatalogoItem { Nome = "Tutte le Foto dell'Atleta (All-Inclusive)", Categoria = CategoriaPrezzo.PacchettoFoto, Prezzo = 150.00m, QuantitaFotoIncluse = 999, Descrizione = "Tutti gli scatti JPEG dell'atleta nell'evento" },
+        new PrezzoCatalogoItem { Nome = "Pacchetto Disciplina Singola", Categoria = CategoriaPrezzo.PacchettoDisciplina, Prezzo = 50.00m, QuantitaFotoIncluse = 1, Descrizione = "Tutti gli scatti per una specifica disciplina" },
+        new PrezzoCatalogoItem { Nome = "Pacchetto Tutte le Discipline", Categoria = CategoriaPrezzo.PacchettoDisciplina, Prezzo = 90.00m, QuantitaFotoIncluse = 1, Descrizione = "Tutti gli scatti dell'atleta su tutte le discipline" },
+        new PrezzoCatalogoItem { Nome = "Editing Base Singola Foto", Categoria = CategoriaPrezzo.EditingBase, Prezzo = 5.00m, QuantitaFotoIncluse = 1, Descrizione = "Bilanciamento luce, colore e contrasto professionale" },
+        new PrezzoCatalogoItem { Nome = "Editing Avanzato Singola Foto", Categoria = CategoriaPrezzo.EditingAvanzato, Prezzo = 15.00m, QuantitaFotoIncluse = 1, Descrizione = "Ritocco accurato, rimozione elementi e grading cinematografico" }
+    };
 
     private static void FormatHeader(IXLWorksheet ws, int columnsCount)
     {
@@ -848,6 +917,311 @@ public class ExcelRepository : IExcelRepository
                 var ws = wb.Worksheet("Foto");
                 var row = ws.RangeUsed()?.RowsUsed().Skip(1)
                     .FirstOrDefault(r => r.Cell(1).GetString() == fotoId.ToString());
+                row?.Delete();
+                wb.Save();
+            }, cancellationToken).ConfigureAwait(false);
+        }).ConfigureAwait(false);
+    }
+
+    #endregion
+
+    #region Catalogo Prezzi
+
+    public async Task<List<PrezzoCatalogoItem>> GetCatalogoPrezziAsync(CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithLockAndRetryAsync(async () =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return await Task.Run(() =>
+            {
+                using var wb = new XLWorkbook(DatabaseFilePath);
+                if (!wb.Worksheets.Contains("ListinoPrezzi"))
+                {
+                    return GetDefaultCatalogoItems();
+                }
+
+                var ws = wb.Worksheet("ListinoPrezzi");
+                var rows = ws.RangeUsed()?.RowsUsed().Skip(1);
+                if (rows == null) return GetDefaultCatalogoItems();
+
+                var list = new List<PrezzoCatalogoItem>();
+                foreach (var row in rows)
+                {
+                    var idStr = row.Cell(1).GetString();
+                    if (!Guid.TryParse(idStr, out var id)) continue;
+
+                    var catStr = row.Cell(2).GetString();
+                    if (!Enum.TryParse<CategoriaPrezzo>(catStr, true, out var cat))
+                    {
+                        cat = CategoriaPrezzo.FotoSingola;
+                    }
+
+                    var nome = row.Cell(3).GetString();
+                    var prezzo = (decimal)row.Cell(4).GetDouble();
+                    var qta = (int)row.Cell(5).GetDouble();
+                    var desc = row.Cell(6).GetString();
+
+                    list.Add(new PrezzoCatalogoItem
+                    {
+                        Id = id,
+                        Categoria = cat,
+                        Nome = nome,
+                        Prezzo = prezzo,
+                        QuantitaFotoIncluse = qta > 0 ? qta : 1,
+                        Descrizione = desc
+                    });
+                }
+
+                return list.Count > 0 ? list : GetDefaultCatalogoItems();
+            }, cancellationToken).ConfigureAwait(false);
+        }).ConfigureAwait(false);
+    }
+
+    public async Task SaveCatalogoPrezziAsync(IEnumerable<PrezzoCatalogoItem> items, CancellationToken cancellationToken = default)
+    {
+        await ExecuteWithLockAndRetryAsync(async () =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            await Task.Run(() =>
+            {
+                using var wb = new XLWorkbook(DatabaseFilePath);
+                var ws = wb.Worksheets.Contains("ListinoPrezzi")
+                    ? wb.Worksheet("ListinoPrezzi")
+                    : wb.Worksheets.Add("ListinoPrezzi");
+
+                var usedRows = ws.RangeUsed()?.RowsUsed().Skip(1).ToList();
+                if (usedRows != null)
+                {
+                    foreach (var r in usedRows) r.Delete();
+                }
+
+                var row = 2;
+                foreach (var item in items)
+                {
+                    ws.Cell(row, 1).Value = item.Id.ToString();
+                    ws.Cell(row, 2).Value = item.Categoria.ToString();
+                    ws.Cell(row, 3).Value = item.Nome;
+                    ws.Cell(row, 4).Value = (double)item.Prezzo;
+                    ws.Cell(row, 5).Value = item.QuantitaFotoIncluse;
+                    ws.Cell(row, 6).Value = item.Descrizione ?? string.Empty;
+                    row++;
+                }
+
+                FormatHeader(ws, 6);
+                wb.Save();
+            }, cancellationToken).ConfigureAwait(false);
+        }).ConfigureAwait(false);
+    }
+
+    public async Task UpsertPrezzoCatalogoItemAsync(PrezzoCatalogoItem item, CancellationToken cancellationToken = default)
+    {
+        await ExecuteWithLockAndRetryAsync(async () =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            await Task.Run(() =>
+            {
+                using var wb = new XLWorkbook(DatabaseFilePath);
+                var ws = wb.Worksheets.Contains("ListinoPrezzi")
+                    ? wb.Worksheet("ListinoPrezzi")
+                    : wb.Worksheets.Add("ListinoPrezzi");
+
+                var existingRow = ws.RangeUsed()?.RowsUsed().Skip(1)
+                    .FirstOrDefault(r => r.Cell(1).GetString() == item.Id.ToString());
+
+                var targetRow = existingRow != null
+                    ? ws.Row(existingRow.RowNumber())
+                    : ws.Row((ws.LastRowUsed()?.RowNumber() ?? 1) + 1);
+
+                targetRow.Cell(1).Value = item.Id.ToString();
+                targetRow.Cell(2).Value = item.Categoria.ToString();
+                targetRow.Cell(3).Value = item.Nome;
+                targetRow.Cell(4).Value = (double)item.Prezzo;
+                targetRow.Cell(5).Value = item.QuantitaFotoIncluse;
+                targetRow.Cell(6).Value = item.Descrizione ?? string.Empty;
+
+                wb.Save();
+            }, cancellationToken).ConfigureAwait(false);
+        }).ConfigureAwait(false);
+    }
+
+    public async Task DeletePrezzoCatalogoItemAsync(Guid itemId, CancellationToken cancellationToken = default)
+    {
+        await ExecuteWithLockAndRetryAsync(async () =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            await Task.Run(() =>
+            {
+                using var wb = new XLWorkbook(DatabaseFilePath);
+                if (!wb.Worksheets.Contains("ListinoPrezzi")) return;
+
+                var ws = wb.Worksheet("ListinoPrezzi");
+                var row = ws.RangeUsed()?.RowsUsed().Skip(1)
+                    .FirstOrDefault(r => r.Cell(1).GetString() == itemId.ToString());
+                row?.Delete();
+                wb.Save();
+            }, cancellationToken).ConfigureAwait(false);
+        }).ConfigureAwait(false);
+    }
+
+    #endregion
+
+    #region Acquisti Foto
+
+    public async Task<List<AcquistoFoto>> GetAcquistiByEventoAsync(Guid eventoId, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithLockAndRetryAsync(async () =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return await Task.Run(() =>
+            {
+                using var wb = new XLWorkbook(DatabaseFilePath);
+                if (!wb.Worksheets.Contains("Acquisti")) return new List<AcquistoFoto>();
+
+                var ws = wb.Worksheet("Acquisti");
+                var rows = ws.RangeUsed()?.RowsUsed().Skip(1);
+                if (rows == null) return new List<AcquistoFoto>();
+
+                var eventoIdStr = eventoId.ToString();
+                var list = new List<AcquistoFoto>();
+
+                foreach (var row in rows)
+                {
+                    if (row.Cell(2).GetString() != eventoIdStr) continue;
+
+                    var idStr = row.Cell(1).GetString();
+                    if (!Guid.TryParse(idStr, out var id)) continue;
+
+                    var data = ParseDateTime(row.Cell(3).GetString());
+                    var atletaIdStr = row.Cell(4).GetString();
+                    Guid.TryParse(atletaIdStr, out var atletaId);
+                    var nomeAtleta = row.Cell(5).GetString();
+                    var pettorale = row.Cell(6).GetString();
+
+                    var discIdStr = row.Cell(7).GetString();
+                    Guid? discId = Guid.TryParse(discIdStr, out var parsedDiscId) ? parsedDiscId : null;
+                    var nomeDisc = row.Cell(8).GetString();
+
+                    var totQta = (int)row.Cell(9).GetDouble();
+                    var totCalc = (decimal)row.Cell(10).GetDouble();
+                    var totPagato = (decimal)row.Cell(11).GetDouble();
+
+                    var email = row.Cell(12).GetString();
+                    var tel = row.Cell(13).GetString();
+
+                    var interaCartellaStr = row.Cell(14).GetString();
+                    var interaCartella = bool.TryParse(interaCartellaStr, out var ic) ? ic : true;
+
+                    var fileFotoStr = row.Cell(15).GetString();
+                    var files = !string.IsNullOrWhiteSpace(fileFotoStr)
+                        ? fileFotoStr.Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList()
+                        : new List<string>();
+
+                    var cartellaRef = row.Cell(16).GetString();
+                    var vociJson = row.Cell(17).GetString();
+                    var voci = new List<VoceAcquisto>();
+                    if (!string.IsNullOrWhiteSpace(vociJson))
+                    {
+                        try
+                        {
+                            voci = JsonSerializer.Deserialize<List<VoceAcquisto>>(vociJson) ?? new();
+                        }
+                        catch
+                        {
+                            voci = new();
+                        }
+                    }
+
+                    var note = row.Cell(19).GetString();
+                    var stato = row.Cell(20).GetString();
+                    if (string.IsNullOrWhiteSpace(stato)) stato = "Completato";
+
+                    list.Add(new AcquistoFoto
+                    {
+                        Id = id,
+                        EventoId = eventoId,
+                        DataAcquisto = data,
+                        AtletaId = atletaId,
+                        NomeAtleta = nomeAtleta,
+                        NumeroPettorale = pettorale,
+                        DisciplinaId = discId,
+                        NomeDisciplina = nomeDisc,
+                        TotaleQuantita = totQta,
+                        TotaleCalcolato = totCalc,
+                        TotalePagato = totPagato,
+                        EmailCliente = email,
+                        TelefonoCliente = tel,
+                        InteraCartella = interaCartella,
+                        FileFotoSelezionate = files,
+                        CartellaPathRiferimento = cartellaRef,
+                        Voci = voci,
+                        Note = note,
+                        Stato = stato
+                    });
+                }
+
+                return list.OrderByDescending(a => a.DataAcquisto).ToList();
+            }, cancellationToken).ConfigureAwait(false);
+        }).ConfigureAwait(false);
+    }
+
+    public async Task UpsertAcquistoFotoAsync(AcquistoFoto acquisto, CancellationToken cancellationToken = default)
+    {
+        await ExecuteWithLockAndRetryAsync(async () =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            await Task.Run(() =>
+            {
+                using var wb = new XLWorkbook(DatabaseFilePath);
+                var ws = wb.Worksheets.Contains("Acquisti")
+                    ? wb.Worksheet("Acquisti")
+                    : wb.Worksheets.Add("Acquisti");
+
+                var existingRow = ws.RangeUsed()?.RowsUsed().Skip(1)
+                    .FirstOrDefault(r => r.Cell(1).GetString() == acquisto.Id.ToString());
+
+                var targetRow = existingRow != null
+                    ? ws.Row(existingRow.RowNumber())
+                    : ws.Row((ws.LastRowUsed()?.RowNumber() ?? 1) + 1);
+
+                targetRow.Cell(1).Value = acquisto.Id.ToString();
+                targetRow.Cell(2).Value = acquisto.EventoId.ToString();
+                targetRow.Cell(3).Value = acquisto.DataAcquisto.ToString("yyyy-MM-dd HH:mm:ss");
+                targetRow.Cell(4).Value = acquisto.AtletaId.ToString();
+                targetRow.Cell(5).Value = acquisto.NomeAtleta;
+                targetRow.Cell(6).Value = acquisto.NumeroPettorale;
+                targetRow.Cell(7).Value = acquisto.DisciplinaId?.ToString() ?? string.Empty;
+                targetRow.Cell(8).Value = acquisto.NomeDisciplina;
+                targetRow.Cell(9).Value = acquisto.TotaleQuantita;
+                targetRow.Cell(10).Value = (double)acquisto.TotaleCalcolato;
+                targetRow.Cell(11).Value = (double)acquisto.TotalePagato;
+                targetRow.Cell(12).Value = acquisto.EmailCliente;
+                targetRow.Cell(13).Value = acquisto.TelefonoCliente;
+                targetRow.Cell(14).Value = acquisto.InteraCartella ? "TRUE" : "FALSE";
+                targetRow.Cell(15).Value = string.Join("; ", acquisto.FileFotoSelezionate);
+                targetRow.Cell(16).Value = acquisto.CartellaPathRiferimento ?? string.Empty;
+                targetRow.Cell(17).Value = JsonSerializer.Serialize(acquisto.Voci);
+                targetRow.Cell(18).Value = acquisto.VociSommarioDisplay;
+                targetRow.Cell(19).Value = acquisto.Note ?? string.Empty;
+                targetRow.Cell(20).Value = acquisto.Stato;
+
+                wb.Save();
+            }, cancellationToken).ConfigureAwait(false);
+        }).ConfigureAwait(false);
+    }
+
+    public async Task DeleteAcquistoFotoAsync(Guid acquistoId, CancellationToken cancellationToken = default)
+    {
+        await ExecuteWithLockAndRetryAsync(async () =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            await Task.Run(() =>
+            {
+                using var wb = new XLWorkbook(DatabaseFilePath);
+                if (!wb.Worksheets.Contains("Acquisti")) return;
+
+                var ws = wb.Worksheet("Acquisti");
+                var row = ws.RangeUsed()?.RowsUsed().Skip(1)
+                    .FirstOrDefault(r => r.Cell(1).GetString() == acquistoId.ToString());
                 row?.Delete();
                 wb.Save();
             }, cancellationToken).ConfigureAwait(false);

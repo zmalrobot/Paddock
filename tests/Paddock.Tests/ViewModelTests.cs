@@ -367,5 +367,95 @@ public class ViewModelTests
         mainVm.IsSlideshowActive.Should().BeFalse();
         stopRequested.Should().BeTrue();
     }
+
+    [Fact]
+    public async Task SettingsViewModel_CatalogoPrezzi_Add_And_Reset_Work()
+    {
+        var mockExcel = new Mock<IExcelRepository>();
+        var mockPrefs = new Mock<IAppPreferencesService>();
+
+        mockPrefs.Setup(p => p.RecentDatabases).Returns(new List<string>());
+
+        var defaultItems = new List<PrezzoCatalogoItem>
+        {
+            new() { Nome = "Foto Singola", Prezzo = 10m, Categoria = CategoriaPrezzo.FotoSingola }
+        };
+        mockExcel.Setup(x => x.GetCatalogoPrezziAsync(default)).ReturnsAsync(defaultItems);
+
+        var vm = new SettingsViewModel(mockExcel.Object, mockPrefs.Object);
+        await vm.InitializeAsync();
+
+        vm.CatalogoPrezzi.Should().HaveCount(1);
+
+        // Aggiunta articolo
+        vm.NewItemNome = "Pacchetto 20 Foto";
+        vm.NewItemCategoria = CategoriaPrezzo.PacchettoFoto;
+        vm.NewItemPrezzo = 100m;
+        vm.NewItemQuantitaFoto = 20;
+
+        await vm.AddPrezzoItemCommand.ExecuteAsync(null);
+
+        vm.CatalogoPrezzi.Should().HaveCount(2);
+        vm.CatalogoPrezzi.Should().Contain(p => p.Nome == "Pacchetto 20 Foto");
+        mockExcel.Verify(x => x.UpsertPrezzoCatalogoItemAsync(It.IsAny<PrezzoCatalogoItem>(), default), Times.Once);
+    }
+
+    [Fact]
+    public async Task EventDetailViewModel_Acquisto_Calculations_And_Registration_Work()
+    {
+        var mockExcel = new Mock<IExcelRepository>();
+        var mockFileOrg = new Mock<IFileOrganizationService>();
+
+        var evento = new Evento { NomeEvento = "Rally Legend", CartellaDestinazioneRoot = @"C:\Paddock" };
+        var atleta = new Atleta { Nome = "Mario", Cognome = "Rossi", NumeroPettorale = "1" };
+        var disciplina = new Disciplina { NomeDisciplina = "WRC" };
+
+        mockExcel.Setup(x => x.GetAtletiByEventoAsync(evento.Id, default)).ReturnsAsync(new List<Atleta> { atleta });
+        mockExcel.Setup(x => x.GetDisciplineByEventoAsync(evento.Id, default)).ReturnsAsync(new List<Disciplina> { disciplina });
+        mockExcel.Setup(x => x.GetFotoByEventoAsync(evento.Id, default)).ReturnsAsync(new List<Foto>());
+        mockExcel.Setup(x => x.GetAcquistiByEventoAsync(evento.Id, default)).ReturnsAsync(new List<AcquistoFoto>());
+        mockExcel.Setup(x => x.GetCatalogoPrezziAsync(default)).ReturnsAsync(new List<PrezzoCatalogoItem>
+        {
+            new() { Nome = "Foto Singola", Prezzo = 10.00m, Categoria = CategoriaPrezzo.FotoSingola },
+            new() { Nome = "Pacchetto 5 Foto", Prezzo = 40.00m, Categoria = CategoriaPrezzo.PacchettoFoto }
+        });
+
+        var vm = new EventDetailViewModel(evento, mockExcel.Object, mockFileOrg.Object);
+        await vm.LoadEventDataAsync();
+
+        vm.SelectedAcquistoAtleta = atleta;
+        vm.SelectedAcquistoDisciplina = disciplina;
+        vm.EmailCliente = "mario@example.com";
+        vm.TelefonoCliente = "+39 333 1234567";
+
+        // Aggiungi 2 Foto Singole
+        vm.SelectedCatalogoItemToAdd = vm.CatalogoDisponibile.First(c => c.Nome == "Foto Singola");
+        vm.QuantitaToAdd = 2;
+        vm.AddVoceAcquistoCommand.Execute(null);
+
+        // Aggiungi 1 Pacchetto 5 Foto
+        vm.SelectedCatalogoItemToAdd = vm.CatalogoDisponibile.First(c => c.Nome == "Pacchetto 5 Foto");
+        vm.QuantitaToAdd = 1;
+        vm.AddVoceAcquistoCommand.Execute(null);
+
+        // Verifica totali: 2*10 + 1*40 = 60
+        vm.TotaleCalcolato.Should().Be(60.00m);
+        vm.TotalePagato.Should().Be(60.00m);
+
+        // Applica sconto personalizzato a 50
+        vm.TotalePagato = 50.00m;
+
+        // Registra acquisto
+        await vm.RegistraAcquistoCommand.ExecuteAsync(null);
+
+        vm.Acquisti.Should().HaveCount(1);
+        vm.Acquisti[0].NomeAtleta.Should().Be("Rossi Mario");
+        vm.Acquisti[0].TotaleCalcolato.Should().Be(60.00m);
+        vm.Acquisti[0].TotalePagato.Should().Be(50.00m);
+        vm.TotaleIncassatoEvento.Should().Be(50.00m);
+        vm.TotaleOrdiniEvento.Should().Be(1);
+
+        mockExcel.Verify(x => x.UpsertAcquistoFotoAsync(It.IsAny<AcquistoFoto>(), default), Times.Once);
+    }
 }
 

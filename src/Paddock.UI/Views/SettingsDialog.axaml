@@ -1,127 +1,236 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Paddock.UI.ViewModels"
+             xmlns:models="using:Paddock.Core.Models"
              x:Class="Paddock.UI.Views.SettingsDialog"
              x:DataType="vm:SettingsViewModel"
-             Width="680" MaxHeight="750">
+             Width="740" MaxHeight="800">
 
-    <Border Background="#1A1C20" BorderBrush="#2E323B" BorderThickness="1" CornerRadius="8" Padding="24">
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
-            <StackPanel Spacing="20">
+    <Border Background="#1A1C20" BorderBrush="#2E323B" BorderThickness="1" CornerRadius="8" Padding="20">
+        <Grid RowDefinitions="Auto,*,Auto">
 
-                <!-- 1. Header -->
-                <Grid ColumnDefinitions="*,Auto">
-                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                        <Border CornerRadius="6" ClipToBounds="True" Width="36" Height="36" Background="#16181C"
-                                BorderBrush="#2E323B" BorderThickness="1">
-                            <Image Source="/Assets/logo.jpg" Stretch="UniformToFill"/>
-                        </Border>
-                        <StackPanel Spacing="3" VerticalAlignment="Center">
-                            <TextBlock Text="IMPOSTAZIONI E ARCHIVIO" FontSize="15" FontWeight="Bold" Foreground="#EDEDED" LetterSpacing="0.8"/>
-                            <TextBlock Text="Configurazione del database Excel (.xlsx) e della cartella radice delle foto" FontSize="11" Foreground="#9EA3AE"/>
-                        </StackPanel>
+            <!-- 1. Header -->
+            <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,16">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                    <Border CornerRadius="6" ClipToBounds="True" Width="36" Height="36" Background="#16181C"
+                            BorderBrush="#2E323B" BorderThickness="1">
+                        <Image Source="/Assets/logo.jpg" Stretch="UniformToFill"/>
+                    </Border>
+                    <StackPanel Spacing="3" VerticalAlignment="Center">
+                        <TextBlock Text="IMPOSTAZIONI E CATALOGO PREZZI" FontSize="15" FontWeight="Bold" Foreground="#EDEDED" LetterSpacing="0.8"/>
+                        <TextBlock Text="Configurazione del database Excel, archivio foto e listino prezzi di vendita" FontSize="11" Foreground="#9EA3AE"/>
                     </StackPanel>
-                    <Button Grid.Column="1" Classes="secondary" Content="✕" Padding="8,4" FontSize="12"
-                            Command="{Binding CloseCommand}"/>
-                </Grid>
+                </StackPanel>
+                <Button Grid.Column="1" Classes="secondary" Content="✕" Padding="8,4" FontSize="12"
+                        Command="{Binding CloseCommand}"/>
+            </Grid>
 
-                <Rectangle Height="1" Fill="#2E323B"/>
+            <!-- 2. TabControl Principale -->
+            <TabControl Grid.Row="1" SelectedIndex="{Binding SelectedTabIndex}">
 
-                <!-- 2. Sezione Database Excel -->
-                <StackPanel Spacing="10">
-                    <TextBlock Text="DATABASE EXCEL ATTIVO" FontSize="12" FontWeight="SemiBold" Foreground="#FF8C32" LetterSpacing="0.5"/>
+                <!-- TAB 1: DATABASE & ARCHIVIO -->
+                <TabItem Header="Database &amp; Archivio">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,12,0,0">
+                        <StackPanel Spacing="16">
 
-                    <Border Background="#121316" BorderBrush="#2E323B" BorderThickness="1" CornerRadius="4" Padding="12,10">
-                        <Grid ColumnDefinitions="*,Auto">
-                            <StackPanel Grid.Column="0" Spacing="2">
-                                <TextBlock Text="File Database Corrente:" FontSize="10" Foreground="#636773" FontWeight="SemiBold"/>
-                                <TextBlock Text="{Binding DatabaseFilePath}" FontSize="12" Foreground="#00B4D8" TextTrimming="CharacterEllipsis"/>
+                            <!-- Database Excel Attivo -->
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="DATABASE EXCEL ATTIVO" FontSize="12" FontWeight="SemiBold" Foreground="#FF8C32" LetterSpacing="0.5"/>
+
+                                <Border Background="#121316" BorderBrush="#2E323B" BorderThickness="1" CornerRadius="4" Padding="12,10">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <StackPanel Grid.Column="0" Spacing="2">
+                                            <TextBlock Text="File Database Corrente:" FontSize="10" Foreground="#636773" FontWeight="SemiBold"/>
+                                            <TextBlock Text="{Binding DatabaseFilePath}" FontSize="12" Foreground="#00B4D8" TextTrimming="CharacterEllipsis"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+
+                                <Grid ColumnDefinitions="*,*">
+                                    <Button Grid.Column="0" Classes="secondary" Content="📂 Apri Database Esistente..." Margin="0,0,6,0"
+                                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                            Click="BrowseOpenDatabase_Click"/>
+                                    <Button Grid.Column="1" Classes="secondary" Content="➕ Crea Nuovo Database..." Margin="6,0,0,0"
+                                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                            Click="BrowseNewDatabase_Click"/>
+                                </Grid>
+
+                                <StackPanel Spacing="6" Margin="0,4,0,0" IsVisible="{Binding RecentDatabases.Count}">
+                                    <TextBlock Text="Database Recenti:" FontSize="11" Foreground="#9EA3AE"/>
+                                    <ItemsControl ItemsSource="{Binding RecentDatabases}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Button Classes="secondary" HorizontalAlignment="Stretch" Margin="0,2" Padding="8,4"
+                                                        Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).SwitchDatabaseCommand}"
+                                                        CommandParameter="{Binding}">
+                                                    <Grid ColumnDefinitions="Auto,*">
+                                                        <TextBlock Grid.Column="0" Text="📄 " FontSize="11"/>
+                                                        <TextBlock Grid.Column="1" Text="{Binding}" FontSize="11" Foreground="#EDEDED" TextTrimming="CharacterEllipsis"/>
+                                                    </Grid>
+                                                </Button>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+
+                                <CheckBox Content="Apri automaticamente l'ultimo database utilizzato all'avvio"
+                                          IsChecked="{Binding AutoOpenLastDatabase}"
+                                          Command="{Binding ToggleAutoOpenLastDatabaseCommand}"
+                                          FontSize="12" Foreground="#9EA3AE" Margin="0,4,0,0"/>
                             </StackPanel>
-                        </Grid>
-                    </Border>
 
-                    <!-- Azioni Selezione / Creazione Database -->
-                    <Grid ColumnDefinitions="*,*">
-                        <Button Grid.Column="0" Classes="secondary" Content="📂 Apri Database Esistente..." Margin="0,0,6,0"
-                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                Click="BrowseOpenDatabase_Click"/>
-                        <Button Grid.Column="1" Classes="secondary" Content="➕ Crea Nuovo Database..." Margin="6,0,0,0"
-                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                Click="BrowseNewDatabase_Click"/>
-                    </Grid>
+                            <Rectangle Height="1" Fill="#2E323B"/>
 
-                    <!-- Lista Database Recenti -->
-                    <StackPanel Spacing="6" Margin="0,4,0,0" IsVisible="{Binding RecentDatabases.Count}">
-                        <TextBlock Text="Database Recenti:" FontSize="11" Foreground="#9EA3AE"/>
-                        <ItemsControl ItemsSource="{Binding RecentDatabases}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Button Classes="secondary" HorizontalAlignment="Stretch" Margin="0,2" Padding="8,4"
-                                            Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).SwitchDatabaseCommand}"
-                                            CommandParameter="{Binding}">
-                                        <Grid ColumnDefinitions="Auto,*">
-                                            <TextBlock Grid.Column="0" Text="📄 " FontSize="11"/>
-                                            <TextBlock Grid.Column="1" Text="{Binding}" FontSize="11" Foreground="#EDEDED" TextTrimming="CharacterEllipsis"/>
-                                        </Grid>
-                                    </Button>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </StackPanel>
+                            <!-- BasePath Archivio Foto -->
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="PERCORSO BASE ARCHIVIO FOTO (BASEPATH)" FontSize="12" FontWeight="SemiBold" Foreground="#FF8C32" LetterSpacing="0.5"/>
 
-                    <!-- Checkbox Avvio Rapido -->
-                    <CheckBox Content="Apri automaticamente l'ultimo database utilizzato all'avvio"
-                              IsChecked="{Binding AutoOpenLastDatabase}"
-                              Command="{Binding ToggleAutoOpenLastDatabaseCommand}"
-                              FontSize="12" Foreground="#9EA3AE" Margin="0,4,0,0"/>
-                </StackPanel>
+                                <Border Background="#16181C" BorderBrush="#2E323B" BorderThickness="1" CornerRadius="4" Padding="12">
+                                    <TextBlock Text="Le foto vengono salvate con percorso relativo ('Evento / Atleta / Disciplina / Formato / File'). Il BasePath definisce la cartella radice su disco."
+                                               TextWrapping="Wrap" FontSize="11" Foreground="#9EA3AE" LineHeight="16"/>
+                                </Border>
 
-                <Rectangle Height="1" Fill="#2E323B"/>
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="Cartella Radice Archivio Foto:" FontSize="11" Foreground="#EDEDED"/>
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBox Grid.Column="0" Text="{Binding BasePath}" PlaceholderText="C:\Users\...\Pictures\Paddock"/>
+                                        <Button Grid.Column="1" Classes="secondary" Content="📁 Sfoglia..." Margin="8,0,0,0"
+                                                Click="BrowseBasePath_Click"/>
+                                    </Grid>
+                                </StackPanel>
 
-                <!-- 3. Sezione BasePath Archivio Foto -->
-                <StackPanel Spacing="10">
-                    <TextBlock Text="PERCORSO BASE ARCHIVIO FOTO (BASEPATH)" FontSize="12" FontWeight="SemiBold" Foreground="#FF8C32" LetterSpacing="0.5"/>
+                                <Button Classes="primary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                        Padding="12,10" Margin="0,4,0,0"
+                                        Command="{Binding UpdateBasePathCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Text="💾" FontSize="14" VerticalAlignment="Center"/>
+                                        <TextBlock Text="Aggiorna BasePath nel Database Excel" FontWeight="Bold" FontSize="12" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
 
-                    <Border Background="#16181C" BorderBrush="#2E323B" BorderThickness="1" CornerRadius="4" Padding="12">
-                        <TextBlock Text="Le foto vengono salvate nel database con percorso relativo ('Nome Evento / Atleta / Disciplina / Jpeg o Raw / File'). Il BasePath definisce la radice sul disco locale. Se cambi PC o sposti le foto su un altro hard disk/NAS, inserisci il nuovo percorso e clicca 'Aggiorna BasePath nel Database'."
-                                   TextWrapping="Wrap" FontSize="11" Foreground="#9EA3AE" LineHeight="16"/>
-                    </Border>
-
-                    <StackPanel Spacing="6">
-                        <TextBlock Text="Cartella Radice Archivio Foto:" FontSize="11" Foreground="#EDEDED"/>
-                        <Grid ColumnDefinitions="*,Auto">
-                            <TextBox Grid.Column="0" Text="{Binding BasePath}" PlaceholderText="C:\Users\...\Pictures\Paddock"/>
-                            <Button Grid.Column="1" Classes="secondary" Content="📁 Sfoglia..." Margin="8,0,0,0"
-                                    Click="BrowseBasePath_Click"/>
-                        </Grid>
-                    </StackPanel>
-
-                    <!-- Pulsante Aggiorna BasePath nel DB -->
-                    <Button Classes="primary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                            Padding="12,10" Margin="0,6,0,0"
-                            Command="{Binding UpdateBasePathCommand}">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock Text="💾" FontSize="14" VerticalAlignment="Center"/>
-                            <TextBlock Text="Aggiorna BasePath nel Database Excel" FontWeight="Bold" FontSize="12" VerticalAlignment="Center"/>
                         </StackPanel>
-                    </Button>
-                </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
 
-                <!-- Feedback Banner -->
+                <!-- TAB 2: CATALOGO PREZZI FOTO -->
+                <TabItem Header="Catalogo Prezzi Foto">
+                    <Grid RowDefinitions="Auto,Auto,*" Margin="0,12,0,0">
+
+                        <!-- Form Nuovo Articolo Listino -->
+                        <Border Grid.Row="0" Background="#16181C" CornerRadius="6" Padding="14" BorderBrush="#2E323B" BorderThickness="1" Margin="0,0,0,12">
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="Aggiungi Articolo / Pacchetto al Listino Prezzi" FontWeight="SemiBold" FontSize="12" Foreground="#EDEDED"/>
+
+                                <Grid ColumnDefinitions="*,160,100,100">
+                                    <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,8,0">
+                                        <TextBlock Text="Nome Articolo *" FontSize="11" Foreground="#9EA3AE"/>
+                                        <TextBox Text="{Binding NewItemNome}" PlaceholderText="es. Pacchetto 15 Foto"/>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="1" Spacing="4" Margin="0,0,8,0">
+                                        <TextBlock Text="Categoria *" FontSize="11" Foreground="#9EA3AE"/>
+                                        <ComboBox ItemsSource="{Binding AvailableCategorie}"
+                                                  SelectedItem="{Binding NewItemCategoria}"
+                                                  HorizontalAlignment="Stretch"/>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="2" Spacing="4" Margin="0,0,8,0">
+                                        <TextBlock Text="Prezzo (€) *" FontSize="11" Foreground="#9EA3AE"/>
+                                        <TextBox Text="{Binding NewItemPrezzo}" PlaceholderText="40.00"/>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="3" Spacing="4">
+                                        <TextBlock Text="Q.tà Foto" FontSize="11" Foreground="#9EA3AE"/>
+                                        <TextBox Text="{Binding NewItemQuantitaFoto}" PlaceholderText="1"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBox Grid.Column="0" Text="{Binding NewItemDescrizione}"
+                                             PlaceholderText="Descrizione dell'articolo (opzionale, es. 15 scatti ad alta risoluzione)"
+                                             Margin="0,0,8,0"/>
+                                    <Button Grid.Column="1" Classes="primary" Content="+ Aggiungi Articolo"
+                                            Command="{Binding AddPrezzoItemCommand}"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Barra Azioni Listino -->
+                        <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+                            <TextBlock Grid.Column="0" Text="Listino Prezzi Configurato (memorizzato nel foglio Excel 'ListinoPrezzi')"
+                                       FontSize="11" Foreground="#9EA3AE" VerticalAlignment="Center"/>
+                            <Button Grid.Column="1" Classes="secondary" Content="↺ Ripristina Listino Predefinito"
+                                    FontSize="11" Padding="8,4"
+                                    Command="{Binding ResetDefaultCatalogoCommand}"/>
+                        </Grid>
+
+                        <!-- Elenco Voci Listino -->
+                        <ScrollViewer Grid.Row="2" MaxHeight="320">
+                            <ItemsControl ItemsSource="{Binding CatalogoPrezzi}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="models:PrezzoCatalogoItem">
+                                        <Border Background="#16181C" BorderBrush="#2E323B" BorderThickness="1"
+                                                CornerRadius="6" Padding="12,10" Margin="0,0,0,6">
+                                            <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto">
+                                                
+                                                <!-- Categoria Badge -->
+                                                <Border Grid.Column="0" Background="#22252B" CornerRadius="4" Padding="6,2"
+                                                        Margin="0,0,12,0" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding CategoriaDisplay}" FontSize="10" Foreground="#FF8C32" FontWeight="SemiBold"/>
+                                                </Border>
+
+                                                <!-- Nome & Descrizione -->
+                                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                                    <TextBlock Text="{Binding Nome}" FontSize="12" FontWeight="SemiBold" Foreground="#EDEDED"/>
+                                                    <TextBlock Text="{Binding Descrizione}" FontSize="10" Foreground="#9EA3AE"
+                                                               IsVisible="{Binding Descrizione, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                               TextTrimming="CharacterEllipsis"/>
+                                                </StackPanel>
+
+                                                <!-- Quantità Foto Badge -->
+                                                <Border Grid.Column="2" Background="#121316" CornerRadius="4" Padding="6,2"
+                                                        Margin="12,0" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding QuantitaFotoIncluse, StringFormat='Foto: {0}'}"
+                                                               FontSize="10" Foreground="#00B4D8"/>
+                                                </Border>
+
+                                                <!-- Prezzo -->
+                                                <TextBlock Grid.Column="3" Text="{Binding Prezzo, StringFormat='€ {0:N2}'}"
+                                                           FontSize="13" FontWeight="Bold" Foreground="#2ECC71"
+                                                           VerticalAlignment="Center" Margin="0,0,12,0"/>
+
+                                                <!-- Elimina -->
+                                                <Button Grid.Column="4" Classes="danger" Content="✕" Padding="6,2" FontSize="11"
+                                                        Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).DeletePrezzoItemCommand}"
+                                                        CommandParameter="{Binding}"/>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+
+                    </Grid>
+                </TabItem>
+
+            </TabControl>
+
+            <!-- 3. Feedback Banner & Footer -->
+            <StackPanel Grid.Row="2" Spacing="10" Margin="0,12,0,0">
                 <Border Background="#1F2F20" BorderBrush="#2ECC71" BorderThickness="1" CornerRadius="4" Padding="12,8"
                         IsVisible="{Binding StatusMessage, Converter={x:Static ObjectConverters.IsNotNull}}">
                     <TextBlock Text="{Binding StatusMessage}" Foreground="#2ECC71" FontSize="11" TextWrapping="Wrap"/>
                 </Border>
 
-                <!-- 4. Footer -->
-                <Grid ColumnDefinitions="*,Auto" Margin="0,10,0,0">
+                <Grid ColumnDefinitions="*,Auto">
                     <ProgressBar Grid.Column="0" IsIndeterminate="True" IsVisible="{Binding IsBusy}" VerticalAlignment="Center" Height="4" Margin="0,0,16,0"/>
                     <Button Grid.Column="1" Classes="secondary" Content="Chiudi" Padding="20,8"
                             Command="{Binding CloseCommand}"/>
                 </Grid>
-
             </StackPanel>
-        </ScrollViewer>
+
+        </Grid>
     </Border>
 </UserControl>
 

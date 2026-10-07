@@ -222,6 +222,256 @@
                 </Grid>
             </TabItem>
 
+            <!-- TAB 4: ACQUISTI E VENDITA FOTO -->
+            <TabItem Header="🛒 Acquisti">
+                <Grid RowDefinitions="Auto,*" Margin="0,12,0,0">
+
+                    <!-- Form Registrazione Nuovo Acquisto -->
+                    <Border Grid.Row="0" Background="#1A1C20" CornerRadius="6" Padding="16" BorderBrush="#2E323B" BorderThickness="1" Margin="0,0,0,16">
+                        <StackPanel Spacing="14">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Grid.Column="0" Spacing="2">
+                                    <TextBlock Text="Registrazione Nuovo Acquisto Foto" FontSize="14" FontWeight="Bold" Foreground="#EDEDED"/>
+                                    <TextBlock Text="Associa pacchetti o foto ad un atleta e registra i recapiti per l'invio" FontSize="11" Foreground="#9EA3AE"/>
+                                </StackPanel>
+                                <Button Grid.Column="1" Classes="primary" Content="💾 Registra Acquisto"
+                                        Command="{Binding RegistraAcquistoCommand}" Padding="16,8"/>
+                            </Grid>
+
+                            <!-- Griglia a 3 Colonne per Form -->
+                            <Grid ColumnDefinitions="*,*,*">
+
+                                <!-- Colonna 1: Dati Acquirente & Atleta -->
+                                <Border Grid.Column="0" Background="#16181C" CornerRadius="6" Padding="12" BorderBrush="#2E323B" BorderThickness="1" Margin="0,0,8,0">
+                                    <StackPanel Spacing="8">
+                                        <TextBlock Text="1. Dati Atleta &amp; Contatto" FontWeight="SemiBold" FontSize="11" Foreground="#FF8C32"/>
+
+                                        <StackPanel Spacing="3">
+                                            <TextBlock Text="Atleta Acquirente *" FontSize="11" Foreground="#9EA3AE"/>
+                                            <ComboBox ItemsSource="{Binding AllAtleti}"
+                                                      SelectedItem="{Binding SelectedAcquistoAtleta}"
+                                                      HorizontalAlignment="Stretch">
+                                                <ComboBox.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding DisplayPettoraleNome}"/>
+                                                    </DataTemplate>
+                                                </ComboBox.ItemTemplate>
+                                            </ComboBox>
+                                        </StackPanel>
+
+                                        <StackPanel Spacing="3">
+                                            <TextBlock Text="Disciplina di Riferimento" FontSize="11" Foreground="#9EA3AE"/>
+                                            <ComboBox ItemsSource="{Binding Discipline}"
+                                                      SelectedItem="{Binding SelectedAcquistoDisciplina}"
+                                                      HorizontalAlignment="Stretch">
+                                                <ComboBox.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding NomeDisciplina}"/>
+                                                    </DataTemplate>
+                                                </ComboBox.ItemTemplate>
+                                            </ComboBox>
+                                        </StackPanel>
+
+                                        <StackPanel Spacing="3">
+                                            <TextBlock Text="Email Cliente" FontSize="11" Foreground="#9EA3AE"/>
+                                            <TextBox Text="{Binding EmailCliente}" PlaceholderText="cliente@email.com"/>
+                                        </StackPanel>
+
+                                        <StackPanel Spacing="3">
+                                            <TextBlock Text="Telefono / WhatsApp" FontSize="11" Foreground="#9EA3AE"/>
+                                            <TextBox Text="{Binding TelefonoCliente}" PlaceholderText="+39 333 1234567"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Colonna 2: Selezione Pacchetti e Prezzi -->
+                                <Border Grid.Column="1" Background="#16181C" CornerRadius="6" Padding="12" BorderBrush="#2E323B" BorderThickness="1" Margin="4,0,4,0">
+                                    <StackPanel Spacing="8">
+                                        <TextBlock Text="2. Pacchetti &amp; Totale" FontWeight="SemiBold" FontSize="11" Foreground="#FF8C32"/>
+
+                                        <!-- Aggiunta Voce -->
+                                        <Grid ColumnDefinitions="*,60,Auto">
+                                            <ComboBox Grid.Column="0" ItemsSource="{Binding CatalogoDisponibile}"
+                                                      SelectedItem="{Binding SelectedCatalogoItemToAdd}"
+                                                      HorizontalAlignment="Stretch" Margin="0,0,6,0">
+                                                <ComboBox.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding Nome, StringFormat='{}{0}'}"/>
+                                                    </DataTemplate>
+                                                </ComboBox.ItemTemplate>
+                                            </ComboBox>
+
+                                            <TextBox Grid.Column="1" Text="{Binding QuantitaToAdd}" Margin="0,0,6,0"/>
+
+                                            <Button Grid.Column="2" Classes="secondary" Content="+" Padding="10,6"
+                                                    Command="{Binding AddVoceAcquistoCommand}"/>
+                                        </Grid>
+
+                                        <!-- Voci nel Carrello -->
+                                        <ScrollViewer MaxHeight="110">
+                                            <ItemsControl ItemsSource="{Binding VociAcquistoCorrente}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate DataType="models:VoceAcquisto">
+                                                        <Border Background="#22252B" CornerRadius="4" Padding="8,4" Margin="0,0,0,4">
+                                                            <Grid ColumnDefinitions="*,Auto,Auto,Auto">
+                                                                <TextBlock Grid.Column="0" Text="{Binding NomeArticolo}" FontSize="11" Foreground="#EDEDED" TextTrimming="CharacterEllipsis"/>
+                                                                <TextBlock Grid.Column="1" Text="{Binding Quantita, StringFormat='x{0}'}" FontSize="11" Foreground="#9EA3AE" Margin="6,0"/>
+                                                                <TextBlock Grid.Column="2" Text="{Binding Subtotale, StringFormat='€ {0:N2}'}" FontSize="11" FontWeight="Bold" Foreground="#2ECC71" Margin="6,0"/>
+                                                                <Button Grid.Column="3" Classes="danger" Content="✕" Padding="4,1" FontSize="9"
+                                                                        Command="{Binding $parent[UserControl].((vm:EventDetailViewModel)DataContext).RemoveVoceAcquistoCommand}"
+                                                                        CommandParameter="{Binding}"/>
+                                                            </Grid>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </ScrollViewer>
+
+                                        <!-- Totali -->
+                                        <Grid ColumnDefinitions="*,*">
+                                            <StackPanel Grid.Column="0" Spacing="2">
+                                                <TextBlock Text="Totale Listino:" FontSize="10" Foreground="#9EA3AE"/>
+                                                <TextBlock Text="{Binding TotaleCalcolato, StringFormat='€ {0:N2}'}" FontSize="12" Foreground="#00B4D8" FontWeight="SemiBold"/>
+                                            </StackPanel>
+
+                                            <StackPanel Grid.Column="1" Spacing="2">
+                                                <TextBlock Text="Totale Effettivo Pagato (€):" FontSize="10" Foreground="#EDEDED" FontWeight="SemiBold"/>
+                                                <TextBox Text="{Binding TotalePagato}"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Colonna 3: Riferimento Foto Atleta -->
+                                <Border Grid.Column="2" Background="#16181C" CornerRadius="6" Padding="12" BorderBrush="#2E323B" BorderThickness="1" Margin="8,0,0,0">
+                                    <StackPanel Spacing="8">
+                                        <TextBlock Text="3. Riferimento Foto" FontWeight="SemiBold" FontSize="11" Foreground="#FF8C32"/>
+
+                                        <CheckBox Content="Invia Intera Cartella dell'Atleta"
+                                                  IsChecked="{Binding InteraCartella}"
+                                                  FontSize="11" Foreground="#EDEDED"/>
+
+                                        <!-- Selezione selettiva foto -->
+                                        <StackPanel Spacing="4" IsVisible="{Binding !InteraCartella}">
+                                            <Grid ColumnDefinitions="*,Auto,Auto">
+                                                <TextBlock Grid.Column="0" Text="Foto caricate atleta:" FontSize="10" Foreground="#9EA3AE" VerticalAlignment="Center"/>
+                                                <Button Grid.Column="1" Classes="secondary" Content="Tutte" FontSize="9" Padding="4,2" Margin="0,0,4,0"
+                                                        Command="{Binding SelectAllFotoAtletaCommand}"/>
+                                                <Button Grid.Column="2" Classes="secondary" Content="Nessuna" FontSize="9" Padding="4,2"
+                                                        Command="{Binding DeselectAllFotoAtletaCommand}"/>
+                                            </Grid>
+
+                                            <ScrollViewer MaxHeight="100">
+                                                <ItemsControl ItemsSource="{Binding FotoDisponibiliAtleta}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate DataType="vm:FotoSelectionItem">
+                                                            <CheckBox IsChecked="{Binding IsSelected}" Margin="0,1">
+                                                                <TextBlock Text="{Binding Foto.NomeFileOriginale}" FontSize="10" TextTrimming="CharacterEllipsis"/>
+                                                            </CheckBox>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </ScrollViewer>
+                                        </StackPanel>
+
+                                        <StackPanel Spacing="2">
+                                            <TextBlock Text="Note Ordine:" FontSize="10" Foreground="#9EA3AE"/>
+                                            <TextBox Text="{Binding NoteAcquisto}" PlaceholderText="es. Pagato con POS, inviare via WeTransfer" Height="50" AcceptsReturn="True"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+
+                            </Grid>
+
+                            <!-- Messaggio Feedback Acquisto -->
+                            <Border Background="#1F2F20" BorderBrush="#2ECC71" BorderThickness="1" CornerRadius="4" Padding="10,6"
+                                    IsVisible="{Binding AcquistoStatusMessage, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                <TextBlock Text="{Binding AcquistoStatusMessage}" Foreground="#2ECC71" FontSize="11"/>
+                            </Border>
+
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Storico Ordini Registrati -->
+                    <Grid Grid.Row="1" RowDefinitions="Auto,*">
+                        <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto" Margin="0,0,0,10">
+                            <TextBlock Grid.Column="0" Text="Storico Ordini Registrati per questo Evento"
+                                       FontSize="13" FontWeight="Bold" Foreground="#EDEDED" VerticalAlignment="Center"/>
+
+                            <Border Grid.Column="2" Background="#1F2F20" BorderBrush="#2ECC71" BorderThickness="1" CornerRadius="4" Padding="10,4" Margin="0,0,10,0">
+                                <TextBlock Text="{Binding TotaleIncassatoEvento, StringFormat='Incasso Totale: € {0:N2}'}"
+                                           FontWeight="Bold" FontSize="12" Foreground="#2ECC71"/>
+                            </Border>
+
+                            <Border Grid.Column="3" Background="#22252B" BorderBrush="#2E323B" BorderThickness="1" CornerRadius="4" Padding="10,4">
+                                <TextBlock Text="{Binding TotaleOrdiniEvento, StringFormat='Ordini: {0}'}"
+                                           FontWeight="SemiBold" FontSize="12" Foreground="#00B4D8"/>
+                            </Border>
+                        </Grid>
+
+                        <ScrollViewer Grid.Row="1">
+                            <ItemsControl ItemsSource="{Binding Acquisti}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="models:AcquistoFoto">
+                                        <Border Background="#1A1C20" BorderBrush="#2E323B" BorderThickness="1"
+                                                CornerRadius="6" Padding="14,10" Margin="0,0,0,8">
+                                            <Grid ColumnDefinitions="110,180,120,*,110,130,Auto">
+
+                                                <!-- Data/Ora -->
+                                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding DataAcquisto, StringFormat='{}{0:dd/MM/yyyy}'}" FontSize="11" FontWeight="SemiBold" Foreground="#EDEDED"/>
+                                                    <TextBlock Text="{Binding DataAcquisto, StringFormat='{}{0:HH:mm}'}" FontSize="10" Foreground="#636773"/>
+                                                </StackPanel>
+
+                                                <!-- Atleta -->
+                                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <Border Background="#FF8C32" CornerRadius="3" Padding="4,1">
+                                                            <TextBlock Text="{Binding NumeroPettorale, StringFormat='#{0}'}" FontWeight="Bold" FontSize="9" Foreground="#121316"/>
+                                                        </Border>
+                                                        <TextBlock Text="{Binding NomeAtleta}" FontWeight="SemiBold" FontSize="12" Foreground="#EDEDED" TextTrimming="CharacterEllipsis"/>
+                                                    </StackPanel>
+                                                    <TextBlock Text="{Binding NomeDisciplina}" FontSize="10" Foreground="#9EA3AE"/>
+                                                </StackPanel>
+
+                                                <!-- Recapiti -->
+                                                <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="2">
+                                                    <TextBlock Text="{Binding EmailCliente}" FontSize="10" Foreground="#00B4D8" TextTrimming="CharacterEllipsis"/>
+                                                    <TextBlock Text="{Binding TelefonoCliente}" FontSize="10" Foreground="#9EA3AE" TextTrimming="CharacterEllipsis"/>
+                                                </StackPanel>
+
+                                                <!-- Pacchetti & Voci -->
+                                                <StackPanel Grid.Column="3" VerticalAlignment="Center" Margin="10,0" Spacing="2">
+                                                    <TextBlock Text="{Binding VociSommarioDisplay}" FontSize="11" Foreground="#EDEDED" TextTrimming="CharacterEllipsis"/>
+                                                    <TextBlock Text="{Binding RiferimentoFotoDisplay}" FontSize="10" Foreground="#636773"/>
+                                                </StackPanel>
+
+                                                <!-- Totale Pagato -->
+                                                <TextBlock Grid.Column="4" Text="{Binding TotalePagato, StringFormat='€ {0:N2}'}"
+                                                           FontSize="14" FontWeight="Bold" Foreground="#2ECC71"
+                                                           VerticalAlignment="Center"/>
+
+                                                <!-- Stato / Cartella -->
+                                                <Border Grid.Column="5" Background="#22252B" CornerRadius="4" Padding="6,2" VerticalAlignment="Center" HorizontalAlignment="Left">
+                                                    <TextBlock Text="{Binding Stato}" FontSize="10" Foreground="#EDEDED"/>
+                                                </Border>
+
+                                                <!-- Elimina -->
+                                                <Button Grid.Column="6" Classes="danger" Content="✕" Padding="6,2" FontSize="11"
+                                                        Command="{Binding $parent[UserControl].((vm:EventDetailViewModel)DataContext).DeleteAcquistoCommand}"
+                                                        CommandParameter="{Binding}"/>
+
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Grid>
+
+                </Grid>
+            </TabItem>
+
         </TabControl>
 
     </Grid>

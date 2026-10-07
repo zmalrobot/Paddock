@@ -43,6 +43,17 @@ public interface IExcelRepository
     Task<List<Foto>> GetFotoByAtletaAsync(Guid atletaId, CancellationToken cancellationToken = default);
     Task AddFotoBatchAsync(IEnumerable<Foto> fotoList, CancellationToken cancellationToken = default);
     Task DeleteFotoAsync(Guid fotoId, CancellationToken cancellationToken = default);
+
+    // Catalogo Prezzi
+    Task<List<PrezzoCatalogoItem>> GetCatalogoPrezziAsync(CancellationToken cancellationToken = default);
+    Task SaveCatalogoPrezziAsync(IEnumerable<PrezzoCatalogoItem> items, CancellationToken cancellationToken = default);
+    Task UpsertPrezzoCatalogoItemAsync(PrezzoCatalogoItem item, CancellationToken cancellationToken = default);
+    Task DeletePrezzoCatalogoItemAsync(Guid itemId, CancellationToken cancellationToken = default);
+
+    // Acquisti Foto
+    Task<List<AcquistoFoto>> GetAcquistiByEventoAsync(Guid eventoId, CancellationToken cancellationToken = default);
+    Task UpsertAcquistoFotoAsync(AcquistoFoto acquisto, CancellationToken cancellationToken = default);
+    Task DeleteAcquistoFotoAsync(Guid acquistoId, CancellationToken cancellationToken = default);
 }
 
 public interface IAppPreferencesService

@@ -30,7 +30,7 @@ public class ExcelRepositoryTests : IDisposable
     }
 
     [Fact]
-    public async Task EnsureDatabaseInitializedAsync_CreatesAllFiveSheets()
+    public async Task EnsureDatabaseInitializedAsync_CreatesAllSevenSheets()
     {
         // Arrange
         var repo = new ExcelRepository(_testDbPath);
@@ -46,6 +46,8 @@ public class ExcelRepositoryTests : IDisposable
         wb.Worksheets.Contains("Atleti").Should().BeTrue();
         wb.Worksheets.Contains("Foto").Should().BeTrue();
         wb.Worksheets.Contains("Impostazioni").Should().BeTrue();
+        wb.Worksheets.Contains("ListinoPrezzi").Should().BeTrue();
+        wb.Worksheets.Contains("Acquisti").Should().BeTrue();
     }
 
     [Fact]
@@ -212,6 +214,94 @@ public class ExcelRepositoryTests : IDisposable
         await repo.SwitchDatabaseAsync(switchDbPath);
         repo.DatabaseFilePath.Should().Be(switchDbPath);
         File.Exists(switchDbPath).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task CatalogoPrezzi_CRUD_WorksAccurately()
+    {
+        // Arrange
+        var repo = new ExcelRepository(_testDbPath);
+        await repo.EnsureDatabaseInitializedAsync();
+
+        // 1. Get initial default items
+        var items = await repo.GetCatalogoPrezziAsync();
+        items.Should().HaveCount(9);
+        items.Should().Contain(i => i.Nome == "Foto Singola Digitale" && i.Prezzo == 10.00m);
+
+        // 2. Add custom item
+        var customItem = new PrezzoCatalogoItem
+        {
+            Nome = "Pacchetto Super VIP 50 Foto",
+            Categoria = CategoriaPrezzo.PacchettoFoto,
+            Prezzo = 250.00m,
+            QuantitaFotoIncluse = 50,
+            Descrizione = "50 foto ritoccate"
+        };
+        await repo.UpsertPrezzoCatalogoItemAsync(customItem);
+
+        var updated = await repo.GetCatalogoPrezziAsync();
+        updated.Should().HaveCount(10);
+        updated.Should().Contain(i => i.Nome == "Pacchetto Super VIP 50 Foto" && i.Prezzo == 250.00m);
+
+        // 3. Delete custom item
+        await repo.DeletePrezzoCatalogoItemAsync(customItem.Id);
+        var afterDelete = await repo.GetCatalogoPrezziAsync();
+        afterDelete.Should().HaveCount(9);
+        afterDelete.Should().NotContain(i => i.Id == customItem.Id);
+    }
+
+    [Fact]
+    public async Task AcquistiFoto_CRUD_WorksAccurately()
+    {
+        // Arrange
+        var repo = new ExcelRepository(_testDbPath);
+        await repo.EnsureDatabaseInitializedAsync();
+
+        var eventoId = Guid.NewGuid();
+        var atletaId = Guid.NewGuid();
+
+        var acquisto = new AcquistoFoto
+        {
+            EventoId = eventoId,
+            AtletaId = atletaId,
+            NomeAtleta = "Mario Rossi",
+            NumeroPettorale = "42",
+            NomeDisciplina = "Slalom Gigante",
+            Voci = new List<VoceAcquisto>
+            {
+                new() { NomeArticolo = "Foto Singola", PrezzoUnitario = 10.00m, Quantita = 2 },
+                new() { NomeArticolo = "Editing Base", PrezzoUnitario = 5.00m, Quantita = 1 }
+            },
+            TotaleQuantita = 3,
+            TotaleCalcolato = 25.00m,
+            TotalePagato = 20.00m, // sconto
+            EmailCliente = "mario.rossi@example.com",
+            TelefonoCliente = "+39 333 1234567",
+            InteraCartella = false,
+            FileFotoSelezionate = new List<string> { "IMG_001.JPG", "IMG_002.JPG" },
+            Note = "Consegna urgente",
+            Stato = "Completato"
+        };
+
+        // Act 1: Insert
+        await repo.UpsertAcquistoFotoAsync(acquisto);
+
+        // Assert 1: Query by Evento
+        var list = await repo.GetAcquistiByEventoAsync(eventoId);
+        list.Should().HaveCount(1);
+        var loaded = list[0];
+        loaded.Id.Should().Be(acquisto.Id);
+        loaded.NomeAtleta.Should().Be("Mario Rossi");
+        loaded.NumeroPettorale.Should().Be("42");
+        loaded.TotalePagato.Should().Be(20.00m);
+        loaded.EmailCliente.Should().Be("mario.rossi@example.com");
+        loaded.Voci.Should().HaveCount(2);
+        loaded.FileFotoSelezionate.Should().HaveCount(2);
+
+        // Act 2: Delete
+        await repo.DeleteAcquistoFotoAsync(acquisto.Id);
+        var emptyList = await repo.GetAcquistiByEventoAsync(eventoId);
+        emptyList.Should().BeEmpty();
     }
 }
 

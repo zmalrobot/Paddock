@@ -81,3 +81,85 @@ public class Foto
     public bool IsRaw => Formato.Equals("RAW", StringComparison.OrdinalIgnoreCase);
 }
 
+public enum CategoriaPrezzo
+{
+    FotoSingola,
+    PacchettoFoto,
+    PacchettoDisciplina,
+    EditingBase,
+    EditingAvanzato
+}
+
+public class PrezzoCatalogoItem
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Nome { get; set; } = string.Empty;
+    public CategoriaPrezzo Categoria { get; set; } = CategoriaPrezzo.FotoSingola;
+    public decimal Prezzo { get; set; }
+    public int QuantitaFotoIncluse { get; set; } = 1;
+    public string? Descrizione { get; set; }
+
+    public string CategoriaDisplay => Categoria switch
+    {
+        CategoriaPrezzo.FotoSingola => "Foto Singola",
+        CategoriaPrezzo.PacchettoFoto => "Pacchetto Foto",
+        CategoriaPrezzo.PacchettoDisciplina => "Pacchetto Disciplina",
+        CategoriaPrezzo.EditingBase => "Editing Base",
+        CategoriaPrezzo.EditingAvanzato => "Editing Avanzato",
+        _ => Categoria.ToString()
+    };
+}
+
+public class VoceAcquisto
+{
+    public Guid PrezzoItemId { get; set; }
+    public string NomeArticolo { get; set; } = string.Empty;
+    public CategoriaPrezzo Categoria { get; set; } = CategoriaPrezzo.FotoSingola;
+    public decimal PrezzoUnitario { get; set; }
+    public int Quantita { get; set; } = 1;
+    public decimal Subtotale => PrezzoUnitario * Quantita;
+}
+
+public class AcquistoFoto
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid EventoId { get; set; }
+    public DateTime DataAcquisto { get; set; } = DateTime.Now;
+
+    // Atleta
+    public Guid AtletaId { get; set; }
+    public string NomeAtleta { get; set; } = string.Empty;
+    public string NumeroPettorale { get; set; } = string.Empty;
+
+    // Disciplina
+    public Guid? DisciplinaId { get; set; }
+    public string NomeDisciplina { get; set; } = string.Empty;
+
+    // Pacchetti / Voci
+    public List<VoceAcquisto> Voci { get; set; } = new();
+    public int TotaleQuantita { get; set; }
+    public decimal TotaleCalcolato { get; set; }
+    public decimal TotalePagato { get; set; }
+
+    // Recapiti
+    public string EmailCliente { get; set; } = string.Empty;
+    public string TelefonoCliente { get; set; } = string.Empty;
+
+    // Riferimento Foto
+    public bool InteraCartella { get; set; } = true;
+    public List<string> FileFotoSelezionate { get; set; } = new();
+    public string? CartellaPathRiferimento { get; set; }
+
+    // Note e Stato
+    public string? Note { get; set; }
+    public string Stato { get; set; } = "Completato";
+
+    public string RiferimentoFotoDisplay => InteraCartella
+        ? "Intera Cartella Atleta"
+        : $"{FileFotoSelezionate.Count} foto selezionate";
+
+    public string VociSommarioDisplay => Voci != null && Voci.Count > 0
+        ? string.Join(", ", Voci.Select(v => $"{v.NomeArticolo} x{v.Quantita}"))
+        : "Nessun pacchetto";
+}
+
