@@ -58,7 +58,7 @@ public partial class MainWindow : Window
                 var target = all.FirstOrDefault(s => s.Bounds.X == config.TargetScreen?.BoundsX && s.Bounds.Y == config.TargetScreen?.BoundsY)
                     ?? all.FirstOrDefault();
 
-                var vm = new SlideshowWindowViewModel(config, mainVm.ExcelRepo);
+                var vm = new SlideshowWindowViewModel(config, mainVm.ExcelRepo, mainVm.ImageService);
                 var win = new SlideshowWindow
                 {
                     DataContext = vm

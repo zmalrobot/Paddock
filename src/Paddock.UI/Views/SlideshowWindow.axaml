@@ -13,43 +13,27 @@
     <Grid Background="#000000">
 
         <!-- Layer A (Foto Base) -->
-        <Image Source="{Binding CurrentImage}"
+        <Image x:Name="LayerA"
+               Classes="slide-layer"
+               Source="{Binding CurrentImage}"
+               Opacity="{Binding LayerAOpacity}"
                Stretch="Uniform"
                HorizontalAlignment="Center"
-               VerticalAlignment="Center">
-            <Image.Transitions>
-                <Transitions>
-                    <DoubleTransition Property="Opacity" Duration="0:0:0.7"/>
-                </Transitions>
-            </Image.Transitions>
-            <Image.Styles>
-                <Style Selector="Image">
-                    <Setter Property="Opacity" Value="1.0"/>
-                </Style>
-            </Image.Styles>
-        </Image>
+               VerticalAlignment="Center"/>
 
         <!-- Layer B (Foto Successiva con Transizione Dinamica) -->
-        <Image Source="{Binding NextImage}"
+        <Image x:Name="LayerB"
+               Classes="slide-layer"
+               Source="{Binding NextImage}"
+               Opacity="{Binding LayerBOpacity}"
                Stretch="Uniform"
                HorizontalAlignment="Center"
-               VerticalAlignment="Center">
-            <Image.Transitions>
-                <Transitions>
-                    <DoubleTransition Property="Opacity" Duration="0:0:0.7"/>
-                </Transitions>
-            </Image.Transitions>
-            <Image.Styles>
-                <Style Selector="Image">
-                    <Setter Property="Opacity" Value="0.0"/>
-                </Style>
-            </Image.Styles>
-        </Image>
+               VerticalAlignment="Center"/>
 
         <!-- Flash Strobe Overlay per effetto Flash Sportivo -->
         <Rectangle x:Name="FlashOverlay"
                    Fill="#FFFFFF"
-                   Opacity="0"
+                   Opacity="{Binding FlashOpacity}"
                    IsHitTestVisible="False">
             <Rectangle.Transitions>
                 <Transitions>

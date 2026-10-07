@@ -1,3 +1,5 @@
+using System.IO;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -27,6 +29,7 @@ public partial class SlideshowWindowViewModel : ViewModelBase
 {
     private readonly SlideshowConfig _config;
     private readonly IExcelRepository _excelRepo;
+    private readonly IImageProcessingService? _imageService;
     private readonly DispatcherTimer _timer;
     private readonly DispatcherTimer _hudTimer;
     private readonly Random _random = new();
@@ -35,11 +38,28 @@ public partial class SlideshowWindowViewModel : ViewModelBase
     private int _currentIndex = -1;
     private int _currentTransitionIndex = 0;
 
-    [ObservableProperty]
-    private Bitmap? _currentImage;
+    /// <summary>
+    /// Loader opzionale per decoupling e unit testing.
+    /// </summary>
+    public Func<string, Task<IImage?>>? ImageLoader { get; set; }
 
     [ObservableProperty]
-    private Bitmap? _nextImage;
+    private IImage? _currentImage;
+
+    [ObservableProperty]
+    private IImage? _nextImage;
+
+    [ObservableProperty]
+    private double _layerAOpacity = 1.0;
+
+    [ObservableProperty]
+    private double _layerBOpacity = 0.0;
+
+    [ObservableProperty]
+    private bool _transitionsEnabled = true;
+
+    [ObservableProperty]
+    private double _flashOpacity = 0.0;
 
     [ObservableProperty]
     private string _currentAtletaText = string.Empty;
@@ -58,10 +78,14 @@ public partial class SlideshowWindowViewModel : ViewModelBase
 
     public event Action? RequestClose;
 
-    public SlideshowWindowViewModel(SlideshowConfig config, IExcelRepository excelRepo)
+    public SlideshowWindowViewModel(
+        SlideshowConfig config,
+        IExcelRepository excelRepo,
+        IImageProcessingService? imageService = null)
     {
         _config = config;
         _excelRepo = excelRepo;
+        _imageService = imageService;
 
         _timer = new DispatcherTimer
         {
@@ -89,8 +113,8 @@ public partial class SlideshowWindowViewModel : ViewModelBase
             return;
         }
 
-        // Mostra prima foto
-        ShowNextPhoto();
+        // Mostra prima foto immediatamente
+        await ShowNextPhotoAsync();
 
         _timer.Start();
         _hudTimer.Start();
@@ -114,11 +138,28 @@ public partial class SlideshowWindowViewModel : ViewModelBase
         ).ToList();
 
         var items = new List<SlideshowPhotoItem>();
+        Evento? evCache = null;
+
         foreach (var f in matchingFoto)
         {
-            var absPath = Path.IsPathRooted(f.PathRelativo)
-                ? f.PathRelativo
-                : Path.Combine(basePath, f.PathRelativo);
+            var cleanRel = f.PathRelativo.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
+            var absPath = Path.IsPathRooted(cleanRel)
+                ? cleanRel
+                : Path.Combine(basePath, cleanRel);
+
+            if (!File.Exists(absPath))
+            {
+                // Fallback: cerca nella cartella destinazione root dell'evento
+                evCache ??= await _excelRepo.GetEventoByIdAsync(_config.EventoId);
+                if (evCache != null && !string.IsNullOrWhiteSpace(evCache.CartellaDestinazioneRoot))
+                {
+                    var altPath = Path.Combine(evCache.CartellaDestinazioneRoot, Path.GetFileName(cleanRel));
+                    if (File.Exists(altPath))
+                    {
+                        absPath = altPath;
+                    }
+                }
+            }
 
             if (File.Exists(absPath))
             {
@@ -145,31 +186,51 @@ public partial class SlideshowWindowViewModel : ViewModelBase
         _photos = items;
     }
 
-    private void OnTimerTick(object? sender, EventArgs e)
+    private async void OnTimerTick(object? sender, EventArgs e)
     {
-        ShowNextPhoto();
+        try
+        {
+            await ShowNextPhotoAsync();
+        }
+        catch
+        {
+            // In caso di errore nel ciclo, disabilita le transizioni e continua lo scorrimento
+            TransitionsEnabled = false;
+        }
     }
 
-    private void ShowNextPhoto()
+    public async Task ShowNextPhotoAsync()
     {
         if (_photos.Count == 0) return;
 
-        _currentIndex++;
-        if (_currentIndex >= _photos.Count)
+        IImage? img = null;
+        SlideshowPhotoItem? currentItem = null;
+        int attempts = 0;
+
+        // Cerca la prossima foto caricabile (salta file corrotti/illeggibili senza bloccare lo slideshow)
+        while (img == null && attempts < _photos.Count)
         {
-            _currentIndex = 0;
-            if (_config.IsRandomOrder && _photos.Count > 1)
+            _currentIndex++;
+            if (_currentIndex >= _photos.Count)
             {
-                // Rimescola per il ciclo successivo
-                for (int i = _photos.Count - 1; i > 0; i--)
+                _currentIndex = 0;
+                if (_config.IsRandomOrder && _photos.Count > 1)
                 {
-                    int j = _random.Next(i + 1);
-                    (_photos[i], _photos[j]) = (_photos[j], _photos[i]);
+                    // Rimescola per il ciclo successivo
+                    for (int i = _photos.Count - 1; i > 0; i--)
+                    {
+                        int j = _random.Next(i + 1);
+                        (_photos[i], _photos[j]) = (_photos[j], _photos[i]);
+                    }
                 }
             }
+
+            currentItem = _photos[_currentIndex];
+            img = await LoadImageAsync(currentItem);
+            attempts++;
         }
 
-        var item = _photos[_currentIndex];
+        if (img == null || currentItem == null) return;
 
         // Sceglie la transizione successiva
         if (_config.SelectedTransitionIds.Count > 0)
@@ -182,29 +243,143 @@ public partial class SlideshowWindowViewModel : ViewModelBase
             CurrentTransition = "crossfade";
         }
 
+        // Prima foto in assoluto: mostra direttamente sul Layer A senza ritardo
+        if (CurrentImage == null && NextImage == null)
+        {
+            CurrentImage = img;
+            LayerAOpacity = 1.0;
+            LayerBOpacity = 0.0;
+            IsLayerBActive = false;
+        }
+        else
+        {
+            try
+            {
+                if (TransitionsEnabled)
+                {
+                    ApplyPhotoWithTransition(img);
+                }
+                else
+                {
+                    ApplyPhotoDirectNoTransition(img);
+                }
+            }
+            catch
+            {
+                // Nel caso di errore nelle transizioni le immagini devono comunque scorrere ma senza transizione
+                TransitionsEnabled = false;
+                ApplyPhotoDirectNoTransition(img);
+            }
+        }
+
+        CurrentAtletaText = currentItem.AtletaInfo;
+        CurrentCounterText = $"{_currentIndex + 1} / {_photos.Count}";
+    }
+
+    private void ApplyPhotoWithTransition(IImage img)
+    {
+        if (CurrentTransition == "strobe_flash")
+        {
+            FlashOpacity = 0.6;
+            _ = Task.Delay(80).ContinueWith(_ => Dispatcher.UIThread.Post(() => FlashOpacity = 0.0));
+        }
+
+        if (!IsLayerBActive)
+        {
+            var old = NextImage;
+            NextImage = img;
+            LayerBOpacity = 1.0;
+            LayerAOpacity = 0.0;
+            IsLayerBActive = true;
+            (old as IDisposable)?.Dispose();
+        }
+        else
+        {
+            var old = CurrentImage;
+            CurrentImage = img;
+            LayerAOpacity = 1.0;
+            LayerBOpacity = 0.0;
+            IsLayerBActive = false;
+            (old as IDisposable)?.Dispose();
+        }
+    }
+
+    public void ApplyPhotoDirectNoTransition(IImage img)
+    {
+        FlashOpacity = 0.0;
+
+        if (!IsLayerBActive)
+        {
+            var old = NextImage;
+            NextImage = img;
+            LayerBOpacity = 1.0;
+            LayerAOpacity = 0.0;
+            IsLayerBActive = true;
+            (old as IDisposable)?.Dispose();
+        }
+        else
+        {
+            var old = CurrentImage;
+            CurrentImage = img;
+            LayerAOpacity = 1.0;
+            LayerBOpacity = 0.0;
+            IsLayerBActive = false;
+            (old as IDisposable)?.Dispose();
+        }
+    }
+
+    private async Task<IImage?> LoadImageAsync(SlideshowPhotoItem item)
+    {
+        if (ImageLoader != null)
+        {
+            return await ImageLoader(item.AbsolutePath);
+        }
+
         try
         {
-            var bmp = new Bitmap(item.AbsolutePath);
-
-            // Alterna tra Layer A e Layer B per consentire la transizione fluida
-            if (!IsLayerBActive)
+            if (item.Foto.IsRaw)
             {
-                NextImage = bmp;
-                IsLayerBActive = true;
-            }
-            else
-            {
-                CurrentImage = bmp;
-                IsLayerBActive = false;
+                if (_imageService != null)
+                {
+                    var bytes = await _imageService.GenerateThumbnailAsync(item.AbsolutePath, 2560, 1600);
+                    if (bytes != null && bytes.Length > 0)
+                    {
+                        using var ms = new MemoryStream(bytes);
+                        return new Bitmap(ms);
+                    }
+                }
+                return null;
             }
 
-            CurrentAtletaText = item.AtletaInfo;
-            CurrentCounterText = $"{_currentIndex + 1} / {_photos.Count}";
+            return await Task.Run<IImage?>(() =>
+            {
+                using var fs = new FileStream(item.AbsolutePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                using var ms = new MemoryStream();
+                fs.CopyTo(ms);
+                ms.Position = 0;
+                return new Bitmap(ms);
+            });
         }
         catch
         {
-            // Se il file non può essere caricato passa al successivo
+            return null;
         }
+    }
+
+    [RelayCommand]
+    public async Task NextPhotoManualAsync()
+    {
+        UserActivityDetected();
+        await ShowNextPhotoAsync();
+    }
+
+    [RelayCommand]
+    public async Task PreviousPhotoManualAsync()
+    {
+        if (_photos.Count <= 1) return;
+        UserActivityDetected();
+        _currentIndex = (_currentIndex - 2 + _photos.Count) % _photos.Count;
+        await ShowNextPhotoAsync();
     }
 
     [RelayCommand]
@@ -223,4 +398,3 @@ public partial class SlideshowWindowViewModel : ViewModelBase
         RequestClose?.Invoke();
     }
 }
-

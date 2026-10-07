@@ -1,3 +1,4 @@
+using Avalonia.Media;
 using FluentAssertions;
 using Moq;
 using Paddock.Core.DTOs;
@@ -693,6 +694,119 @@ public class ViewModelTests
         await viewer.DeleteCurrentPhotoAsync();
         viewer.PhotosCount.Should().Be(0);
         closeTriggered.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task SlideshowWindowViewModel_InitializesAndAlternatesLayersWithFallback()
+    {
+        var eventoId = Guid.NewGuid();
+        var atletaId = Guid.NewGuid();
+        var mockRepo = new Mock<IExcelRepository>();
+        mockRepo.Setup(r => r.GetBasePathAsync(default)).ReturnsAsync(@"C:\Photos");
+        mockRepo.Setup(r => r.GetFotoByEventoAsync(eventoId, default)).ReturnsAsync(new List<Foto>
+        {
+            new() { Id = Guid.NewGuid(), EventoId = eventoId, AtletaId = atletaId, PathRelativo = @"C:\Photos\img1.png", NomeFileOriginale = "img1.png", Formato = "PNG" },
+            new() { Id = Guid.NewGuid(), EventoId = eventoId, AtletaId = atletaId, PathRelativo = @"C:\Photos\img2.png", NomeFileOriginale = "img2.png", Formato = "PNG" }
+        });
+        mockRepo.Setup(r => r.GetAtletiByEventoAsync(eventoId, default)).ReturnsAsync(new List<Atleta>
+        {
+            new() { Id = atletaId, Nome = "Mario", Cognome = "Rossi", NumeroPettorale = "10" }
+        });
+
+        var config = new SlideshowConfig
+        {
+            EventoId = eventoId,
+            SelectedAtletiIds = new List<Guid> { atletaId },
+            IncludeJpegPng = true,
+            IncludeRaw = false,
+            DurationSeconds = 5,
+            IsRandomOrder = false,
+            SelectedTransitionIds = new List<string> { "crossfade" }
+        };
+
+        var mockImg = new Mock<IImage>().Object;
+        var vm = new SlideshowWindowViewModel(config, mockRepo.Object)
+        {
+            ImageLoader = _ => Task.FromResult<IImage?>(mockImg)
+        };
+
+        // Simula file presenti per LoadPhotosAsync
+        typeof(SlideshowWindowViewModel)
+            .GetField("_photos", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
+            .SetValue(vm, new List<SlideshowPhotoItem>
+            {
+                new(new Foto { Id = Guid.NewGuid() }, @"C:\Photos\img1.png", "Mario Rossi", "PNG"),
+                new(new Foto { Id = Guid.NewGuid() }, @"C:\Photos\img2.png", "Mario Rossi", "PNG")
+            });
+
+        // Prima foto: Layer A attivo, Layer B inattivo
+        await vm.ShowNextPhotoAsync();
+        vm.CurrentImage.Should().NotBeNull();
+        vm.LayerAOpacity.Should().Be(1.0);
+        vm.LayerBOpacity.Should().Be(0.0);
+        vm.IsLayerBActive.Should().BeFalse();
+
+        // Seconda foto: Layer B attivo, Layer A inattivo
+        await vm.ShowNextPhotoAsync();
+        vm.NextImage.Should().NotBeNull();
+        vm.LayerBOpacity.Should().Be(1.0);
+        vm.LayerAOpacity.Should().Be(0.0);
+        vm.IsLayerBActive.Should().BeTrue();
+
+        // Simulazione fallback su errore nelle transizioni:
+        // L'immagine deve scorrere comunque (commutando su Layer A) ma senza transizione
+        vm.TransitionsEnabled = false;
+        await vm.ShowNextPhotoAsync();
+        vm.LayerAOpacity.Should().Be(1.0);
+        vm.LayerBOpacity.Should().Be(0.0);
+        vm.IsLayerBActive.Should().BeFalse();
+        vm.TransitionsEnabled.Should().BeFalse();
+
+        vm.CloseSlideshow();
+    }
+
+    [Fact]
+    public async Task SlideshowWindowViewModel_SkipsUnreadablePhoto_KeepsLoopActive()
+    {
+        var eventoId = Guid.NewGuid();
+        var atletaId = Guid.NewGuid();
+        var mockRepo = new Mock<IExcelRepository>();
+        mockRepo.Setup(r => r.GetBasePathAsync(default)).ReturnsAsync(@"C:\Photos");
+
+        var config = new SlideshowConfig
+        {
+            EventoId = eventoId,
+            SelectedAtletiIds = new List<Guid> { atletaId },
+            IncludeJpegPng = true,
+            IncludeRaw = false,
+            DurationSeconds = 5,
+            IsRandomOrder = false,
+            SelectedTransitionIds = new List<string> { "crossfade" }
+        };
+
+        var mockImg = new Mock<IImage>().Object;
+        var vm = new SlideshowWindowViewModel(config, mockRepo.Object)
+        {
+            ImageLoader = path => path.Contains("missing")
+                ? Task.FromResult<IImage?>(null)
+                : Task.FromResult<IImage?>(mockImg)
+        };
+
+        typeof(SlideshowWindowViewModel)
+            .GetField("_photos", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
+            .SetValue(vm, new List<SlideshowPhotoItem>
+            {
+                new(new Foto { Id = Guid.NewGuid() }, @"C:\Photos\missing_nonexistent.png", "Luigi Verdi", "PNG"),
+                new(new Foto { Id = Guid.NewGuid() }, @"C:\Photos\valid.png", "Luigi Verdi", "PNG")
+            });
+
+        // Il file illeggibile missing viene saltato e il file valido valid.png viene caricato
+        await vm.ShowNextPhotoAsync();
+        vm.CurrentImage.Should().NotBeNull();
+        vm.LayerAOpacity.Should().Be(1.0);
+        vm.CurrentAtletaText.Should().Contain("Luigi Verdi");
+
+        vm.CloseSlideshow();
     }
 }
 

@@ -53,6 +53,7 @@ public partial class MainViewModel : ViewModelBase
 
     public string DatabasePath => _excelRepo.DatabaseFilePath;
     public IExcelRepository ExcelRepo => _excelRepo;
+    public IImageProcessingService? ImageService => _imageService;
 
     public MainViewModel(
         IExcelRepository excelRepo,
