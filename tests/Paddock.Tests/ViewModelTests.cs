@@ -896,5 +896,108 @@ public class ViewModelTests
         vm.CurrentPhotoNameText.Should().Be("EOS600D_20261007_153022_04_4589.JPG");
         vm.CurrentCounterText.Should().Be("1 / 1");
     }
+
+    [Fact]
+    public void PhotoBrowserModels_DefaultIsExpanded_IsFalse()
+    {
+        var atleta = new Atleta { NumeroPettorale = "10", Nome = "Paolo", Cognome = "Rossi" };
+        var disciplina = new Disciplina { NomeDisciplina = "Salto" };
+
+        var athleteGroup = new PhotoBrowserAthleteGroup(atleta);
+        var disciplinaGroup = new PhotoBrowserDisciplinaGroup(disciplina);
+
+        athleteGroup.IsExpanded.Should().BeFalse("I gruppi atleta nel photo browser devono essere collassati per impostazione predefinita");
+        disciplinaGroup.IsExpanded.Should().BeFalse("I gruppi disciplina nel photo browser devono essere collassati per impostazione predefinita");
+    }
+
+    [Fact]
+    public async Task EventDetailViewModel_PhotoAthleteFilter_FiltersCorrectlyByPettoraleAndNome()
+    {
+        var eventoId = Guid.NewGuid();
+        var evento = new Evento { Id = eventoId, NomeEvento = "Torneo Primavera" };
+
+        var atleta1 = new Atleta { Id = Guid.NewGuid(), EventoId = eventoId, NumeroPettorale = "101", Nome = "Mario", Cognome = "Rossi" };
+        var atleta2 = new Atleta { Id = Guid.NewGuid(), EventoId = eventoId, NumeroPettorale = "102", Nome = "Luigi", Cognome = "Bianchi" };
+        var disciplina = new Disciplina { Id = Guid.NewGuid(), EventoId = eventoId, NomeDisciplina = "Nuoto" };
+
+        var foto1 = new Foto { Id = Guid.NewGuid(), EventoId = eventoId, AtletaId = atleta1.Id, DisciplinaId = disciplina.Id, PathRelativo = "foto1.jpg", Formato = "JPEG" };
+        var foto2 = new Foto { Id = Guid.NewGuid(), EventoId = eventoId, AtletaId = atleta2.Id, DisciplinaId = disciplina.Id, PathRelativo = "foto2.jpg", Formato = "JPEG" };
+
+        var mockExcel = new Mock<IExcelRepository>();
+        mockExcel.Setup(r => r.GetEventDataBundleAsync(eventoId)).ReturnsAsync(new EventDataBundle
+        {
+            Atleti = new List<Atleta> { atleta1, atleta2 },
+            Discipline = new List<Disciplina> { disciplina },
+            Foto = new List<Foto> { foto1, foto2 },
+            CatalogoPrezzi = new List<PrezzoCatalogoItem>(),
+            Acquisti = new List<AcquistoFoto>()
+        });
+        mockExcel.Setup(r => r.GetBasePathAsync()).ReturnsAsync(@"C:\Archivio");
+
+        var mockFileOrg = new Mock<IFileOrganizationService>();
+        var vm = new EventDetailViewModel(evento, mockExcel.Object, mockFileOrg.Object);
+        await vm.LoadEventDataAsync();
+
+        // Senza filtro: entrambi presenti
+        vm.AthletePhotoGroups.Should().HaveCount(2);
+        vm.FlatActivePhotoItems.Should().HaveCount(2);
+
+        // Filtra per pettorale "101"
+        vm.PhotoAthleteFilter = "101";
+        vm.AthletePhotoGroups.Should().HaveCount(1);
+        vm.AthletePhotoGroups[0].Atleta.NumeroPettorale.Should().Be("101");
+        vm.FlatActivePhotoItems.Should().HaveCount(1);
+        vm.FlatActivePhotoItems[0].Foto.Id.Should().Be(foto1.Id);
+
+        // Filtra per cognome "Bianchi"
+        vm.PhotoAthleteFilter = "Bianchi";
+        vm.AthletePhotoGroups.Should().HaveCount(1);
+        vm.AthletePhotoGroups[0].Atleta.Cognome.Should().Be("Bianchi");
+        vm.FlatActivePhotoItems.Should().HaveCount(1);
+        vm.FlatActivePhotoItems[0].Foto.Id.Should().Be(foto2.Id);
+
+        // Filtro non corrispondente
+        vm.PhotoAthleteFilter = "999";
+        vm.AthletePhotoGroups.Should().BeEmpty();
+        vm.FlatActivePhotoItems.Should().BeEmpty();
+
+        // Ripristino filtro vuoto
+        vm.PhotoAthleteFilter = "";
+        vm.AthletePhotoGroups.Should().HaveCount(2);
+        vm.FlatActivePhotoItems.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void MainViewModel_OnJobCompleted_TriggersPhotoRefresh_ForActiveEvent()
+    {
+        var eventoId = Guid.NewGuid();
+        var evento = new Evento { Id = eventoId, NomeEvento = "Gara Slalom" };
+
+        var mockExcel = new Mock<IExcelRepository>();
+        mockExcel.Setup(r => r.GetBasePathAsync()).ReturnsAsync(@"C:\Archivio");
+        mockExcel.Setup(r => r.GetFotoByEventoAsync(eventoId)).ReturnsAsync(new List<Foto>());
+        mockExcel.Setup(r => r.GetAtletiByEventoAsync(eventoId)).ReturnsAsync(new List<Atleta>());
+
+        var mockPipeline = new Mock<IIngestionPipelineService>();
+        var mockSd = new Mock<ISdCardWatcherService>();
+        var mockFileOrg = new Mock<IFileOrganizationService>();
+
+        var mainVm = new MainViewModel(mockExcel.Object, mockFileOrg.Object, mockPipeline.Object, mockSd.Object);
+        var detailVm = new EventDetailViewModel(evento, mockExcel.Object, mockFileOrg.Object);
+        mainVm.ActiveEventDetail = detailVm;
+
+        // Raise JobCompleted with matching EventoId
+        var report = new IngestionProgressReport
+        {
+            JobId = Guid.NewGuid(),
+            EventoId = eventoId,
+            Status = IngestionStatus.Completed
+        };
+
+        mockPipeline.Raise(p => p.JobCompleted += null, mockPipeline.Object, report);
+
+        // Verifica che GetFotoByEventoAsync sia stato chiamato per l'evento attivo
+        mockExcel.Verify(r => r.GetFotoByEventoAsync(eventoId), Times.AtLeastOnce());
+    }
 }
 

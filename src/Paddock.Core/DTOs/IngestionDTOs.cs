@@ -38,6 +38,8 @@ public class IngestionJobRequest
 public class IngestionProgressReport
 {
     public Guid JobId { get; set; }
+    public Guid? EventoId { get; set; }
+    public Guid? AtletaId { get; set; }
     public IngestionStatus Status { get; set; } = IngestionStatus.Running;
     public string SourceName { get; set; } = string.Empty;
     public string TargetDescription { get; set; } = string.Empty;

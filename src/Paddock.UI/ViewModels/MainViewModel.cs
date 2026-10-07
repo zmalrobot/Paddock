@@ -73,12 +73,52 @@ public partial class MainViewModel : ViewModelBase
         JobManager = new JobManagerViewModel(_pipelineService);
 
         _excelRepo.LockContentionDetected += OnExcelLockContention;
+        _pipelineService.JobCompleted += OnIngestionJobCompleted;
         _sdCardWatcher.StartWatching();
+    }
+
+    private void OnIngestionJobCompleted(object? sender, IngestionProgressReport report)
+    {
+        if (report.Status == IngestionStatus.Completed)
+        {
+            SafeDispatch(async () =>
+            {
+                if (ActiveEventDetail != null && (!report.EventoId.HasValue || ActiveEventDetail.Evento.Id == report.EventoId.Value))
+                {
+                    await ActiveEventDetail.RefreshPhotosAsync();
+                    var ev = AllEventi.FirstOrDefault(e => e.Id == ActiveEventDetail.Evento.Id);
+                    if (ev != null)
+                    {
+                        ev.TotaleFoto = ActiveEventDetail.Evento.TotaleFoto;
+                        ev.TotaleByteOccupati = ActiveEventDetail.Evento.TotaleByteOccupati;
+                    }
+                }
+            });
+        }
+    }
+
+    private static void SafeDispatch(Action action)
+    {
+        try
+        {
+            if (Dispatcher.UIThread.CheckAccess())
+            {
+                action();
+            }
+            else
+            {
+                Dispatcher.UIThread.Post(action);
+            }
+        }
+        catch
+        {
+            action();
+        }
     }
 
     private void OnExcelLockContention(object? sender, LockContentionEventArgs e)
     {
-        Dispatcher.UIThread.Post(() =>
+        SafeDispatch(() =>
         {
             LockBannerMessage = e.Message;
             IsLockBannerVisible = true;

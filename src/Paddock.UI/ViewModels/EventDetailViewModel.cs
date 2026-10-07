@@ -54,6 +54,9 @@ public partial class EventDetailViewModel : ViewModelBase
     [ObservableProperty]
     private string _fotoFormatFilter = "TUTTI"; // "TUTTI", "JPEG", "RAW"
 
+    [ObservableProperty]
+    private string _photoAthleteFilter = string.Empty;
+
     // Gestione Acquisti Foto
     [ObservableProperty]
     private Atleta? _selectedAcquistoAtleta;
@@ -201,6 +204,11 @@ public partial class EventDetailViewModel : ViewModelBase
         _ = RebuildHierarchicalPhotoGroupsAsync();
     }
 
+    partial void OnPhotoAthleteFilterChanged(string value)
+    {
+        _ = RebuildHierarchicalPhotoGroupsAsync();
+    }
+
     private void ApplyAthleteFilter()
     {
         FilteredAtleti.Clear();
@@ -258,7 +266,6 @@ public partial class EventDetailViewModel : ViewModelBase
             item.DisciplinaDisplay = disciplina != null ? disciplina.NomeDisciplina : "Generale";
 
             items.Add(item);
-            FlatActivePhotoItems.Add(item);
         }
 
         var groupedByAtleta = items
@@ -266,10 +273,24 @@ public partial class EventDetailViewModel : ViewModelBase
             .OrderBy(g => AllAtleti.FirstOrDefault(a => a.Id == g.Key)?.NumeroPettorale)
             .ThenBy(g => AllAtleti.FirstOrDefault(a => a.Id == g.Key)?.Cognome);
 
+        var athleteFilter = PhotoAthleteFilter?.Trim() ?? string.Empty;
+
         foreach (var atletaGroup in groupedByAtleta)
         {
             var atleta = AllAtleti.FirstOrDefault(a => a.Id == atletaGroup.Key)
                 ?? new Atleta { Cognome = "Atleta", Nome = "Non Assegnato" };
+
+            if (!string.IsNullOrWhiteSpace(athleteFilter))
+            {
+                var matches = (atleta.NumeroPettorale?.Contains(athleteFilter, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                              (atleta.Nome?.Contains(athleteFilter, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                              (atleta.Cognome?.Contains(athleteFilter, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                              (atleta.DisplayPettoraleNome?.Contains(athleteFilter, StringComparison.OrdinalIgnoreCase) ?? false);
+                if (!matches)
+                {
+                    continue;
+                }
+            }
 
             var athleteGroupVm = new PhotoBrowserAthleteGroup(atleta);
 
@@ -286,6 +307,7 @@ public partial class EventDetailViewModel : ViewModelBase
                 foreach (var photoItem in disciplinaGroup)
                 {
                     disciplinaGroupVm.Photos.Add(photoItem);
+                    FlatActivePhotoItems.Add(photoItem);
                 }
 
                 athleteGroupVm.DisciplineGroups.Add(disciplinaGroupVm);
@@ -516,12 +538,20 @@ public partial class EventDetailViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private async Task RefreshPhotosAsync()
+    public async Task RefreshPhotosAsync()
     {
         IsBusy = true;
         BusyMessage = "Aggiornamento foto in corso...";
         try
         {
+            var atleti = await _excelRepo.GetAtletiByEventoAsync(Evento.Id);
+            if (atleti != null && atleti.Count > 0)
+            {
+                AllAtleti.Clear();
+                foreach (var a in atleti) AllAtleti.Add(a);
+                ApplyAthleteFilter();
+            }
+
             var foto = await _excelRepo.GetFotoByEventoAsync(Evento.Id);
             AllFoto.Clear();
             foreach (var f in foto) AllFoto.Add(f);

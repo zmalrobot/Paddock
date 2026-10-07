@@ -117,7 +117,7 @@ public partial class PhotoBrowserDisciplinaGroup : ObservableObject
     public string NomeDisciplina => string.IsNullOrWhiteSpace(Disciplina.NomeDisciplina) ? "Generale" : Disciplina.NomeDisciplina;
 
     [ObservableProperty]
-    private bool _isExpanded = true;
+    private bool _isExpanded = false;
 
     public ObservableCollection<PhotoItemViewModel> Photos { get; } = new();
 
@@ -163,7 +163,7 @@ public partial class PhotoBrowserAthleteGroup : ObservableObject
     public string DisplayTitle => Atleta.DisplayPettoraleNome;
 
     [ObservableProperty]
-    private bool _isExpanded = true;
+    private bool _isExpanded = false;
 
     public ObservableCollection<PhotoBrowserDisciplinaGroup> DisciplineGroups { get; } = new();
 

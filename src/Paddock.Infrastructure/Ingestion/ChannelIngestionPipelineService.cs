@@ -58,6 +58,8 @@ public class ChannelIngestionPipelineService : IIngestionPipelineService
         var report = new IngestionProgressReport
         {
             JobId = jobId,
+            EventoId = request.EventoTarget.Id,
+            AtletaId = request.AtletaTarget.Id,
             Status = IngestionStatus.Queued,
             SourceName = sourceLabel,
             TargetDescription = $"{request.AtletaTarget.DisplayPettoraleNome} — {request.DisciplinaTarget.NomeDisciplina}",
