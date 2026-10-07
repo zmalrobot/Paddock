@@ -1,0 +1,64 @@
+## Build & Compiler Outputs
+bin/
+obj/
+publish/
+artifacts/
+[Bb]in/
+[Oo]bj/
+*.publishproj
+
+## IDE & Editor Specific
+.vs/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.userprefs
+*.workspace
+
+# Keep VS Code settings for solution pointing
+.vscode/*
+!.vscode/settings.json
+
+## Testing & Coverage
+TestResults/
+coverage.*
+*.opencover.xml
+
+## NuGet & Dependencies
+*.nuget.props
+*.nuget.targets
+project.lock.json
+packages/
+
+## Operating System Specific
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+desktop.ini
+$RECYCLE.BIN/
+
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+
+# Linux
+*~
+.directory
+
+## Application Local Data & Caches
+# Temporary Excel files
+~$*.xlsx
+~$*.xls
+*.tmp
+
+# Paddock Local Preferences
+preferences.json
+*.log
+

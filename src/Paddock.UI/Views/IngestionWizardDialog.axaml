@@ -1,0 +1,152 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Paddock.UI.ViewModels"
+             x:Class="Paddock.UI.Views.IngestionWizardDialog"
+             x:DataType="vm:IngestionWizardViewModel"
+             Width="620">
+
+    <Border Background="#1A1C20"
+            BorderBrush="#2E323B"
+            BorderThickness="1"
+            CornerRadius="8"
+            Padding="24"
+            BoxShadow="0 8 32 #50000000">
+        <ScrollViewer MaxHeight="600">
+            <StackPanel Spacing="16">
+
+                <!-- Header -->
+                <StackPanel Spacing="2">
+                    <TextBlock Text="Ingestione Foto da Scheda SD" FontSize="18" FontWeight="SemiBold" Foreground="#EDEDED"/>
+                    <TextBlock Text="{Binding Evento.NomeEvento, StringFormat='Evento target: {0}'}" FontSize="12" Foreground="#FF8C32"/>
+                </StackPanel>
+
+                <!-- Sezione Sorgente / Rilevamento SD -->
+                <Border Background="#22252B" CornerRadius="6" Padding="14" BorderBrush="#2E323B" BorderThickness="1">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="Sorgente File (Scheda SD / DCIM)" FontWeight="SemiBold" Foreground="#EDEDED"/>
+
+                        <!-- Schede SD rilevate in tempo reale -->
+                        <TextBlock Text="Schede SD / Lettori Rilevati:" FontSize="11" Foreground="#9EA3AE"/>
+                        <ItemsControl ItemsSource="{Binding DetectedDrives}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Classes="secondary" Margin="0,2,0,2" HorizontalAlignment="Stretch"
+                                            Command="{Binding $parent[UserControl].((vm:IngestionWizardViewModel)DataContext).SelectDriveCommand}"
+                                            CommandParameter="{Binding}">
+                                        <Grid ColumnDefinitions="Auto,*,Auto">
+                                            <TextBlock Grid.Column="0" Text="💾 " VerticalAlignment="Center"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding DisplayName}" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                            <TextBlock Grid.Column="2" Text="{Binding AvailableFreeSpace, Converter={StaticResource ByteToSizeConverter}, StringFormat='Liberi: {0}'}"
+                                                       FontSize="11" Foreground="#9EA3AE" VerticalAlignment="Center"/>
+                                        </Grid>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <!-- Percorso Cartella Sorgente -->
+                        <TextBlock Text="Percorso cartella sorgente:" FontSize="11" Foreground="#9EA3AE" Margin="0,4,0,0"/>
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBox Grid.Column="0" Text="{Binding SourceDirectory}" PlaceholderText="es. E:\DCIM\100CANON" Margin="0,0,8,0"/>
+                            <Button Grid.Column="1" Classes="secondary" Content="Sfoglia..." Click="BrowseSourceFolder_Click"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Sezione Target Atleta & Disciplina -->
+                <Border Background="#22252B" CornerRadius="6" Padding="14" BorderBrush="#2E323B" BorderThickness="1">
+                    <StackPanel Spacing="10">
+                        <TextBlock Text="Associazione Catalogo" FontWeight="SemiBold" Foreground="#EDEDED"/>
+                        <Grid ColumnDefinitions="*,*">
+                            <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,6,0">
+                                <TextBlock Text="Atleta *" FontSize="12" Foreground="#9EA3AE"/>
+                                <ComboBox ItemsSource="{Binding Atleti}"
+                                          SelectedItem="{Binding SelectedAtleta}"
+                                          HorizontalAlignment="Stretch">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding DisplayPettoraleNome}"/>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="1" Spacing="4" Margin="6,0,0,0">
+                                <TextBlock Text="Disciplina *" FontSize="12" Foreground="#9EA3AE"/>
+                                <ComboBox ItemsSource="{Binding Discipline}"
+                                          SelectedItem="{Binding SelectedDisciplina}"
+                                          HorizontalAlignment="Stretch">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding NomeDisciplina}"/>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Sezione Watermark (Solo JPEG/PNG) -->
+                <Border Background="#22252B" CornerRadius="6" Padding="14" BorderBrush="#2E323B" BorderThickness="1">
+                    <StackPanel Spacing="10">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Grid.Column="0" Text="Watermark (Applicato solo ai file JPEG/PNG)" FontWeight="SemiBold" Foreground="#EDEDED" VerticalAlignment="Center"/>
+                            <ToggleSwitch Grid.Column="1" IsChecked="{Binding WatermarkEnabled}" OnContent="Attivo" OffContent="Disattivo"/>
+                        </Grid>
+
+                        <StackPanel Spacing="8" IsVisible="{Binding WatermarkEnabled}">
+                            <TextBlock Text="File Logo Watermark (PNG con trasparenza):" FontSize="11" Foreground="#9EA3AE"/>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBox Grid.Column="0" Text="{Binding WatermarkImagePath}" PlaceholderText="C:\Loghi\WatermarkStudio.png" Margin="0,0,8,0"/>
+                                <Button Grid.Column="1" Classes="secondary" Content="Sfoglia..." Click="BrowseWatermarkFile_Click"/>
+                            </Grid>
+
+                            <Grid ColumnDefinitions="*,*">
+                                <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,6,0">
+                                    <TextBlock Text="{Binding WatermarkOpacity, StringFormat='Opacità: {0:P0}'}" FontSize="12" Foreground="#9EA3AE"/>
+                                    <Slider Minimum="0.1" Maximum="1.0" Value="{Binding WatermarkOpacity}"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1" Spacing="4" Margin="6,0,0,0">
+                                    <TextBlock Text="Posizione:" FontSize="12" Foreground="#9EA3AE"/>
+                                    <ComboBox ItemsSource="{Binding AvailablePositions}"
+                                              SelectedItem="{Binding WatermarkPosition}"
+                                              HorizontalAlignment="Stretch"/>
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Sezione Metadati Autore / Copyright (JPEG + RAW) -->
+                <Border Background="#22252B" CornerRadius="6" Padding="14" BorderBrush="#2E323B" BorderThickness="1">
+                    <StackPanel Spacing="10">
+                        <TextBlock Text="Firma Metadati Autore &amp; Copyright (JPEG + RAW)" FontWeight="SemiBold" Foreground="#EDEDED"/>
+                        <Grid ColumnDefinitions="*,*">
+                            <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,6,0">
+                                <TextBlock Text="Nome Fotografo (Artist/Creator)" FontSize="12" Foreground="#9EA3AE"/>
+                                <TextBox Text="{Binding PhotographerName}" PlaceholderText="es. Mario Rossi"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Spacing="4" Margin="6,0,0,0">
+                                <TextBlock Text="Avviso Copyright" FontSize="12" Foreground="#9EA3AE"/>
+                                <TextBox Text="{Binding CopyrightNotice}" PlaceholderText="es. © 2026 Paddock"/>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Messaggio Errore -->
+                <TextBlock Text="{Binding ErrorMessage}" Foreground="#E74C3C" FontSize="12"
+                           IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+
+                <!-- Pulsanti -->
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+                    <Button Classes="secondary" Content="Annulla" Command="{Binding CancelCommand}"/>
+                    <Button Classes="primary" Content="Avvia Ingestione SD" Command="{Binding StartIngestionCommand}"/>
+                </StackPanel>
+
+            </StackPanel>
+        </ScrollViewer>
+    </Border>
+</UserControl>

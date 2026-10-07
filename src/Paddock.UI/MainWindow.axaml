@@ -1,0 +1,165 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Paddock.UI.ViewModels"
+        xmlns:views="using:Paddock.UI.Views"
+        xmlns:models="using:Paddock.Core.Models"
+        x:Class="Paddock.UI.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="Paddock — Ingestione &amp; Organizzazione Foto Sportive"
+        Icon="/Assets/logo.jpg"
+        Width="1280" Height="820"
+        MinWidth="960" MinHeight="640"
+        WindowStartupLocation="CenterScreen">
+
+    <Grid>
+        <!-- Layout Principale a 3 Pannelli -->
+        <Grid RowDefinitions="Auto,*,Auto">
+
+            <!-- 1. Barra Superiore (HUD Header) -->
+            <Border Grid.Row="0" Background="#16181C" BorderBrush="#2E323B" BorderThickness="0,0,0,1" Height="48" Padding="16,0">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                    
+                    <!-- Logo / Brand -->
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                        <Border CornerRadius="6" ClipToBounds="True" Width="28" Height="28" Background="#1A1C20">
+                            <Image Source="/Assets/logo.jpg" Stretch="UniformToFill"/>
+                        </Border>
+                        <TextBlock Text="PADDOCK" FontSize="14" FontWeight="Bold" Foreground="#EDEDED"
+                                   LetterSpacing="1.2" VerticalAlignment="Center"/>
+                    </StackPanel>
+
+                    <!-- Banner Conflitti Excel non-bloccante -->
+                    <Border Grid.Column="1" Margin="24,0" Background="#3D2914" BorderBrush="#FF8C32" BorderThickness="1"
+                            CornerRadius="4" Padding="12,4" VerticalAlignment="Center"
+                            IsVisible="{Binding IsLockBannerVisible}">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Grid.Column="0" Text="{Binding LockBannerMessage}" Foreground="#FFB703" FontSize="11" VerticalAlignment="Center"/>
+                            <Button Grid.Column="1" Classes="secondary" Content="✕" Padding="6,2" FontSize="10" Margin="8,0,0,0"
+                                    Command="{Binding DismissLockBannerCommand}"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Stato Database Excel & Impostazioni -->
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <Border Background="#1A1C20" BorderBrush="#2E323B" BorderThickness="1" CornerRadius="4" Padding="8,4">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Ellipse Width="8" Height="8" Fill="#2ECC71" VerticalAlignment="Center"/>
+                                <TextBlock Text="Excel Sincronizzato" FontSize="11" Foreground="#9EA3AE" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                        <Button Classes="secondary" Padding="8,4" FontSize="11" Command="{Binding OpenSettingsDialogCommand}">
+                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                <TextBlock Text="⚙" FontSize="11" VerticalAlignment="Center"/>
+                                <TextBlock Text="Impostazioni" FontSize="11" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+
+                </Grid>
+            </Border>
+
+            <!-- 2. Workspace Centrale (HUD Sinistra + HUD Centro) -->
+            <Grid Grid.Row="1" ColumnDefinitions="300,1,*">
+
+                <!-- HUD Sinistra: Event Explorer -->
+                <Border Grid.Column="0" Background="#16181C" BorderBrush="#2E323B" BorderThickness="0,0,1,0">
+                    <Grid RowDefinitions="Auto,Auto,*" Margin="12">
+                        
+                        <!-- Header Sidebar -->
+                        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+                            <TextBlock Grid.Column="0" Text="EVENTI" FontSize="12" FontWeight="SemiBold"
+                                       Foreground="#636773" LetterSpacing="1" VerticalAlignment="Center"/>
+                            <Button Grid.Column="1" Classes="primary" Content="+ Nuovo" Padding="8,4" FontSize="11"
+                                    Command="{Binding OpenCreateEventDialogCommand}"/>
+                        </Grid>
+
+                        <!-- Ricerca Rapida Eventi -->
+                        <TextBox Grid.Row="1" Text="{Binding EventSearchFilter}" PlaceholderText="Cerca eventi..." Margin="0,0,0,10"/>
+
+                        <!-- Elenco Eventi Virtualizzato -->
+                        <ListBox Grid.Row="2" ItemsSource="{Binding FilteredEventi}"
+                                 SelectedItem="{Binding SelectedEvento}"
+                                 Background="Transparent">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate DataType="models:Evento">
+                                    <Border CornerRadius="6" Padding="10" Margin="0,2">
+                                        <Grid RowDefinitions="Auto,Auto,Auto">
+                                            <TextBlock Grid.Row="0" Text="{Binding NomeEvento}" FontWeight="SemiBold" FontSize="13" Foreground="#EDEDED" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Grid.Row="1" Text="{Binding DateRangeDisplay}" FontSize="11" Foreground="#9EA3AE" Margin="0,2,0,0"/>
+                                            <Grid Grid.Row="2" ColumnDefinitions="Auto,Auto,*" Margin="0,6,0,0">
+                                                <Border Grid.Column="0" Background="#22252B" CornerRadius="3" Padding="5,1" Margin="0,0,4,0">
+                                                    <TextBlock Text="{Binding TotaleFoto, StringFormat='{}{0} foto'}" FontSize="9" Foreground="#9EA3AE"/>
+                                                </Border>
+                                                <Border Grid.Column="1" Background="#22252B" CornerRadius="3" Padding="5,1">
+                                                    <TextBlock Text="{Binding TotaleAtleti, StringFormat='{}{0} atl.'}" FontSize="9" Foreground="#9EA3AE"/>
+                                                </Border>
+                                            </Grid>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Grid>
+                </Border>
+
+                <!-- Separatore -->
+                <GridSplitter Grid.Column="1" Background="#2E323B" Width="1" ResizeDirection="Columns"/>
+
+                <!-- HUD Centro: Workspace Evento Attivo o Empty State -->
+                <Grid Grid.Column="2" Background="#121316">
+                    
+                    <!-- Quando un evento è selezionato -->
+                    <Border IsVisible="{Binding ActiveEventDetail, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <views:EventDetailView DataContext="{Binding ActiveEventDetail}"/>
+                    </Border>
+
+                    <!-- Empty State se nessun evento è selezionato -->
+                    <Border IsVisible="{Binding ActiveEventDetail, Converter={x:Static ObjectConverters.IsNull}}"
+                            HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <StackPanel Spacing="12" HorizontalAlignment="Center">
+                            <Border Background="#1A1C20" CornerRadius="36" Width="72" Height="72" HorizontalAlignment="Center">
+                                <TextBlock Text="📁" FontSize="32" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Text="Nessun evento selezionato" FontSize="18" FontWeight="SemiBold" Foreground="#EDEDED" HorizontalAlignment="Center"/>
+                            <TextBlock Text="Seleziona un evento dalla barra laterale o creane uno nuovo per iniziare l'ingestione."
+                                       FontSize="13" Foreground="#9EA3AE" HorizontalAlignment="Center"/>
+                            <Button Classes="primary" Content="+ Crea Nuovo Evento" HorizontalAlignment="Center" Margin="0,8,0,0"
+                                    Command="{Binding OpenCreateEventDialogCommand}"/>
+                        </StackPanel>
+                    </Border>
+
+                </Grid>
+
+            </Grid>
+
+            <!-- 3. Drawer Inferiore: Job Manager SD Cards -->
+            <views:JobManagerDrawer Grid.Row="2" DataContext="{Binding JobManager}"/>
+
+        </Grid>
+
+        <!-- Overlay Modale a Scrim Scuro per Dialoghi Interattivi -->
+        <Grid Background="#A0000000" IsVisible="{Binding IsModalOpen}">
+            <ContentControl Content="{Binding CurrentModal}" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <ContentControl.DataTemplates>
+                    <DataTemplate DataType="vm:DeleteEventDialogViewModel">
+                        <views:DeleteEventDialog/>
+                    </DataTemplate>
+                    <DataTemplate DataType="vm:EventEditDialogViewModel">
+                        <views:EventEditDialog/>
+                    </DataTemplate>
+                    <DataTemplate DataType="vm:IngestionWizardViewModel">
+                        <views:IngestionWizardDialog/>
+                    </DataTemplate>
+                    <DataTemplate DataType="vm:SettingsViewModel">
+                        <views:SettingsDialog/>
+                    </DataTemplate>
+                    <DataTemplate DataType="vm:DatabaseStartupDialogViewModel">
+                        <views:DatabaseStartupDialog/>
+                    </DataTemplate>
+                </ContentControl.DataTemplates>
+            </ContentControl>
+        </Grid>
+
+    </Grid>
+
+</Window>

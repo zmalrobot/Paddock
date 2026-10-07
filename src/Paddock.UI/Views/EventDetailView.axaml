@@ -1,0 +1,228 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Paddock.UI.ViewModels"
+             xmlns:models="using:Paddock.Core.Models"
+             x:Class="Paddock.UI.Views.EventDetailView"
+             x:DataType="vm:EventDetailViewModel">
+
+    <Grid RowDefinitions="Auto,*">
+
+        <!-- Top Header Panel -->
+        <Border Grid.Row="0" Background="#16181C" BorderBrush="#2E323B" BorderThickness="0,0,0,1" Padding="24,18">
+            <Grid ColumnDefinitions="*,Auto">
+                
+                <!-- Event Info -->
+                <StackPanel Grid.Column="0" Spacing="6">
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <TextBlock Text="{Binding Evento.NomeEvento}" FontSize="22" FontWeight="Bold" Foreground="#EDEDED"/>
+                        <Border Background="#22252B" CornerRadius="4" Padding="8,3" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Evento.DateRangeDisplay}" FontSize="11" Foreground="#9EA3AE"/>
+                        </Border>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Spacing="16"
+                                IsVisible="{Binding Evento.Luogo, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                        <TextBlock Text="{Binding Evento.Luogo, StringFormat='📍 {0}'}" FontSize="12" Foreground="#9EA3AE"/>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Spacing="20" Margin="0,4,0,0">
+                        <TextBlock FontSize="12" Foreground="#FF8C32" FontWeight="SemiBold">
+                            <TextBlock.Text>
+                                <MultiBinding StringFormat="Atleti: {0}">
+                                    <Binding Path="Evento.TotaleAtleti" />
+                                </MultiBinding>
+                            </TextBlock.Text>
+                        </TextBlock>
+                        <TextBlock FontSize="12" Foreground="#00B4D8" FontWeight="SemiBold">
+                            <TextBlock.Text>
+                                <MultiBinding StringFormat="Discipline: {0}">
+                                    <Binding Path="Evento.TotaleDiscipline" />
+                                </MultiBinding>
+                            </TextBlock.Text>
+                        </TextBlock>
+                        <TextBlock FontSize="12" Foreground="#2ECC71" FontWeight="SemiBold">
+                            <TextBlock.Text>
+                                <MultiBinding StringFormat="Foto: {0}">
+                                    <Binding Path="Evento.TotaleFoto" />
+                                </MultiBinding>
+                            </TextBlock.Text>
+                        </TextBlock>
+                        <TextBlock Text="{Binding Evento.TotaleByteOccupati, Converter={StaticResource ByteToSizeConverter}, StringFormat='Spazio: {0}'}"
+                                   FontSize="12" Foreground="#EDEDED" FontWeight="SemiBold"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Actions -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                    <Button Classes="primary" Command="{Binding StartIngestionCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="⚡" VerticalAlignment="Center"/>
+                            <TextBlock Text="Nuova Ingestione SD" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
+                    <Button Classes="secondary" Content="Modifica" Command="{Binding EditEventCommand}"/>
+                    <Button Classes="danger" Content="Elimina Evento" Command="{Binding DeleteEventCommand}"/>
+                </StackPanel>
+
+            </Grid>
+        </Border>
+
+        <!-- Main Workspace Tabs -->
+        <TabControl Grid.Row="1" SelectedIndex="{Binding SelectedTabIndex}" Margin="16,12">
+            
+            <!-- TAB 1: ATLETI -->
+            <TabItem Header="Atleti">
+                <Grid RowDefinitions="Auto,Auto,*" Margin="0,12,0,0">
+
+                    <!-- Form rapido aggiunta Atleta -->
+                    <Border Grid.Row="0" Background="#1A1C20" CornerRadius="6" Padding="14" BorderBrush="#2E323B" BorderThickness="1" Margin="0,0,0,12">
+                        <Grid ColumnDefinitions="100,*,*,*,Auto" VerticalAlignment="Center">
+                            <TextBox Grid.Column="0" Text="{Binding NewPettorale}" PlaceholderText="Pettorale #" Margin="0,0,8,0"/>
+                            <TextBox Grid.Column="1" Text="{Binding NewNome}" PlaceholderText="Nome" Margin="0,0,8,0"/>
+                            <TextBox Grid.Column="2" Text="{Binding NewCognome}" PlaceholderText="Cognome" Margin="0,0,8,0"/>
+                            <TextBox Grid.Column="3" Text="{Binding NewCategoria}" PlaceholderText="Categoria (es. Elite, M40)" Margin="0,0,8,0"/>
+                            <Button Grid.Column="4" Classes="primary" Content="+ Aggiungi Atleta" Command="{Binding AddAtletaCommand}"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Ricerca Atleti -->
+                    <TextBox Grid.Row="1" Text="{Binding AthleteSearchFilter}" PlaceholderText="Cerca atleta per pettorale o nome..."
+                             Margin="0,0,0,12"/>
+
+                    <!-- Lista Atleti -->
+                    <ScrollViewer Grid.Row="2">
+                        <ItemsControl ItemsSource="{Binding FilteredAtleti}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="models:Atleta">
+                                    <Border Background="#1A1C20" BorderBrush="#2E323B" BorderThickness="1"
+                                            CornerRadius="4" Padding="12,8" Margin="0,0,0,6">
+                                        <Grid ColumnDefinitions="60,*,*,Auto">
+                                            <Border Grid.Column="0" Background="#FF8C32" CornerRadius="3" Padding="6,2" HorizontalAlignment="Left">
+                                                <TextBlock Text="{Binding NumeroPettorale, StringFormat='#{0}'}" FontWeight="Bold" Foreground="#121316"/>
+                                            </Border>
+                                            <TextBlock Grid.Column="1" Text="{Binding NomeCompleto}" FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center"/>
+                                            <TextBlock Grid.Column="2" Text="{Binding Categoria}" Foreground="#9EA3AE" FontSize="12" VerticalAlignment="Center"/>
+                                            <Button Grid.Column="3" Classes="danger" Content="✕" Padding="6,2" FontSize="11"
+                                                    Command="{Binding $parent[UserControl].((vm:EventDetailViewModel)DataContext).DeleteAtletaCommand}"
+                                                    CommandParameter="{Binding}"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+
+                </Grid>
+            </TabItem>
+
+            <!-- TAB 2: DISCIPLINE -->
+            <TabItem Header="Discipline">
+                <Grid RowDefinitions="Auto,*" Margin="0,12,0,0">
+
+                    <!-- Form rapido nuova disciplina -->
+                    <Border Grid.Row="0" Background="#1A1C20" CornerRadius="6" Padding="14" BorderBrush="#2E323B" BorderThickness="1" Margin="0,0,0,12">
+                        <Grid ColumnDefinitions="*,*,Auto">
+                            <TextBox Grid.Column="0" Text="{Binding NewNomeDisciplina}" PlaceholderText="Nome Disciplina (es. Slalom, Salto in Alto)" Margin="0,0,8,0"/>
+                            <TextBox Grid.Column="1" Text="{Binding NewDescrizioneDisciplina}" PlaceholderText="Descrizione / Percorso (opzionale)" Margin="0,0,8,0"/>
+                            <Button Grid.Column="2" Classes="primary" Content="+ Aggiungi Disciplina" Command="{Binding AddDisciplinaCommand}"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Lista Discipline -->
+                    <ScrollViewer Grid.Row="1">
+                        <ItemsControl ItemsSource="{Binding Discipline}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="models:Disciplina">
+                                    <Border Background="#1A1C20" BorderBrush="#2E323B" BorderThickness="1"
+                                            CornerRadius="4" Padding="12,10" Margin="0,0,0,6">
+                                        <Grid ColumnDefinitions="*,*,Auto">
+                                            <TextBlock Grid.Column="0" Text="{Binding NomeDisciplina}" FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding Descrizione}" Foreground="#9EA3AE" FontSize="12" VerticalAlignment="Center"/>
+                                            <Button Grid.Column="2" Classes="danger" Content="✕" Padding="6,2" FontSize="11"
+                                                    Command="{Binding $parent[UserControl].((vm:EventDetailViewModel)DataContext).DeleteDisciplinaCommand}"
+                                                    CommandParameter="{Binding}"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+
+                </Grid>
+            </TabItem>
+
+            <!-- TAB 3: BROWSER FOTO -->
+            <TabItem Header="Browser Foto">
+                <Grid RowDefinitions="Auto,*" Margin="0,12,0,0">
+
+                    <!-- Barra Filtri Foto -->
+                    <Border Grid.Row="0" Background="#1A1C20" CornerRadius="6" Padding="12" BorderBrush="#2E323B" BorderThickness="1" Margin="0,0,0,12">
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="Filtro Formato:" VerticalAlignment="Center" FontSize="12" Foreground="#9EA3AE"/>
+                                <RadioButton Content="Tutti" IsChecked="{Binding FotoFormatFilter, Converter={x:Static ObjectConverters.Equal}, ConverterParameter='TUTTI'}" GroupName="FmtGroup"/>
+                                <RadioButton Content="JPEG" IsChecked="{Binding FotoFormatFilter, Converter={x:Static ObjectConverters.Equal}, ConverterParameter='JPEG'}" GroupName="FmtGroup"/>
+                                <RadioButton Content="RAW" IsChecked="{Binding FotoFormatFilter, Converter={x:Static ObjectConverters.Equal}, ConverterParameter='RAW'}" GroupName="FmtGroup"/>
+                            </StackPanel>
+
+                            <Button Grid.Column="2" Classes="secondary" Content="↻ Ricarica Foto" Command="{Binding RefreshPhotosCommand}"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Griglia Galleria Foto Virtualizzata -->
+                    <ScrollViewer Grid.Row="1">
+                        <ItemsControl ItemsSource="{Binding FilteredFoto}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Horizontal"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="models:Foto">
+                                    <Border Background="#1A1C20" BorderBrush="#2E323B" BorderThickness="1"
+                                            CornerRadius="6" Width="210" Height="150" Margin="0,0,10,10" Padding="10">
+                                        <Grid RowDefinitions="Auto,*,Auto">
+                                            
+                                            <!-- Format Pill & Watermark icon -->
+                                            <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto">
+                                                <Border Grid.Column="0" Background="{Binding Formato, Converter={StaticResource FormatToBrushConverter}}"
+                                                        CornerRadius="3" Padding="5,1">
+                                                    <TextBlock Text="{Binding Formato}" FontSize="9" FontWeight="Bold" Foreground="#121316"/>
+                                                </Border>
+
+                                                <TextBlock Grid.Column="2" Text="💧" ToolTip.Tip="Watermark applicato"
+                                                           FontSize="11" IsVisible="{Binding WatermarkApplicato}"/>
+                                            </Grid>
+
+                                            <!-- Center: File Name -->
+                                            <StackPanel Grid.Row="1" VerticalAlignment="Center" Spacing="4">
+                                                <TextBlock Text="{Binding NomeFileOriginale}" FontWeight="SemiBold" FontSize="12"
+                                                           Foreground="#EDEDED" TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Text="{Binding PathRelativo}" FontSize="10" Foreground="#636773"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                            </StackPanel>
+
+                                            <!-- Bottom: Size & Date -->
+                                            <Grid Grid.Row="2" ColumnDefinitions="*,Auto">
+                                                <TextBlock Grid.Column="0" Text="{Binding DimensioneByte, Converter={StaticResource ByteToSizeConverter}}"
+                                                           FontSize="10" Foreground="#9EA3AE"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding DataScatto, StringFormat='{}{0:HH:mm}'}"
+                                                           FontSize="10" Foreground="#636773"/>
+                                            </Grid>
+
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+
+                </Grid>
+            </TabItem>
+
+        </TabControl>
+
+    </Grid>
+</UserControl>

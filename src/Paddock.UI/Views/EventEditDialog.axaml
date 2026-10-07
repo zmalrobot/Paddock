@@ -1,0 +1,66 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Paddock.UI.ViewModels"
+             x:Class="Paddock.UI.Views.EventEditDialog"
+             x:DataType="vm:EventEditDialogViewModel"
+             Width="560">
+
+    <Border Background="#1A1C20"
+            BorderBrush="#2E323B"
+            BorderThickness="1"
+            CornerRadius="8"
+            Padding="24"
+            BoxShadow="0 8 32 #50000000">
+        <StackPanel Spacing="14">
+
+            <!-- Title -->
+            <TextBlock Text="{Binding DialogTitle}"
+                       FontSize="18" FontWeight="SemiBold" Foreground="#EDEDED"/>
+
+            <!-- Nome Evento -->
+            <StackPanel Spacing="4">
+                <TextBlock Text="Nome Evento *" FontSize="12" Foreground="#9EA3AE"/>
+                <TextBox Text="{Binding NomeEvento}" PlaceholderText="es. Gran Fondo Alpi 2026"/>
+            </StackPanel>
+
+            <!-- Date -->
+            <Grid ColumnDefinitions="*,*">
+                <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,8,0">
+                    <TextBlock Text="Data Inizio" FontSize="12" Foreground="#9EA3AE"/>
+                    <CalendarDatePicker SelectedDate="{Binding DataInizio}"
+                                        SelectedDateFormat="Short"
+                                        HorizontalAlignment="Stretch"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Spacing="4" Margin="8,0,0,0">
+                    <TextBlock Text="Data Fine" FontSize="12" Foreground="#9EA3AE"/>
+                    <CalendarDatePicker SelectedDate="{Binding DataFine}"
+                                        SelectedDateFormat="Short"
+                                        HorizontalAlignment="Stretch"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- Luogo -->
+            <StackPanel Spacing="4">
+                <TextBlock Text="Luogo" FontSize="12" Foreground="#9EA3AE"/>
+                <TextBox Text="{Binding Luogo}" PlaceholderText="es. Bormio (SO)"/>
+            </StackPanel>
+
+            <!-- Note -->
+            <StackPanel Spacing="4">
+                <TextBlock Text="Note (opzionale)" FontSize="12" Foreground="#9EA3AE"/>
+                <TextBox Text="{Binding Note}" AcceptsReturn="True" Height="60" PlaceholderText="Condizioni meteo, note fotografo..."/>
+            </StackPanel>
+
+            <!-- Error message if any -->
+            <TextBlock Text="{Binding ErrorMessage}" Foreground="#E74C3C" FontSize="12"
+                       IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+
+            <!-- Buttons -->
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,6,0,0">
+                <Button Classes="secondary" Content="Annulla" Command="{Binding CancelCommand}"/>
+                <Button Classes="primary" Content="Salva Evento" Command="{Binding SaveCommand}"/>
+            </StackPanel>
+
+        </StackPanel>
+    </Border>
+</UserControl>

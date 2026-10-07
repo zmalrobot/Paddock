@@ -1,0 +1,82 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Paddock.UI.ViewModels"
+             x:Class="Paddock.UI.Views.DeleteEventDialog"
+             x:DataType="vm:DeleteEventDialogViewModel"
+             Width="520">
+
+    <Border Background="#1A1C20"
+            BorderBrush="#E74C3C"
+            BorderThickness="1"
+            CornerRadius="8"
+            Padding="24"
+            BoxShadow="0 8 32 #50000000">
+        <StackPanel Spacing="16">
+            
+            <!-- Header -->
+            <StackPanel Orientation="Horizontal" Spacing="12">
+                <Border Background="#3D1C20" CornerRadius="4" Width="36" Height="36">
+                    <TextBlock Text="⚠" Foreground="#E74C3C" FontSize="20" FontWeight="Bold"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Border>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="Eliminazione Evento" FontSize="18" FontWeight="SemiBold" Foreground="#EDEDED"/>
+                    <TextBlock Text="{Binding Evento.NomeEvento}" FontSize="13" Foreground="#9EA3AE" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+            </StackPanel>
+
+            <TextBlock Text="Seleziona la modalità di eliminazione. Questa azione è irreversibile per i dati rimossi."
+                       Foreground="#9EA3AE" FontSize="13" TextWrapping="Wrap"/>
+
+            <Border Background="#121316" CornerRadius="6" Padding="12" BorderBrush="#2E323B" BorderThickness="1">
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Percorso root su disco:" FontSize="11" Foreground="#636773"/>
+                    <TextBlock Text="{Binding Evento.CartellaDestinazioneRoot}" FontSize="12" Foreground="#EDEDED" TextWrapping="Wrap"/>
+                    <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,4,0,0">
+                        <TextBlock Text="{Binding Evento.TotaleFoto, StringFormat='Foto: {0}'}" FontSize="11" Foreground="#9EA3AE"/>
+                        <TextBlock Text="{Binding Evento.TotaleAtleti, StringFormat='Atleti: {0}'}" FontSize="11" Foreground="#9EA3AE"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Option 1: Database Only -->
+            <Border Background="#22252B" CornerRadius="6" Padding="14" BorderBrush="#2E323B" BorderThickness="1">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="Opzione 1: Rimuovi solo da Excel" FontWeight="SemiBold" Foreground="#EDEDED"/>
+                        <TextBlock Text="Mantiene tutti i file originali, RAW e JPEG intatti su disco." FontSize="11" Foreground="#9EA3AE"/>
+                    </StackPanel>
+                    <Button Grid.Column="1" Classes="secondary" Content="Elimina solo record"
+                            Command="{Binding ChooseDatabaseOnlyCommand}" VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+
+            <!-- Option 2: Database and Files Purge -->
+            <Border Background="#261618" CornerRadius="6" Padding="14" BorderBrush="#8A2B35" BorderThickness="1">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="Opzione 2: Distruzione Totale (Database + File su Disco)" FontWeight="SemiBold" Foreground="#FF6B6B"/>
+                    <TextBlock Text="Rimuove l'evento dall'archivio Excel E cancella definitivamente cartelle, foto JPEG e file RAW su disco."
+                               FontSize="11" Foreground="#D19A9E" TextWrapping="Wrap"/>
+
+                    <CheckBox IsChecked="{Binding ConfirmFilesPurgeChecked}"
+                              Content="Confermo l'eliminazione definitiva e irreversibile dei file su disco"
+                              Foreground="#EDEDED" FontSize="12"/>
+
+                    <Button Classes="danger" Content="Cancella Definitivamente Tutto"
+                            HorizontalAlignment="Right"
+                            Command="{Binding ChooseDatabaseAndFilesCommand}"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Error message if any -->
+            <TextBlock Text="{Binding ErrorMessage}" Foreground="#E74C3C" FontSize="12"
+                       IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+
+            <!-- Option 3: Cancel -->
+            <Button Classes="secondary" Content="Annulla" HorizontalAlignment="Right"
+                    Command="{Binding ChooseCancelCommand}"/>
+
+        </StackPanel>
+    </Border>
+</UserControl>
+

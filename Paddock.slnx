@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Paddock.Core/Paddock.Core.csproj" />
+    <Project Path="src/Paddock.Infrastructure/Paddock.Infrastructure.csproj" />
+    <Project Path="src/Paddock.UI/Paddock.UI.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Paddock.Tests/Paddock.Tests.csproj" />
+  </Folder>
+</Solution>
+

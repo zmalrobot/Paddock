@@ -1,0 +1,129 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Paddock.UI.ViewModels"
+             x:Class="Paddock.UI.Views.JobManagerDrawer"
+             x:DataType="vm:JobManagerViewModel">
+
+    <Border Background="#16181C"
+            BorderBrush="#2E323B"
+            BorderThickness="0,1,0,0">
+        <Grid RowDefinitions="Auto,*">
+
+            <!-- Drawer Bar Header -->
+            <Border Grid.Row="0" Background="#1A1C20" Height="44" Padding="16,0">
+                <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto">
+                    
+                    <!-- Toggle Drawer Button -->
+                    <Button Grid.Column="0" Classes="secondary" Padding="8,4" Margin="0,0,12,0"
+                            Command="{Binding ToggleDrawerCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="{Binding IsDrawerOpen, Converter={x:Static ObjectConverters.IsNull}, FallbackValue='▲'}"
+                                       VerticalAlignment="Center"/>
+                            <TextBlock Text="Coda Operazioni SD" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Active Badge -->
+                    <Border Grid.Column="1" Background="#FF8C32" CornerRadius="10" Padding="8,2"
+                            VerticalAlignment="Center" IsVisible="{Binding HasActiveJobs}">
+                        <TextBlock Text="{Binding ActiveJobsCount, StringFormat='{}{0} ATTIVI'}"
+                                   FontSize="10" FontWeight="Bold" Foreground="#121316"/>
+                    </Border>
+
+                    <!-- Summary Info -->
+                    <TextBlock Grid.Column="2" Text="{Binding OverallSummary}"
+                               VerticalAlignment="Center" Margin="16,0,0,0"
+                               FontSize="12" Foreground="#9EA3AE"/>
+
+                    <!-- Action Buttons -->
+                    <Button Grid.Column="3" Classes="secondary" Content="Pulisci completati"
+                            Margin="0,0,8,0" Padding="8,4" FontSize="11"
+                            Command="{Binding ClearFinishedCommand}"/>
+
+                    <Button Grid.Column="4" Classes="danger" Content="Interrompi tutti"
+                            Padding="8,4" FontSize="11"
+                            Command="{Binding CancelAllCommand}"
+                            IsVisible="{Binding HasActiveJobs}"/>
+                </Grid>
+            </Border>
+
+            <!-- Expanded Drawer Content -->
+            <Border Grid.Row="1" Height="220" IsVisible="{Binding IsDrawerOpen}" Background="#121316" Padding="12">
+                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                    <ItemsControl ItemsSource="{Binding Jobs}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="12"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="vm:IngestionJobItemViewModel">
+                                <Border Background="#1A1C20" BorderBrush="#2E323B" BorderThickness="1"
+                                        CornerRadius="6" Width="360" Padding="14">
+                                    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto">
+
+                                        <!-- Card Top Header -->
+                                        <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                                            <StackPanel Grid.Column="0" Spacing="2">
+                                                <TextBlock Text="{Binding SourceName}" FontWeight="SemiBold" FontSize="13" Foreground="#EDEDED" TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Text="{Binding TargetDescription}" FontSize="11" Foreground="#9EA3AE" TextTrimming="CharacterEllipsis"/>
+                                            </StackPanel>
+
+                                            <!-- Status Pill -->
+                                            <Border Grid.Column="1" CornerRadius="4" Padding="6,2" VerticalAlignment="Top"
+                                                    Background="{Binding Status, Converter={StaticResource StatusToColorConverter}}">
+                                                <TextBlock Text="{Binding Status}" FontSize="10" FontWeight="Bold" Foreground="#121316"/>
+                                            </Border>
+                                        </Grid>
+
+                                        <!-- Progress Bar -->
+                                        <ProgressBar Grid.Row="1" Value="{Binding ProgressPercentage}" Minimum="0" Maximum="100"
+                                                     Height="6" Margin="0,12,0,8"
+                                                     Foreground="#FF8C32" Background="#2E323B"/>
+
+                                        <!-- Metrics Row (Tabular Speed, File Counter, ETA) -->
+                                        <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto">
+                                            <TextBlock Grid.Column="0" Text="{Binding SpeedDisplay}"
+                                                       FontFamily="Consolas, Cascadia Mono, monospace" FontWeight="SemiBold"
+                                                       FontSize="12" Foreground="#00B4D8"/>
+
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
+                                                <TextBlock Text="{Binding ProcessedFiles}" FontSize="11" Foreground="#EDEDED"/>
+                                                <TextBlock Text=" / " FontSize="11" Foreground="#636773"/>
+                                                <TextBlock Text="{Binding TotalFiles}" FontSize="11" Foreground="#EDEDED"/>
+                                                <TextBlock Text=" foto" FontSize="11" Foreground="#636773"/>
+                                            </StackPanel>
+
+                                            <TextBlock Grid.Column="2" Text="{Binding EtaDisplay, StringFormat='{}ETA: {0}'}"
+                                                       FontSize="11" Foreground="#9EA3AE"/>
+                                        </Grid>
+
+                                        <!-- Current file / status text -->
+                                        <TextBlock Grid.Row="3" Text="{Binding CurrentProcessingFile, StringFormat='{}In elaborazione: {0}'}"
+                                                   FontSize="10" Foreground="#636773" Margin="0,6,0,0"
+                                                   TextTrimming="CharacterEllipsis"/>
+
+                                        <!-- Bottom Warning & Cancel Button -->
+                                        <Grid Grid.Row="4" ColumnDefinitions="*,Auto" Margin="0,8,0,0">
+                                            <TextBlock Grid.Column="0" Text="{Binding WarningSummary}"
+                                                       FontSize="10" Foreground="#E74C3C" TextTrimming="CharacterEllipsis"
+                                                       VerticalAlignment="Center" IsVisible="{Binding HasWarnings}"/>
+
+                                            <Button Grid.Column="1" Classes="danger" Content="Annulla"
+                                                    Padding="8,3" FontSize="11"
+                                                    Command="{Binding CancelCommand}"
+                                                    IsEnabled="{Binding CanCancel}"/>
+                                        </Grid>
+
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Border>
+
+        </Grid>
+    </Border>
+</UserControl>

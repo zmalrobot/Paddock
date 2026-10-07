@@ -1,0 +1,102 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Paddock.UI.ViewModels"
+             x:Class="Paddock.UI.Views.DatabaseStartupDialog"
+             x:DataType="vm:DatabaseStartupDialogViewModel"
+             Width="620">
+
+    <Border Background="#1A1C20" BorderBrush="#2E323B" BorderThickness="1" CornerRadius="8" Padding="28">
+        <StackPanel Spacing="20">
+
+            <!-- Logo e Intestazione -->
+            <StackPanel Spacing="12" HorizontalAlignment="Center">
+                <Border CornerRadius="12" ClipToBounds="True" Width="72" Height="72" Background="#16181C"
+                        BorderBrush="#2E323B" BorderThickness="1" HorizontalAlignment="Center">
+                    <Image Source="/Assets/logo.jpg" Stretch="UniformToFill"/>
+                </Border>
+                <StackPanel Spacing="4" HorizontalAlignment="Center">
+                    <TextBlock Text="PADDOCK" FontSize="20" FontWeight="Bold" Foreground="#EDEDED"
+                               LetterSpacing="1.5" HorizontalAlignment="Center"/>
+                    <TextBlock Text="Seleziona o crea il database Excel per organizzare il tuo archivio fotografico"
+                               FontSize="12" Foreground="#9EA3AE" HorizontalAlignment="Center"/>
+                </StackPanel>
+            </StackPanel>
+
+            <Rectangle Height="1" Fill="#2E323B"/>
+
+            <!-- Errore se presente -->
+            <Border Background="#3D1A1A" BorderBrush="#E74C3C" BorderThickness="1" CornerRadius="4" Padding="12,8"
+                    IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <TextBlock Text="{Binding ErrorMessage}" Foreground="#E74C3C" FontSize="11" TextWrapping="Wrap"/>
+            </Border>
+
+            <!-- Opzione 1: Continua con Ultimo Database (se disponibile) -->
+            <Border Background="#121316" BorderBrush="#FF8C32" BorderThickness="1" CornerRadius="6" Padding="16"
+                    IsVisible="{Binding HasLastDatabase}">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="4">
+                        <TextBlock Text="ULTIMO DATABASE UTILIZZATO" FontSize="11" FontWeight="Bold" Foreground="#FF8C32"/>
+                        <TextBlock Text="{Binding LastDatabasePath}" FontSize="12" Foreground="#00B4D8" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                    <Button Grid.Column="1" Classes="primary" Content="Continua ➔" Padding="16,8" FontSize="12"
+                            Command="{Binding ContinueWithLastDatabaseCommand}" Margin="12,0,0,0"/>
+                </Grid>
+            </Border>
+
+            <!-- Opzioni Principali: Crea Nuovo o Apri Esistente -->
+            <Grid ColumnDefinitions="*,*" Margin="0,4,0,0">
+                
+                <!-- Crea Nuovo -->
+                <Border Grid.Column="0" Background="#16181C" BorderBrush="#2E323B" BorderThickness="1"
+                        CornerRadius="6" Padding="16" Margin="0,0,6,0">
+                    <StackPanel Spacing="10">
+                        <TextBlock Text="➕ Nuovo Archivio" FontWeight="Bold" FontSize="14" Foreground="#EDEDED"/>
+                        <TextBlock Text="Crea un nuovo database Excel (.xlsx) vuoto nel percorso che preferisci."
+                                   FontSize="11" Foreground="#9EA3AE" TextWrapping="Wrap" MinHeight="32"/>
+                        <Button Classes="secondary" Content="Crea Nuovo DB..." HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                Padding="10,8" Click="BrowseNewDatabase_Click"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Apri Esistente -->
+                <Border Grid.Column="1" Background="#16181C" BorderBrush="#2E323B" BorderThickness="1"
+                        CornerRadius="6" Padding="16" Margin="6,0,0,0">
+                    <StackPanel Spacing="10">
+                        <TextBlock Text="📂 Apri Esistente" FontWeight="Bold" FontSize="14" Foreground="#EDEDED"/>
+                        <TextBlock Text="Importa o apri un file .xlsx già creato in precedenza o condiviso su cloud."
+                                   FontSize="11" Foreground="#9EA3AE" TextWrapping="Wrap" MinHeight="32"/>
+                        <Button Classes="secondary" Content="Sfoglia File .xlsx..." HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                Padding="10,8" Click="BrowseOpenDatabase_Click"/>
+                    </StackPanel>
+                </Border>
+
+            </Grid>
+
+            <!-- Lista Altri Recenti (se presenti) -->
+            <StackPanel Spacing="6" IsVisible="{Binding RecentDatabases.Count}">
+                <TextBlock Text="Altri database recenti:" FontSize="11" Foreground="#636773"/>
+                <ItemsControl ItemsSource="{Binding RecentDatabases}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button Classes="secondary" HorizontalAlignment="Stretch" Margin="0,2" Padding="8,4"
+                                    Command="{Binding $parent[UserControl].((vm:DatabaseStartupDialogViewModel)DataContext).SelectDatabasePathCommand}"
+                                    CommandParameter="{Binding}">
+                                <TextBlock Text="{Binding}" FontSize="11" Foreground="#9EA3AE" TextTrimming="CharacterEllipsis"/>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+
+            <Rectangle Height="1" Fill="#2E323B"/>
+
+            <!-- Checkbox Preferenza Avvio -->
+            <CheckBox Content="Apri automaticamente all'avvio senza chiedere (modificabile in Impostazioni)"
+                      IsChecked="{Binding AutoOpenLastDatabase}"
+                      Command="{Binding PersistAutoOpenCommand}"
+                      FontSize="11" Foreground="#636773" HorizontalAlignment="Center"/>
+
+        </StackPanel>
+    </Border>
+</UserControl>
+

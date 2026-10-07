@@ -1,0 +1,122 @@
+using System.Text.Json;
+using Paddock.Core.Interfaces;
+
+namespace Paddock.Infrastructure.Configuration;
+
+public class AppPreferencesService : IAppPreferencesService
+{
+    private readonly string _preferencesFilePath;
+    private PreferencesData _data = new();
+
+    public string? LastDatabasePath
+    {
+        get => _data.LastDatabasePath;
+        set => _data.LastDatabasePath = value;
+    }
+
+    public List<string> RecentDatabases => _data.RecentDatabases;
+
+    public bool AutoOpenLastDatabase
+    {
+        get => _data.AutoOpenLastDatabase;
+        set => _data.AutoOpenLastDatabase = value;
+    }
+
+    public AppPreferencesService(string? customConfigPath = null)
+    {
+        if (string.IsNullOrWhiteSpace(customConfigPath))
+        {
+            var appData = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "Paddock");
+            Directory.CreateDirectory(appData);
+            _preferencesFilePath = Path.Combine(appData, "preferences.json");
+        }
+        else
+        {
+            _preferencesFilePath = customConfigPath;
+        }
+    }
+
+    public void AddRecentDatabase(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return;
+
+        _data.RecentDatabases.RemoveAll(p => string.Equals(p, path, StringComparison.OrdinalIgnoreCase));
+        _data.RecentDatabases.Insert(0, path);
+
+        if (_data.RecentDatabases.Count > 10)
+        {
+            _data.RecentDatabases = _data.RecentDatabases.Take(10).ToList();
+        }
+
+        LastDatabasePath = path;
+    }
+
+    public void Load()
+    {
+        try
+        {
+            if (File.Exists(_preferencesFilePath))
+            {
+                var json = File.ReadAllText(_preferencesFilePath);
+                var loaded = JsonSerializer.Deserialize<PreferencesData>(json);
+                if (loaded != null)
+                {
+                    _data = loaded;
+                }
+            }
+        }
+        catch
+        {
+            _data = new PreferencesData();
+        }
+    }
+
+    public async Task LoadAsync()
+    {
+        try
+        {
+            if (File.Exists(_preferencesFilePath))
+            {
+                var json = await File.ReadAllTextAsync(_preferencesFilePath).ConfigureAwait(false);
+                var loaded = JsonSerializer.Deserialize<PreferencesData>(json);
+                if (loaded != null)
+                {
+                    _data = loaded;
+                }
+            }
+        }
+        catch
+        {
+            // Fallback su configurazione vuota in caso di corruzione del json
+            _data = new PreferencesData();
+        }
+    }
+
+    public async Task SaveAsync()
+    {
+        try
+        {
+            var dir = Path.GetDirectoryName(_preferencesFilePath);
+            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+            {
+                Directory.CreateDirectory(dir);
+            }
+
+            var json = JsonSerializer.Serialize(_data, new JsonSerializerOptions { WriteIndented = true });
+            await File.WriteAllTextAsync(_preferencesFilePath, json).ConfigureAwait(false);
+        }
+        catch
+        {
+            // Ignora errori di salvataggio preferenze
+        }
+    }
+
+    private class PreferencesData
+    {
+        public string? LastDatabasePath { get; set; }
+        public List<string> RecentDatabases { get; set; } = new();
+        public bool AutoOpenLastDatabase { get; set; } = false;
+    }
+}
