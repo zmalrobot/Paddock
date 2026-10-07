@@ -7,14 +7,14 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Versione di rilascio (es. 1.0.0 o v1.0.0)'
+        description: 'Versione di rilascio (es. 0.5.0 o v0.5.0)'
         required: false
-        default: '1.0.0'
+        default: '0.5.0'
         type: string
       prerelease:
         description: 'Contrassegna come pre-release'
         required: false
-        default: false
+        default: true
         type: boolean
       draft:
         description: 'Crea come bozza (draft)'
@@ -38,7 +38,7 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             RAW="${{ inputs.version }}"
-            [ -z "$RAW" ] && RAW="1.0.0"
+            [ -z "$RAW" ] && RAW="0.5.0"
           else
             RAW="${{ github.ref_name }}"
           fi
@@ -125,14 +125,14 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.meta.outputs.tag }}
-          name: "Paddock ${{ needs.meta.outputs.tag }}"
+          name: "Paddock ${{ needs.meta.outputs.tag }} (Pre-release)"
           draft: ${{ inputs.draft || false }}
-          prerelease: ${{ inputs.prerelease || false }}
+          prerelease: ${{ inputs.prerelease || startsWith(needs.meta.outputs.version, '0.') || true }}
           generate_release_notes: true
           files: |
             release-packages/*.zip
           body: |
-            ## Paddock ${{ needs.meta.outputs.tag }}
+            ## Paddock ${{ needs.meta.outputs.tag }} (Pre-release)
 
             Paddock è l'applicazione desktop professionale per l'ingestione, organizzazione e vendita di foto di eventi sportivi, sviluppata in **.NET 10** e **Avalonia UI**.
 
@@ -142,13 +142,14 @@ jobs:
             - **Linux (x64)**: `Paddock-${{ needs.meta.outputs.version }}-linux-x64.zip`
               *(Self-contained per distribuzioni Linux x86_64. Estrarre ed eseguire `./Paddock.UI`)*
 
-            ### Funzionalità Incluse
-            - **Browser Foto Gerarchico**: navigazione strutturata Atleta → Disciplina → Foto con anteprime veloci, badge formato JPEG/RAW e badge Watermark.
-            - **Visore Standalone ad Alta Risoluzione**: visualizzatore darkroom dedicato a finestra separata con scorciatoie da tastiera e navigazione rapida.
-            - **Eliminazione Singola Foto**: cancellazione selettiva integrata su file system e database Excel.
-            - **Catalogo Prezzi & Vendita Foto**: gestione listini pacchetti e registrazione acquisti atleti con recapiti cliente.
-            - **Watermark & Metadati di Default**: anteprima live proporzionale a 18 MP (Canon EOS 600D) e precompilazione automatica nel wizard SD.
-            - **Slideshow Clienti Multischermo**: modalità presentazione su monitor secondario con transizioni fluide.
+            ### Novità e Funzionalità Incluse nella Versione 0.5.0
+            - **Browser Foto a Due Tab**: Tab Atleti (con filtri Atleta e Disciplina, contatori e anteprime) e Tab Premiazioni dedicato (navigazione e anteprima completa di tutte le foto premiazioni dell'evento).
+            - **Ingestione Wizard SD & Premiazioni**: Flag dedicato "Premiazioni" con disattivazione e reset automatico dei selettori atleta/disciplina e salvataggio automatico nel percorso standard `Evento/Premiazioni`.
+            - **Ridenominazione File SD Standardizzata**: Generazione nomi file `[ATLETA]_[DISCIPLINA]_[TIMESTAMP]_[NUMERO].[EXT]` con normalizzazione caratteri e timestamp scatto o importazione.
+            - **Slideshow Clienti Multi-Monitor**: Supporto alla cartella Premiazioni con toggle dedicato `Visualizza premiazioni`, 10 transizioni grafiche (Dissolvenza incrociata, Zoom in/out, Wipe, Slide, ecc.) con fallback resiliente, e HUD Darkroom arricchito (totale foto, indicatore Premiazioni).
+            - **Tab Informazioni & Versioning Dedicato**: Riquadro About nelle Impostazioni con versioni allineate di `Paddock.Core`, `Paddock.Infrastructure`, `Paddock.UI` a `0.5.0`, copyright `zmalrobot © 2026` e link repository GitHub.
+            - **Desk Vendita & Catalogo Prezzi**: Listino prezzi pacchetti con nuovo modello di default e registrazione vendite atleti con anagrafica cliente ed esportazione Excel.
+            - **Watermark Live & Eliminazione Foto**: Anteprima live proporzionale a 18 MP (Canon EOS 600D) ed eliminazione selettiva sincronizzata disco/Excel.
             - **Interfaccia Grafica Professionale**: darkroom theme ad alta leggibilità, zero emoji, priva di distrazioni.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
