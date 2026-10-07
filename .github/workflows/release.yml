@@ -1,20 +1,57 @@
 name: Release
 
 on:
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version tag (e.g. 1.0.0)'
+        description: 'Versione di rilascio (es. 1.0.0 o v1.0.0)'
         required: false
         default: '1.0.0'
         type: string
+      prerelease:
+        description: 'Contrassegna come pre-release'
+        required: false
+        default: false
+        type: boolean
+      draft:
+        description: 'Crea come bozza (draft)'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
+  meta:
+    name: Risoluzione Versione & Tag
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+      tag: ${{ steps.resolve.outputs.tag }}
+    steps:
+      - name: Calcola stringa versione e tag
+        id: resolve
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            RAW="${{ inputs.version }}"
+            [ -z "$RAW" ] && RAW="1.0.0"
+          else
+            RAW="${{ github.ref_name }}"
+          fi
+          VERSION="${RAW#[vV]}"
+          TAG="v${VERSION}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "Versione risolta: ${VERSION}"
+          echo "Tag risolto: ${TAG}"
+
   build-windows:
     name: Build Windows (win-x64)
+    needs: meta
     runs-on: windows-latest
     steps:
       - name: Checkout repository
@@ -28,17 +65,18 @@ jobs:
       - name: Run Windows Packaging Script
         shell: pwsh
         run: |
-          ./scripts/build-windows.ps1 -Version "${{ inputs.version }}" -Configuration "Release"
+          ./scripts/build-windows.ps1 -Version "${{ needs.meta.outputs.version }}" -Configuration "Release"
 
       - name: Upload Windows Distribution Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Paddock-${{ inputs.version }}-windows-x64
+          name: Paddock-${{ needs.meta.outputs.version }}-windows-x64
           path: artifacts/Paddock-*-windows-x64.zip
           if-no-files-found: error
 
   build-linux:
     name: Build Linux (linux-x64)
+    needs: meta
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -54,12 +92,63 @@ jobs:
 
       - name: Run Linux Packaging Script
         run: |
-          ./scripts/build-linux.sh "${{ inputs.version }}" "Release"
+          ./scripts/build-linux.sh "${{ needs.meta.outputs.version }}" "Release"
 
       - name: Upload Linux Distribution Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Paddock-${{ inputs.version }}-linux-x64
+          name: Paddock-${{ needs.meta.outputs.version }}-linux-x64
           path: artifacts/Paddock-*-linux-x64.zip
           if-no-files-found: error
 
+  publish-release:
+    name: Pubblica Ufficialmente su GitHub Releases
+    needs: [meta, build-windows, build-linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download tutti i pacchetti compilati
+        uses: actions/download-artifact@v4
+        with:
+          path: release-packages
+          merge-multiple: true
+
+      - name: Verifica pacchetti scaricati
+        run: |
+          ls -la release-packages/
+
+      - name: Crea o Aggiorna GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.meta.outputs.tag }}
+          name: "Paddock ${{ needs.meta.outputs.tag }}"
+          draft: ${{ inputs.draft || false }}
+          prerelease: ${{ inputs.prerelease || false }}
+          generate_release_notes: true
+          files: |
+            release-packages/*.zip
+          body: |
+            ## Paddock ${{ needs.meta.outputs.tag }}
+
+            Paddock è l'applicazione desktop professionale per l'ingestione, organizzazione e vendita di foto di eventi sportivi, sviluppata in **.NET 10** e **Avalonia UI**.
+
+            ### Pacchetti Disponibili per il Download
+            - **Windows (x64)**: `Paddock-${{ needs.meta.outputs.version }}-windows-x64.zip`
+              *(Self-contained, non richiede l'installazione di .NET. Estrarre ed avviare `Paddock.UI.exe`)*
+            - **Linux (x64)**: `Paddock-${{ needs.meta.outputs.version }}-linux-x64.zip`
+              *(Self-contained per distribuzioni Linux x86_64. Estrarre ed eseguire `./Paddock.UI`)*
+
+            ### Funzionalità Incluse
+            - **Browser Foto Gerarchico**: navigazione strutturata Atleta → Disciplina → Foto con anteprime veloci, badge formato JPEG/RAW e badge Watermark.
+            - **Visore Standalone ad Alta Risoluzione**: visualizzatore darkroom dedicato a finestra separata con scorciatoie da tastiera e navigazione rapida.
+            - **Eliminazione Singola Foto**: cancellazione selettiva integrata su file system e database Excel.
+            - **Catalogo Prezzi & Vendita Foto**: gestione listini pacchetti e registrazione acquisti atleti con recapiti cliente.
+            - **Watermark & Metadati di Default**: anteprima live proporzionale a 18 MP (Canon EOS 600D) e precompilazione automatica nel wizard SD.
+            - **Slideshow Clienti Multischermo**: modalità presentazione su monitor secondario con transizioni fluide.
+            - **Interfaccia Grafica Professionale**: darkroom theme ad alta leggibilità, zero emoji, priva di distrazioni.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
