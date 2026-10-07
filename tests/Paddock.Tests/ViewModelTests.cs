@@ -1016,6 +1016,12 @@ public class ViewModelTests
 
         vm.SelectedAtleta.Should().BeNull();
         vm.SelectedDisciplina.Should().BeNull();
+
+        // Deselezione Premiazioni: deve ripristinare il primo atleta e la prima disciplina come default
+        vm.IsPremiazioni = false;
+
+        vm.SelectedAtleta.Should().Be(atleta);
+        vm.SelectedDisciplina.Should().Be(disc);
     }
 
     [Fact]

@@ -37,6 +37,11 @@ public partial class IngestionWizardViewModel : ViewModelBase
             SelectedAtleta = null;
             SelectedDisciplina = null;
         }
+        else
+        {
+            SelectedAtleta = Atleti.FirstOrDefault();
+            SelectedDisciplina = Discipline.FirstOrDefault();
+        }
     }
 
     [ObservableProperty]
