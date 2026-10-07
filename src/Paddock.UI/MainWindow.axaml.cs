@@ -89,6 +89,15 @@ public partial class MainWindow : Window
                 _activeSlideshowWindow = null;
                 mainVm.IsSlideshowActive = false;
             };
+
+            mainVm.RequestOpenPhotoViewer += vm =>
+            {
+                var viewerWin = new PhotoViewerWindow
+                {
+                    DataContext = vm
+                };
+                viewerWin.Show();
+            };
         }
     }
 }

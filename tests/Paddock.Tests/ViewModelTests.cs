@@ -566,5 +566,133 @@ public class ViewModelTests
             Directory.Delete(tempSource, recursive: true);
         }
     }
+
+    [Fact]
+    public async Task EventDetailViewModel_HierarchicalPhotoGroups_BuildsAndExpandCollapseWorks()
+    {
+        var evento = new Evento { Id = Guid.NewGuid(), NomeEvento = "Rally Legend" };
+        var atleta1 = new Atleta { Id = Guid.NewGuid(), EventoId = evento.Id, NumeroPettorale = "10", Nome = "Mario", Cognome = "Rossi" };
+        var atleta2 = new Atleta { Id = Guid.NewGuid(), EventoId = evento.Id, NumeroPettorale = "20", Nome = "Luigi", Cognome = "Bianchi" };
+        var disc1 = new Disciplina { Id = Guid.NewGuid(), EventoId = evento.Id, NomeDisciplina = "Prove Libere" };
+        var disc2 = new Disciplina { Id = Guid.NewGuid(), EventoId = evento.Id, NomeDisciplina = "Gara 1" };
+
+        var foto1 = new Foto { Id = Guid.NewGuid(), EventoId = evento.Id, AtletaId = atleta1.Id, DisciplinaId = disc1.Id, NomeFileOriginale = "F1.jpg", Formato = "JPEG", DimensioneByte = 1000, PathRelativo = "F1.jpg" };
+        var foto2 = new Foto { Id = Guid.NewGuid(), EventoId = evento.Id, AtletaId = atleta1.Id, DisciplinaId = disc2.Id, NomeFileOriginale = "F2.jpg", Formato = "JPEG", DimensioneByte = 2000, PathRelativo = "F2.jpg" };
+        var foto3 = new Foto { Id = Guid.NewGuid(), EventoId = evento.Id, AtletaId = atleta2.Id, DisciplinaId = disc1.Id, NomeFileOriginale = "F3.raw", Formato = "RAW", DimensioneByte = 5000, PathRelativo = "F3.raw" };
+
+        var mockRepo = new Mock<IExcelRepository>();
+        mockRepo.Setup(r => r.GetAtletiByEventoAsync(evento.Id, It.IsAny<CancellationToken>())).ReturnsAsync(new List<Atleta> { atleta1, atleta2 });
+        mockRepo.Setup(r => r.GetDisciplineByEventoAsync(evento.Id, It.IsAny<CancellationToken>())).ReturnsAsync(new List<Disciplina> { disc1, disc2 });
+        mockRepo.Setup(r => r.GetFotoByEventoAsync(evento.Id, It.IsAny<CancellationToken>())).ReturnsAsync(new List<Foto> { foto1, foto2, foto3 });
+        mockRepo.Setup(r => r.GetCatalogoPrezziAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<PrezzoCatalogoItem>());
+        mockRepo.Setup(r => r.GetAcquistiByEventoAsync(evento.Id, It.IsAny<CancellationToken>())).ReturnsAsync(new List<AcquistoFoto>());
+        mockRepo.Setup(r => r.GetBasePathAsync(It.IsAny<CancellationToken>())).ReturnsAsync(@"C:\FotoTest");
+
+        var mockOrg = new Mock<IFileOrganizationService>();
+        var vm = new EventDetailViewModel(evento, mockRepo.Object, mockOrg.Object);
+
+        await vm.LoadEventDataAsync();
+
+        vm.AthletePhotoGroups.Should().HaveCount(2);
+        var groupA1 = vm.AthletePhotoGroups.First(g => g.Atleta.Id == atleta1.Id);
+        groupA1.DisciplineGroups.Should().HaveCount(2);
+        groupA1.TotalPhotosCount.Should().Be(2);
+
+        var groupA2 = vm.AthletePhotoGroups.First(g => g.Atleta.Id == atleta2.Id);
+        groupA2.DisciplineGroups.Should().HaveCount(1);
+        groupA2.TotalPhotosCount.Should().Be(1);
+
+        // Test collapse all
+        vm.CollapseAllPhotoGroupsCommand.Execute(null);
+        vm.AthletePhotoGroups.All(a => !a.IsExpanded && a.DisciplineGroups.All(d => !d.IsExpanded)).Should().BeTrue();
+
+        // Test expand all
+        vm.ExpandAllPhotoGroupsCommand.Execute(null);
+        vm.AthletePhotoGroups.All(a => a.IsExpanded && a.DisciplineGroups.All(d => d.IsExpanded)).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task EventDetailViewModel_DeleteSinglePhoto_DeletesFromExcelAndUpdatesMetrics()
+    {
+        var evento = new Evento { Id = Guid.NewGuid(), NomeEvento = "Rally Legend", TotaleFoto = 1, TotaleByteOccupati = 1000 };
+        var atleta = new Atleta { Id = Guid.NewGuid(), EventoId = evento.Id, NumeroPettorale = "10", Nome = "Mario", Cognome = "Rossi" };
+        var disc = new Disciplina { Id = Guid.NewGuid(), EventoId = evento.Id, NomeDisciplina = "Prove Libere" };
+        var foto = new Foto { Id = Guid.NewGuid(), EventoId = evento.Id, AtletaId = atleta.Id, DisciplinaId = disc.Id, NomeFileOriginale = "F1.jpg", Formato = "JPEG", DimensioneByte = 1000, PathRelativo = "F1.jpg" };
+
+        var mockRepo = new Mock<IExcelRepository>();
+        mockRepo.Setup(r => r.GetAtletiByEventoAsync(evento.Id, It.IsAny<CancellationToken>())).ReturnsAsync(new List<Atleta> { atleta });
+        mockRepo.Setup(r => r.GetDisciplineByEventoAsync(evento.Id, It.IsAny<CancellationToken>())).ReturnsAsync(new List<Disciplina> { disc });
+        mockRepo.Setup(r => r.GetFotoByEventoAsync(evento.Id, It.IsAny<CancellationToken>())).ReturnsAsync(new List<Foto> { foto });
+        mockRepo.Setup(r => r.GetCatalogoPrezziAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<PrezzoCatalogoItem>());
+        mockRepo.Setup(r => r.GetAcquistiByEventoAsync(evento.Id, It.IsAny<CancellationToken>())).ReturnsAsync(new List<AcquistoFoto>());
+        mockRepo.Setup(r => r.GetBasePathAsync(It.IsAny<CancellationToken>())).ReturnsAsync(@"C:\FotoTest");
+
+        var mockOrg = new Mock<IFileOrganizationService>();
+        var vm = new EventDetailViewModel(evento, mockRepo.Object, mockOrg.Object);
+        await vm.LoadEventDataAsync();
+
+        var photoItem = vm.FlatActivePhotoItems.First();
+
+        var deleted = await vm.DeleteSinglePhotoAsync(photoItem);
+
+        deleted.Should().BeTrue();
+        mockRepo.Verify(r => r.DeleteFotoAsync(foto.Id, It.IsAny<CancellationToken>()), Times.Once);
+        vm.AllFoto.Should().BeEmpty();
+        vm.FilteredFoto.Should().BeEmpty();
+        vm.FlatActivePhotoItems.Should().BeEmpty();
+        vm.AthletePhotoGroups.Should().BeEmpty();
+        vm.Evento.TotaleFoto.Should().Be(0);
+        vm.Evento.TotaleByteOccupati.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task PhotoViewerViewModel_NavigationAndDeletion_BehavesCorrectly()
+    {
+        var foto1 = new Foto { Id = Guid.NewGuid(), NomeFileOriginale = "Photo1.jpg", Formato = "JPEG", DimensioneByte = 1024 };
+        var foto2 = new Foto { Id = Guid.NewGuid(), NomeFileOriginale = "Photo2.jpg", Formato = "JPEG", DimensioneByte = 2048 };
+
+        var item1 = new PhotoItemViewModel(foto1, @"C:\Test\Photo1.jpg") { AtletaDisplay = "Mario Rossi", DisciplinaDisplay = "Salto" };
+        var item2 = new PhotoItemViewModel(foto2, @"C:\Test\Photo2.jpg") { AtletaDisplay = "Luigi Bianchi", DisciplinaDisplay = "Corsa" };
+
+        var photos = new List<PhotoItemViewModel> { item1, item2 };
+        bool deleteRequested = false;
+
+        var viewer = new PhotoViewerViewModel(photos, initialIndex: 0, deleteCallback: p =>
+        {
+            deleteRequested = true;
+            return Task.FromResult(true);
+        });
+
+        viewer.CurrentIndex.Should().Be(0);
+        viewer.CanGoPrevious.Should().BeFalse();
+        viewer.CanGoNext.Should().BeTrue();
+        viewer.CounterDisplay.Should().Be("1 / 2");
+        viewer.NomeFile.Should().Be("Photo1.jpg");
+
+        // Naviga successiva
+        viewer.NextPhotoCommand.Execute(null);
+        viewer.CurrentIndex.Should().Be(1);
+        viewer.CanGoPrevious.Should().BeTrue();
+        viewer.CanGoNext.Should().BeFalse();
+        viewer.CounterDisplay.Should().Be("2 / 2");
+        viewer.NomeFile.Should().Be("Photo2.jpg");
+
+        // Elimina seconda foto
+        bool closeTriggered = false;
+        viewer.RequestClose += () => closeTriggered = true;
+
+        await viewer.DeleteCurrentPhotoAsync();
+
+        deleteRequested.Should().BeTrue();
+        viewer.PhotosCount.Should().Be(1);
+        viewer.CurrentIndex.Should().Be(0);
+        viewer.NomeFile.Should().Be("Photo1.jpg");
+        closeTriggered.Should().BeFalse();
+
+        // Elimina l'ultima foto rimasta -> chiusura visore
+        await viewer.DeleteCurrentPhotoAsync();
+        viewer.PhotosCount.Should().Be(0);
+        closeTriggered.Should().BeTrue();
+    }
 }
 

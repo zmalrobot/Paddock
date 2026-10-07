@@ -45,6 +45,7 @@ public partial class MainViewModel : ViewModelBase
     public Func<List<DisplayScreenInfo>>? GetAvailableScreens { get; set; }
     public event Action<SlideshowConfig>? RequestLaunchSlideshow;
     public event Action? RequestStopSlideshow;
+    public event Action<PhotoViewerViewModel>? RequestOpenPhotoViewer;
 
     public ObservableCollection<Evento> AllEventi { get; } = new();
     public ObservableCollection<Evento> FilteredEventi { get; } = new();
@@ -180,10 +181,11 @@ public partial class MainViewModel : ViewModelBase
             return;
         }
 
-        var detailVm = new EventDetailViewModel(value, _excelRepo, _fileOrgService);
+        var detailVm = new EventDetailViewModel(value, _excelRepo, _fileOrgService, _imageService);
         detailVm.RequestStartIngestion += OnStartIngestionRequested;
         detailVm.RequestEditEvent += OnEditEventRequested;
         detailVm.RequestDeleteEvent += OnDeleteEventRequested;
+        detailVm.RequestOpenPhotoViewer += vm => RequestOpenPhotoViewer?.Invoke(vm);
 
         ActiveEventDetail = detailVm;
         _ = detailVm.LoadEventDataAsync();

@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Paddock.Core.Interfaces;
@@ -10,6 +11,7 @@ public partial class EventDetailViewModel : ViewModelBase
 {
     private readonly IExcelRepository _excelRepo;
     private readonly IFileOrganizationService _fileOrgService;
+    private readonly IImageProcessingService? _imageService;
 
     [ObservableProperty]
     private Evento _evento;
@@ -94,6 +96,10 @@ public partial class EventDetailViewModel : ViewModelBase
     public ObservableCollection<Foto> AllFoto { get; } = new();
     public ObservableCollection<Foto> FilteredFoto { get; } = new();
 
+    // Browser Foto Gerarchico & Viewer Standalone
+    public ObservableCollection<PhotoBrowserAthleteGroup> AthletePhotoGroups { get; } = new();
+    public List<PhotoItemViewModel> FlatActivePhotoItems { get; } = new();
+
     public ObservableCollection<AcquistoFoto> Acquisti { get; } = new();
     public ObservableCollection<PrezzoCatalogoItem> CatalogoDisponibile { get; } = new();
     public ObservableCollection<VoceAcquisto> VociAcquistoCorrente { get; } = new();
@@ -102,15 +108,18 @@ public partial class EventDetailViewModel : ViewModelBase
     public event Action<Evento>? RequestStartIngestion;
     public event Action<Evento>? RequestEditEvent;
     public event Action<Evento>? RequestDeleteEvent;
+    public event Action<PhotoViewerViewModel>? RequestOpenPhotoViewer;
 
     public EventDetailViewModel(
         Evento evento,
         IExcelRepository excelRepo,
-        IFileOrganizationService fileOrgService)
+        IFileOrganizationService fileOrgService,
+        IImageProcessingService? imageService = null)
     {
         _evento = evento;
         _excelRepo = excelRepo;
         _fileOrgService = fileOrgService;
+        _imageService = imageService;
     }
 
     public async Task LoadEventDataAsync()
@@ -130,7 +139,7 @@ public partial class EventDetailViewModel : ViewModelBase
         var foto = await _excelRepo.GetFotoByEventoAsync(Evento.Id);
         AllFoto.Clear();
         foreach (var f in foto) AllFoto.Add(f);
-        ApplyPhotoFilter();
+        await RebuildHierarchicalPhotoGroupsAsync();
 
         // 4. Carica catalogo e acquisti evento
         await LoadAcquistiDataAsync();
@@ -150,7 +159,7 @@ public partial class EventDetailViewModel : ViewModelBase
 
     partial void OnFotoFormatFilterChanged(string value)
     {
-        ApplyPhotoFilter();
+        _ = RebuildHierarchicalPhotoGroupsAsync();
     }
 
     private void ApplyAthleteFilter()
@@ -171,9 +180,12 @@ public partial class EventDetailViewModel : ViewModelBase
         }
     }
 
-    private void ApplyPhotoFilter()
+    public async Task RebuildHierarchicalPhotoGroupsAsync()
     {
         FilteredFoto.Clear();
+        FlatActivePhotoItems.Clear();
+        AthletePhotoGroups.Clear();
+
         var query = FotoFormatFilter switch
         {
             "JPEG" => AllFoto.Where(f => !f.IsRaw),
@@ -181,9 +193,181 @@ public partial class EventDetailViewModel : ViewModelBase
             _ => AllFoto.AsEnumerable()
         };
 
-        foreach (var f in query)
+        var filteredList = query.ToList();
+        foreach (var f in filteredList)
         {
             FilteredFoto.Add(f);
+        }
+
+        if (filteredList.Count == 0)
+        {
+            return;
+        }
+
+        var basePath = await _excelRepo.GetBasePathAsync() ?? string.Empty;
+
+        var items = new List<PhotoItemViewModel>();
+        foreach (var f in filteredList)
+        {
+            var fullPath = Path.Combine(basePath, f.PathRelativo);
+            var item = new PhotoItemViewModel(f, fullPath);
+
+            var atleta = AllAtleti.FirstOrDefault(a => a.Id == f.AtletaId);
+            item.AtletaDisplay = atleta != null ? atleta.DisplayPettoraleNome : "Atleta Non Assegnato";
+
+            var disciplina = Discipline.FirstOrDefault(d => d.Id == f.DisciplinaId);
+            item.DisciplinaDisplay = disciplina != null ? disciplina.NomeDisciplina : "Generale";
+
+            items.Add(item);
+            FlatActivePhotoItems.Add(item);
+        }
+
+        var groupedByAtleta = items
+            .GroupBy(i => i.Foto.AtletaId)
+            .OrderBy(g => AllAtleti.FirstOrDefault(a => a.Id == g.Key)?.NumeroPettorale)
+            .ThenBy(g => AllAtleti.FirstOrDefault(a => a.Id == g.Key)?.Cognome);
+
+        foreach (var atletaGroup in groupedByAtleta)
+        {
+            var atleta = AllAtleti.FirstOrDefault(a => a.Id == atletaGroup.Key)
+                ?? new Atleta { Cognome = "Atleta", Nome = "Non Assegnato" };
+
+            var athleteGroupVm = new PhotoBrowserAthleteGroup(atleta);
+
+            var groupedByDisciplina = atletaGroup
+                .GroupBy(i => i.Foto.DisciplinaId)
+                .OrderBy(g => Discipline.FirstOrDefault(d => d.Id == g.Key)?.NomeDisciplina ?? "Generale");
+
+            foreach (var disciplinaGroup in groupedByDisciplina)
+            {
+                var disciplina = Discipline.FirstOrDefault(d => d.Id == disciplinaGroup.Key)
+                    ?? new Disciplina { NomeDisciplina = "Generale" };
+
+                var disciplinaGroupVm = new PhotoBrowserDisciplinaGroup(disciplina);
+                foreach (var photoItem in disciplinaGroup)
+                {
+                    disciplinaGroupVm.Photos.Add(photoItem);
+                    _ = photoItem.LoadThumbnailAsync(_imageService);
+                }
+
+                athleteGroupVm.DisciplineGroups.Add(disciplinaGroupVm);
+            }
+
+            AthletePhotoGroups.Add(athleteGroupVm);
+        }
+    }
+
+    [RelayCommand]
+    public void ExpandAllPhotoGroups()
+    {
+        foreach (var ag in AthletePhotoGroups)
+        {
+            ag.IsExpanded = true;
+            foreach (var dg in ag.DisciplineGroups)
+            {
+                dg.IsExpanded = true;
+            }
+        }
+    }
+
+    [RelayCommand]
+    public void CollapseAllPhotoGroups()
+    {
+        foreach (var ag in AthletePhotoGroups)
+        {
+            ag.IsExpanded = false;
+            foreach (var dg in ag.DisciplineGroups)
+            {
+                dg.IsExpanded = false;
+            }
+        }
+    }
+
+    [RelayCommand]
+    public void OpenPhotoViewer(PhotoItemViewModel photoItem)
+    {
+        if (photoItem == null) return;
+
+        var index = FlatActivePhotoItems.IndexOf(photoItem);
+        if (index < 0) index = 0;
+
+        var viewerVm = new PhotoViewerViewModel(
+            FlatActivePhotoItems,
+            index,
+            _imageService,
+            deleteCallback: DeleteSinglePhotoAsync);
+
+        RequestOpenPhotoViewer?.Invoke(viewerVm);
+    }
+
+    [RelayCommand]
+    public async Task<bool> DeleteSinglePhotoAsync(PhotoItemViewModel photoItem)
+    {
+        if (photoItem == null) return false;
+
+        try
+        {
+            await _excelRepo.DeleteFotoAsync(photoItem.Foto.Id);
+
+            if (File.Exists(photoItem.FullPath))
+            {
+                try
+                {
+                    File.Delete(photoItem.FullPath);
+                }
+                catch
+                {
+                    // Fallback se rimosso o bloccato
+                }
+            }
+
+            var fotoObj = AllFoto.FirstOrDefault(f => f.Id == photoItem.Foto.Id);
+            if (fotoObj != null)
+            {
+                AllFoto.Remove(fotoObj);
+            }
+            FilteredFoto.Remove(photoItem.Foto);
+            FlatActivePhotoItems.Remove(photoItem);
+
+            foreach (var ag in AthletePhotoGroups)
+            {
+                foreach (var dg in ag.DisciplineGroups)
+                {
+                    if (dg.Photos.Remove(photoItem))
+                    {
+                        ag.NotifyCountChanged();
+                        break;
+                    }
+                }
+            }
+
+            for (int i = AthletePhotoGroups.Count - 1; i >= 0; i--)
+            {
+                var ag = AthletePhotoGroups[i];
+                for (int j = ag.DisciplineGroups.Count - 1; j >= 0; j--)
+                {
+                    if (ag.DisciplineGroups[j].Photos.Count == 0)
+                    {
+                        ag.DisciplineGroups.RemoveAt(j);
+                    }
+                }
+                if (ag.DisciplineGroups.Count == 0)
+                {
+                    AthletePhotoGroups.RemoveAt(i);
+                }
+            }
+
+            Evento.TotaleFoto = AllFoto.Count;
+            Evento.TotaleByteOccupati = AllFoto.Sum(f => f.DimensioneByte);
+            await _excelRepo.UpsertEventoAsync(Evento);
+            OnPropertyChanged(nameof(Evento));
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Errore eliminazione foto: {ex.Message}");
+            return false;
         }
     }
 
@@ -293,7 +477,7 @@ public partial class EventDetailViewModel : ViewModelBase
         var foto = await _excelRepo.GetFotoByEventoAsync(Evento.Id);
         AllFoto.Clear();
         foreach (var f in foto) AllFoto.Add(f);
-        ApplyPhotoFilter();
+        await RebuildHierarchicalPhotoGroupsAsync();
 
         Evento.TotaleFoto = AllFoto.Count;
         Evento.TotaleByteOccupati = AllFoto.Sum(f => f.DimensioneByte);
