@@ -53,6 +53,11 @@ public partial class SlideshowWindowViewModel : ViewModelBase
     /// </summary>
     public Func<string, Task<IImage?>>? ImageLoader { get; set; }
 
+    /// <summary>
+    /// Stream loader opzionale per decoupling e unit testing senza runtime Avalonia.
+    /// </summary>
+    public Func<Stream, IImage>? BitmapStreamLoader { get; set; }
+
     [ObservableProperty]
     private IImage? _currentImage;
 
@@ -420,11 +425,16 @@ public partial class SlideshowWindowViewModel : ViewModelBase
             {
                 if (_imageService != null)
                 {
-                    var bytes = await _imageService.GenerateThumbnailAsync(item.AbsolutePath, 2560, 1600);
+                    var bytes = await _imageService.ExtractRawPreviewAsync(item.AbsolutePath);
+                    if (bytes == null || bytes.Length == 0)
+                    {
+                        bytes = await _imageService.GenerateThumbnailAsync(item.AbsolutePath, 2560, 1600);
+                    }
+
                     if (bytes != null && bytes.Length > 0)
                     {
                         using var ms = new MemoryStream(bytes);
-                        return new Bitmap(ms);
+                        return BitmapStreamLoader != null ? BitmapStreamLoader(ms) : new Bitmap(ms);
                     }
                 }
                 return null;
@@ -436,7 +446,7 @@ public partial class SlideshowWindowViewModel : ViewModelBase
                 using var ms = new MemoryStream();
                 fs.CopyTo(ms);
                 ms.Position = 0;
-                return new Bitmap(ms);
+                return BitmapStreamLoader != null ? BitmapStreamLoader(ms) : new Bitmap(ms);
             });
         }
         catch

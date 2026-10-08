@@ -104,6 +104,7 @@ public interface IFileOrganizationService
 public interface IImageProcessingService
 {
     Task<bool> AutoRotateImageAsync(string imagePath, CancellationToken cancellationToken = default);
+    Task<byte[]> ExtractRawPreviewAsync(string rawFilePath, CancellationToken cancellationToken = default);
     Task ApplyWatermarkAsync(string sourceImagePath, string destinationImagePath, WatermarkOptions options, CancellationToken cancellationToken = default);
     Task<byte[]> GenerateThumbnailAsync(string imagePath, int maxWidth = 260, int maxHeight = 260, CancellationToken cancellationToken = default);
     Task<byte[]> GenerateWatermarkPreviewJpegAsync(

@@ -1,4 +1,4 @@
-using System.IO;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -20,7 +20,7 @@ public partial class PhotoViewerViewModel : ViewModelBase, IDisposable
     private PhotoItemViewModel? _currentPhoto;
 
     [ObservableProperty]
-    private Bitmap? _currentBitmap;
+    private IImage? _currentBitmap;
 
     [ObservableProperty]
     private bool _isLoading;
@@ -30,6 +30,8 @@ public partial class PhotoViewerViewModel : ViewModelBase, IDisposable
 
     [ObservableProperty]
     private bool _isDeleting;
+
+    public Func<Stream, IImage>? BitmapStreamLoader { get; set; }
 
     public IReadOnlyList<PhotoItemViewModel> Photos => _photos;
     public int PhotosCount => _photos.Count;
@@ -87,14 +89,14 @@ public partial class PhotoViewerViewModel : ViewModelBase, IDisposable
         _ = LoadPhotoAtCurrentIndexAsync();
     }
 
-    private async Task LoadPhotoAtCurrentIndexAsync()
+    public async Task LoadPhotoAtCurrentIndexAsync()
     {
         if (CurrentIndex < 0 || CurrentIndex >= _photos.Count)
         {
             CurrentPhoto = null;
             var old = CurrentBitmap;
             CurrentBitmap = null;
-            old?.Dispose();
+            (old as IDisposable)?.Dispose();
             NotifyNavigationChanged();
             return;
         }
@@ -117,23 +119,30 @@ public partial class PhotoViewerViewModel : ViewModelBase, IDisposable
             {
                 var oldBmp = CurrentBitmap;
                 CurrentBitmap = null;
-                oldBmp?.Dispose();
+                (oldBmp as IDisposable)?.Dispose();
                 StatusMessage = "File immagine non trovato su disco.";
                 return;
             }
 
-            Bitmap? loadedBitmap = null;
+            IImage? loadedBitmap = null;
 
             if (photo.IsRaw)
             {
                 if (_imageService != null)
                 {
-                    var bytes = await _imageService.GenerateThumbnailAsync(photo.FullPath, 2560, 1600, token);
+                    var bytes = await _imageService.ExtractRawPreviewAsync(photo.FullPath, token);
+                    if (bytes == null || bytes.Length == 0)
+                    {
+                        bytes = await _imageService.GenerateThumbnailAsync(photo.FullPath, 2560, 1600, token);
+                    }
+
                     if (token.IsCancellationRequested) return;
                     if (bytes != null && bytes.Length > 0)
                     {
                         using var ms = new MemoryStream(bytes);
-                        loadedBitmap = new Bitmap(ms);
+                        loadedBitmap = BitmapStreamLoader != null
+                            ? BitmapStreamLoader(ms)
+                            : new Bitmap(ms);
                     }
                 }
             }
@@ -146,7 +155,9 @@ public partial class PhotoViewerViewModel : ViewModelBase, IDisposable
                     await fs.CopyToAsync(ms, token);
                     if (token.IsCancellationRequested) return;
                     ms.Position = 0;
-                    loadedBitmap = new Bitmap(ms);
+                    loadedBitmap = BitmapStreamLoader != null
+                        ? BitmapStreamLoader(ms)
+                        : new Bitmap(ms);
                 }, token);
             }
 
@@ -154,11 +165,11 @@ public partial class PhotoViewerViewModel : ViewModelBase, IDisposable
             {
                 var old = CurrentBitmap;
                 CurrentBitmap = loadedBitmap;
-                old?.Dispose();
+                (old as IDisposable)?.Dispose();
             }
             else
             {
-                loadedBitmap?.Dispose();
+                (loadedBitmap as IDisposable)?.Dispose();
             }
         }
         catch (OperationCanceledException)
@@ -170,7 +181,7 @@ public partial class PhotoViewerViewModel : ViewModelBase, IDisposable
             StatusMessage = $"Impossibile caricare l'immagine: {ex.Message}";
             var old = CurrentBitmap;
             CurrentBitmap = null;
-            old?.Dispose();
+            (old as IDisposable)?.Dispose();
         }
         finally
         {
@@ -298,7 +309,7 @@ public partial class PhotoViewerViewModel : ViewModelBase, IDisposable
 
         var old = CurrentBitmap;
         CurrentBitmap = null;
-        old?.Dispose();
+        (old as IDisposable)?.Dispose();
     }
 }
 

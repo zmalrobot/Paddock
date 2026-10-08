@@ -18,6 +18,57 @@ public class ImageSharpProcessingService : IImageProcessingService
         ".jpg", ".jpeg", ".png", ".bmp", ".webp"
     };
 
+    private readonly IMetadataService? _metadataService;
+
+    public ImageSharpProcessingService(IMetadataService? metadataService = null)
+    {
+        _metadataService = metadataService;
+    }
+
+    public async Task<byte[]> ExtractRawPreviewAsync(
+        string rawFilePath,
+        CancellationToken cancellationToken = default)
+    {
+        var exifToolPath = _metadataService?.ExifToolPath;
+        var bytes = await RawPreviewExtractor.ExtractEmbeddedJpegAsync(rawFilePath, preferLargest: true, exifToolPath, cancellationToken).ConfigureAwait(false);
+        if (bytes == null || bytes.Length == 0)
+        {
+            return Array.Empty<byte>();
+        }
+
+        return await Task.Run(() =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            try
+            {
+                using var ms = new MemoryStream(bytes);
+                var info = Image.Identify(ms);
+                ms.Position = 0;
+                int orientation = 1;
+                if (info?.Metadata.ExifProfile != null &&
+                    info.Metadata.ExifProfile.TryGetValue(ExifTag.Orientation, out var tagVal))
+                {
+                    orientation = (int)(ushort)tagVal.Value;
+                }
+
+                if (orientation > 1 && orientation <= 8)
+                {
+                    using var image = Image.Load<Rgba32>(ms);
+                    image.Mutate(x => x.AutoOrient());
+                    using var outMs = new MemoryStream();
+                    image.SaveAsJpeg(outMs, new JpegEncoder { Quality = 95 });
+                    return outMs.ToArray();
+                }
+            }
+            catch
+            {
+                // In caso di errore parsing orientamento, restituisce i byte originali
+            }
+
+            return bytes;
+        }, cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task<bool> AutoRotateImageAsync(
         string imagePath,
         CancellationToken cancellationToken = default)
@@ -154,10 +205,45 @@ public class ImageSharpProcessingService : IImageProcessingService
         int maxHeight = 260,
         CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(imagePath) || !File.Exists(imagePath))
+        {
+            return Array.Empty<byte>();
+        }
+
         var ext = Path.GetExtension(imagePath);
+
+        // Se è un formato RAW (.CR2, .CR3, .NEF, ecc.), estrae e ridimensiona l'anteprima nativa incorporata
+        if (RawPreviewExtractor.IsRawFormat(ext))
+        {
+            var rawBytes = await ExtractRawPreviewAsync(imagePath, cancellationToken).ConfigureAwait(false);
+            if (rawBytes != null && rawBytes.Length > 0)
+            {
+                return await Task.Run(() =>
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    using var image = Image.Load<Rgba32>(rawBytes);
+
+                    image.Mutate(x =>
+                    {
+                        x.AutoOrient();
+                        x.Resize(new ResizeOptions
+                        {
+                            Size = new Size(maxWidth, maxHeight),
+                            Mode = ResizeMode.Max
+                        });
+                    });
+
+                    using var ms = new MemoryStream();
+                    image.SaveAsJpeg(ms, new JpegEncoder { Quality = 85 });
+                    return ms.ToArray();
+                }, cancellationToken).ConfigureAwait(false);
+            }
+
+            return Array.Empty<byte>();
+        }
+
         if (!RasterExtensions.Contains(ext))
         {
-            // Per i file RAW, restituiamo un array vuoto o un placeholder
             return Array.Empty<byte>();
         }
 
