@@ -527,7 +527,7 @@ public partial class SettingsViewModel : ViewModelBase
             return $"{ver.Major}.{ver.Minor}.{ver.Build}";
         }
 
-        return "0.5.0";
+        return "0.5.5";
     }
 
     [RelayCommand]

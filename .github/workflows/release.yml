@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Versione di rilascio (es. 0.5.0 o v0.5.0)'
+        description: 'Versione di rilascio (es. 0.5.5 o v0.5.5)'
         required: false
-        default: '0.5.0'
+        default: '0.5.5'
         type: string
       prerelease:
         description: 'Contrassegna come pre-release'
@@ -38,7 +38,7 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             RAW="${{ inputs.version }}"
-            [ -z "$RAW" ] && RAW="0.5.0"
+            [ -z "$RAW" ] && RAW="0.5.5"
           else
             RAW="${{ github.ref_name }}"
           fi
@@ -142,14 +142,16 @@ jobs:
             - **Linux (x64)**: `Paddock-${{ needs.meta.outputs.version }}-linux-x64.zip`
               *(Self-contained per distribuzioni Linux x86_64. Estrarre ed eseguire `./Paddock.UI`)*
 
-            ### Novità e Funzionalità Incluse nella Versione 0.5.0
+            ### Novità e Funzionalità della Versione 0.5.5
+            - **Sistema di Aggiornamento Automatico**: Controllo manuale e silenzioso all'avvio delle release GitHub, con utility standalone `Paddock.Updater` (Avalonia) integrata per download, decompressione sicura con processo principale chiuso e riavvio automatico.
+            - **Visualizzatore Foto RAW / Canon CR2**: Supporto nativo ai file `.CR2` e formati RAW fotografici in miniature griglia, visore darkroom a schermo intero (zoom continuo, panning, rotazione) e slideshow clienti su monitor secondario, con pipeline ad alte prestazioni basata su anteprime JPEG embedded ad alta definizione e fallback SkiaSharp.
+            - **Rotazione Automatica Foto in Ingestione**: Nuovo flag "Ruota automaticamente" (attivo di default) nel wizard di ingestione SD per rilevamento orientamento EXIF e rotazione fisica lossless su disco delle immagini.
             - **Browser Foto a Due Tab**: Tab Atleti (con filtri Atleta e Disciplina, contatori e anteprime) e Tab Premiazioni dedicato (navigazione e anteprima completa di tutte le foto premiazioni dell'evento).
             - **Ingestione Wizard SD & Premiazioni**: Flag dedicato "Premiazioni" con disattivazione e reset automatico dei selettori atleta/disciplina e salvataggio automatico nel percorso standard `Evento/Premiazioni`.
-            - **Ridenominazione File SD Standardizzata**: Generazione nomi file `[ATLETA]_[DISCIPLINA]_[TIMESTAMP]_[NUMERO].[EXT]` con normalizzazione caratteri e timestamp scatto o importazione.
-            - **Slideshow Clienti Multi-Monitor**: Supporto alla cartella Premiazioni con toggle dedicato `Visualizza premiazioni`, 10 transizioni grafiche (Dissolvenza incrociata, Zoom in/out, Wipe, Slide, ecc.) con fallback resiliente, e HUD Darkroom arricchito (totale foto, indicatore Premiazioni).
-            - **Tab Informazioni & Versioning Dedicato**: Riquadro About nelle Impostazioni con versioni allineate di `Paddock.Core`, `Paddock.Infrastructure`, `Paddock.UI` a `0.5.0`, copyright `zmalrobot © 2026` e link repository GitHub.
-            - **Desk Vendita & Catalogo Prezzi**: Listino prezzi pacchetti con nuovo modello di default e registrazione vendite atleti con anagrafica cliente ed esportazione Excel.
-            - **Watermark Live & Eliminazione Foto**: Anteprima live proporzionale a 18 MP (Canon EOS 600D) ed eliminazione selettiva sincronizzata disco/Excel.
-            - **Interfaccia Grafica Professionale**: darkroom theme ad alta leggibilità, zero emoji, priva di distrazioni.
+            - **Ridenominazione File SD Standardizzata**: Generazione nomi file `[ATLETA]_[DISCIPLINA]_[TIMESTAMP]_[NUMERO].[EXT]` con normalizzazione caratteri e metadati fotocamera/scatto.
+            - **Slideshow Clienti Multi-Monitor**: Supporto foto Atleti e Premiazioni, 10 transizioni grafiche con fallback resiliente, HUD Darkroom arricchito e assenza di pulsanti invasivi a tutto schermo.
+            - **Desk Vendita & Catalogo Prezzi**: Listino prezzi pacchetti con modello di default, anagrafica clienti ed esportazione ordini su Excel.
+            - **Watermark Live & Eliminazione Sincronizzata**: Anteprima live proporzionale a 18 MP ed eliminazione selettiva sincronizzata disco/Excel.
+            - **Tab Informazioni & Versioning Allineato**: Versionamento di tutti i moduli a `0.5.5.0`, copyright © 2026 zmalrobot e link diretto a GitHub.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
