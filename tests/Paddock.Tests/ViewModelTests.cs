@@ -202,6 +202,65 @@ public class ViewModelTests
     }
 
     [Fact]
+    public void Application_EmbedsLogoIcoAndConfiguresApplicationIcon()
+    {
+        var currentDir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (currentDir != null && !File.Exists(Path.Combine(currentDir.FullName, "Paddock.slnx")))
+        {
+            currentDir = currentDir.Parent;
+        }
+
+        currentDir.Should().NotBeNull();
+        var rootIco = Path.Combine(currentDir!.FullName, "logo.ico");
+        var uiIco = Path.Combine(currentDir.FullName, "src", "Paddock.UI", "Assets", "logo.ico");
+        var updaterIco = Path.Combine(currentDir.FullName, "src", "Paddock.Updater", "Assets", "logo.ico");
+
+        File.Exists(rootIco).Should().BeTrue();
+        File.Exists(uiIco).Should().BeTrue();
+        File.Exists(updaterIco).Should().BeTrue();
+
+        // Verifica validità formato binario ICO (Header: 2 byte reserved=0, 2 byte type=1, 2 byte count >= 4)
+        var icoBytes = File.ReadAllBytes(uiIco);
+        icoBytes.Length.Should().BeGreaterThan(6 + 16);
+        BitConverter.ToUInt16(icoBytes, 0).Should().Be(0);
+        BitConverter.ToUInt16(icoBytes, 2).Should().Be(1);
+        var iconCount = BitConverter.ToUInt16(icoBytes, 4);
+        iconCount.Should().BeGreaterThanOrEqualTo(4);
+
+        // Verifica configurazione ApplicationIcon nei csproj
+        var uiCsproj = Path.Combine(currentDir.FullName, "src", "Paddock.UI", "Paddock.UI.csproj");
+        var updaterCsproj = Path.Combine(currentDir.FullName, "src", "Paddock.Updater", "Paddock.Updater.csproj");
+
+        File.ReadAllText(uiCsproj).Should().Contain("<ApplicationIcon>Assets\\logo.ico</ApplicationIcon>");
+        File.ReadAllText(updaterCsproj).Should().Contain("<ApplicationIcon>Assets\\logo.ico</ApplicationIcon>");
+    }
+
+    [Fact]
+    public void LinuxPackaging_IncludesDesktopFileAndPngIcon()
+    {
+        var currentDir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (currentDir != null && !File.Exists(Path.Combine(currentDir.FullName, "Paddock.slnx")))
+        {
+            currentDir = currentDir.Parent;
+        }
+
+        currentDir.Should().NotBeNull();
+        var desktopFile = Path.Combine(currentDir!.FullName, "paddock.desktop");
+        var rootPng = Path.Combine(currentDir.FullName, "logo.png");
+        var uiPng = Path.Combine(currentDir.FullName, "src", "Paddock.UI", "Assets", "logo.png");
+        var updaterPng = Path.Combine(currentDir.FullName, "src", "Paddock.Updater", "Assets", "logo.png");
+
+        File.Exists(desktopFile).Should().BeTrue();
+        File.Exists(rootPng).Should().BeTrue();
+        File.Exists(uiPng).Should().BeTrue();
+        File.Exists(updaterPng).Should().BeTrue();
+
+        var desktopContent = File.ReadAllText(desktopFile);
+        desktopContent.Should().Contain("Exec=Paddock.UI");
+        desktopContent.Should().Contain("Icon=logo");
+    }
+
+    [Fact]
     public void SlideshowConfigViewModel_Initializes10Transitions_WithGpuCpuBadges()
     {
         var mockRepo = new Mock<IExcelRepository>();

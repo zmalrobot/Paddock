@@ -42,6 +42,13 @@ if (-not (Test-Path $ArtifactsDir)) {
     New-Item -ItemType Directory -Path $ArtifactsDir -Force | Out-Null
 }
 
+# 2. Verifica e generazione preventiva icone
+$IcoFile = Join-Path $RootDir "logo.ico"
+if (-not (Test-Path $IcoFile)) {
+    Write-Host "[Icon] Generazione automatica logo.ico e asset..." -ForegroundColor Yellow
+    & (Join-Path $RootDir "scripts/generate-icons.ps1")
+}
+
 # 2. Compilazione e pubblicazione nativa self-contained
 Write-Host "[2/4] Esecuzione dotnet publish Paddock.UI (win-x64, self-contained)..." -ForegroundColor Green
 $dotnetArgs = @(
@@ -96,6 +103,29 @@ $UpdaterExePath = Join-Path $PublishDir "Paddock.Updater.exe"
 if (-not (Test-Path $UpdaterExePath)) {
     Write-Error "L eseguibile Paddock.Updater.exe non e stato trovato in $PublishDir."
     exit 1
+}
+
+# Verifica estrazione icona Win32 PE incorporata
+try {
+    Add-Type -AssemblyName System.Drawing
+    $iconUi = [System.Drawing.Icon]::ExtractAssociatedIcon($ExePath)
+    if ($null -ne $iconUi) {
+        Write-Host " [PE Icon] Paddock.UI.exe: icona Win32 incorporata verificata con successo ($($iconUi.Width)x$($iconUi.Height))." -ForegroundColor Green
+        $iconUi.Dispose()
+    } else {
+        Write-Warning " [PE Icon] Attenzione: Paddock.UI.exe non ha un'icona associata valida."
+    }
+
+    $iconUpdater = [System.Drawing.Icon]::ExtractAssociatedIcon($UpdaterExePath)
+    if ($null -ne $iconUpdater) {
+        Write-Host " [PE Icon] Paddock.Updater.exe: icona Win32 incorporata verificata con successo ($($iconUpdater.Width)x$($iconUpdater.Height))." -ForegroundColor Green
+        $iconUpdater.Dispose()
+    } else {
+        Write-Warning " [PE Icon] Attenzione: Paddock.Updater.exe non ha un'icona associata valida."
+    }
+}
+catch {
+    Write-Warning "Impossibile verificare l'icona PE estratta: $_"
 }
 
 # 4. Compressione archivio ZIP distribuibile

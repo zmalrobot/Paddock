@@ -4,6 +4,7 @@
         x:Class="Paddock.Updater.Views.UpdaterMainWindow"
         x:DataType="vm:UpdaterMainWindowViewModel"
         Title="Paddock Updater"
+        Icon="/Assets/logo.jpg"
         Width="520" Height="320"
         CanResize="False"
         WindowStartupLocation="CenterScreen"

@@ -67,12 +67,27 @@ if [ ! -f "${UPDATER_EXECUTABLE}" ]; then
 fi
 chmod +x "${UPDATER_EXECUTABLE}"
 
+# Copia icone e file desktop per integrazione Linux
+[ -f "${ROOT_DIR}/logo.png" ] && cp "${ROOT_DIR}/logo.png" "${PUBLISH_DIR}/logo.png"
+[ -f "${ROOT_DIR}/logo.jpg" ] && cp "${ROOT_DIR}/logo.jpg" "${PUBLISH_DIR}/logo.jpg"
+[ -f "${ROOT_DIR}/paddock.desktop" ] && cp "${ROOT_DIR}/paddock.desktop" "${PUBLISH_DIR}/paddock.desktop"
+
 # 4. Creazione archivio ZIP con preservazione dei permessi
 echo "[3/4] Compressione archivio ZIP: ${ZIP_FILE_NAME}..."
-(
-    cd "${PUBLISH_DIR}"
-    zip -r "${ZIP_FILE_PATH}" ./*
-)
+if command -v zip >/dev/null 2>&1; then
+    (
+        cd "${PUBLISH_DIR}"
+        zip -r "${ZIP_FILE_PATH}" ./*
+    )
+elif command -v python3 >/dev/null 2>&1; then
+    (
+        cd "${PUBLISH_DIR}"
+        python3 -m zipfile -c "${ZIP_FILE_PATH}" ./*
+    )
+else
+    echo "ERRORE: Ne 'zip' ne 'python3' sono disponibili per creare l'archivio ZIP." >&2
+    exit 1
+fi
 
 echo "[4/4] Pacchetto creato con successo!"
 echo " Percorso: ${ZIP_FILE_PATH}"

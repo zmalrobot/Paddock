@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Paddock
+GenericName=Photo Organizer
+Comment=Ingestione ed organizzazione professionale di foto di eventi sportivi
+Exec=Paddock.UI
+Icon=logo
+Terminal=false
+Categories=Graphics;Photography;Viewer;
+StartupNotify=true
+StartupWMClass=Paddock.UI
+
