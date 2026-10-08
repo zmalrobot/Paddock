@@ -295,4 +295,89 @@ public class SqliteRepositoryTests : IDisposable
         await repo.DeleteAcquistoFotoAsync(acquisto.Id);
         (await repo.GetAcquistiByEventoAsync(evId)).Should().BeEmpty();
     }
+
+    [Fact]
+    public async Task AddFotoBatchAsync_HandlesPremiazioniAndUnassignedPhotosWithoutForeignKeyError()
+    {
+        // Arrange
+        var repo = new SqliteRepository(_testDbPath);
+        await repo.EnsureDatabaseInitializedAsync();
+
+        var evento = new Evento { NomeEvento = "Premiazioni Test", Luogo = "Milano" };
+        await repo.UpsertEventoAsync(evento);
+
+        // Foto Premiazioni: AtletaId e DisciplinaId vuoti (Guid.Empty), IsPremiazione = true
+        var fotoPrem = new Foto
+        {
+            EventoId = evento.Id,
+            AtletaId = Guid.Empty,
+            DisciplinaId = Guid.Empty,
+            NomeFileOriginale = "PREMIAZIONE_001.JPG",
+            PathRelativo = @"Premiazioni\PREMIAZIONE_001.JPG",
+            Formato = "JPEG",
+            IsPremiazione = true,
+            DimensioneByte = 4500000
+        };
+
+        // Foto orfana: AtletaId e DisciplinaId non presenti nelle relative tabelle
+        var fotoOrfana = new Foto
+        {
+            EventoId = evento.Id,
+            AtletaId = Guid.NewGuid(),
+            DisciplinaId = Guid.NewGuid(),
+            NomeFileOriginale = "GENERIC_002.JPG",
+            PathRelativo = @"Generiche\GENERIC_002.JPG",
+            Formato = "JPEG",
+            IsPremiazione = false,
+            DimensioneByte = 3200000
+        };
+
+        // Act
+        await repo.AddFotoBatchAsync(new[] { fotoPrem, fotoOrfana });
+
+        // Assert
+        var fotoList = await repo.GetFotoByEventoAsync(evento.Id);
+        fotoList.Should().HaveCount(2);
+
+        var retrievedPrem = fotoList.First(f => f.Id == fotoPrem.Id);
+        retrievedPrem.IsPremiazione.Should().BeTrue();
+        retrievedPrem.AtletaId.Should().Be(Guid.Empty);
+        retrievedPrem.DisciplinaId.Should().Be(Guid.Empty);
+
+        var retrievedOrfana = fotoList.First(f => f.Id == fotoOrfana.Id);
+        retrievedOrfana.NomeFileOriginale.Should().Be("GENERIC_002.JPG");
+    }
+
+    [Fact]
+    public async Task DeleteEventoAsync_CascadesDeletionAcrossAllTablesAtomically()
+    {
+        // Arrange
+        var repo = new SqliteRepository(_testDbPath);
+        await repo.EnsureDatabaseInitializedAsync();
+
+        var evento = new Evento { NomeEvento = "Evento Da Eliminare" };
+        await repo.UpsertEventoAsync(evento);
+
+        var disciplina = new Disciplina { EventoId = evento.Id, NomeDisciplina = "Nuoto" };
+        await repo.UpsertDisciplinaAsync(disciplina);
+
+        var atleta = new Atleta { EventoId = evento.Id, Nome = "Paolo", Cognome = "Bianchi" };
+        await repo.UpsertAtletaAsync(atleta);
+
+        var foto = new Foto { EventoId = evento.Id, AtletaId = atleta.Id, DisciplinaId = disciplina.Id, NomeFileOriginale = "F1.JPG", PathRelativo = "F1.JPG" };
+        await repo.AddFotoBatchAsync(new[] { foto });
+
+        var acquisto = new AcquistoFoto { EventoId = evento.Id, AtletaId = atleta.Id, TotaleCalcolato = 20, TotalePagato = 20 };
+        await repo.UpsertAcquistoFotoAsync(acquisto);
+
+        // Act
+        await repo.DeleteEventoAsync(evento.Id);
+
+        // Assert
+        (await repo.GetEventiAsync()).Should().NotContain(e => e.Id == evento.Id);
+        (await repo.GetDisciplineByEventoAsync(evento.Id)).Should().BeEmpty();
+        (await repo.GetAtletiByEventoAsync(evento.Id)).Should().BeEmpty();
+        (await repo.GetFotoByEventoAsync(evento.Id)).Should().BeEmpty();
+        (await repo.GetAcquistiByEventoAsync(evento.Id)).Should().BeEmpty();
+    }
 }

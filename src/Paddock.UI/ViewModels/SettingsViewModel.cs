@@ -77,7 +77,14 @@ public partial class SettingsViewModel : ViewModelBase
     private string? _statusMessage;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StatusBannerBackground))]
+    [NotifyPropertyChangedFor(nameof(StatusBannerBorderBrush))]
+    [NotifyPropertyChangedFor(nameof(StatusBannerForeground))]
     private bool _isErrorMessage;
+
+    public string StatusBannerBackground => IsErrorMessage ? "#2D1B1E" : "#1F2F20";
+    public string StatusBannerBorderBrush => IsErrorMessage ? "#E74C3C" : "#2ECC71";
+    public string StatusBannerForeground => IsErrorMessage ? "#FF6B6B" : "#2ECC71";
 
     [ObservableProperty]
     private bool _isBusy;

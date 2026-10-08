@@ -105,7 +105,7 @@ public class SqliteRepository : IDatabaseRepository
         await conn.OpenAsync(cancellationToken).ConfigureAwait(false);
 
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = "PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;";
+        cmd.CommandText = "PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL; PRAGMA foreign_keys = OFF; PRAGMA busy_timeout = 5000;";
         await cmd.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 
         return conn;
@@ -158,8 +158,7 @@ public class SqliteRepository : IDatabaseRepository
                     Id TEXT PRIMARY KEY,
                     EventoId TEXT NOT NULL,
                     NomeDisciplina TEXT NOT NULL,
-                    Descrizione TEXT,
-                    FOREIGN KEY(EventoId) REFERENCES Eventi(Id) ON DELETE CASCADE
+                    Descrizione TEXT
                 );
 
                 CREATE TABLE IF NOT EXISTS Atleti (
@@ -170,8 +169,7 @@ public class SqliteRepository : IDatabaseRepository
                     Cognome TEXT NOT NULL,
                     Categoria TEXT,
                     Note TEXT,
-                    TimestampIngestione TEXT,
-                    FOREIGN KEY(EventoId) REFERENCES Eventi(Id) ON DELETE CASCADE
+                    TimestampIngestione TEXT
                 );
 
                 CREATE TABLE IF NOT EXISTS Foto (
@@ -187,10 +185,7 @@ public class SqliteRepository : IDatabaseRepository
                     WatermarkApplicato INTEGER NOT NULL DEFAULT 0,
                     DimensioneByte INTEGER NOT NULL DEFAULT 0,
                     HashMd5 TEXT,
-                    IsPremiazione INTEGER NOT NULL DEFAULT 0,
-                    FOREIGN KEY(EventoId) REFERENCES Eventi(Id) ON DELETE CASCADE,
-                    FOREIGN KEY(AtletaId) REFERENCES Atleti(Id) ON DELETE CASCADE,
-                    FOREIGN KEY(DisciplinaId) REFERENCES Discipline(Id) ON DELETE CASCADE
+                    IsPremiazione INTEGER NOT NULL DEFAULT 0
                 );
 
                 CREATE TABLE IF NOT EXISTS ListinoPrezzi (
@@ -222,8 +217,7 @@ public class SqliteRepository : IDatabaseRepository
                     VociJson TEXT,
                     VociSommario TEXT,
                     Note TEXT,
-                    Stato TEXT NOT NULL,
-                    FOREIGN KEY(EventoId) REFERENCES Eventi(Id) ON DELETE CASCADE
+                    Stato TEXT NOT NULL
                 );
 
                 CREATE INDEX IF NOT EXISTS idx_discipline_evento ON Discipline(EventoId);
@@ -412,10 +406,10 @@ public class SqliteRepository : IDatabaseRepository
         {
             var evento = new Evento
             {
-                Id = Guid.Parse(reader.GetString(0)),
+                Id = Guid.TryParse(reader.GetString(0), out var id) ? id : Guid.NewGuid(),
                 NomeEvento = reader.GetString(1),
-                DataInizio = DateTime.Parse(reader.GetString(2), CultureInfo.InvariantCulture),
-                DataFine = DateTime.Parse(reader.GetString(3), CultureInfo.InvariantCulture),
+                DataInizio = DateTime.TryParse(reader.GetString(2), CultureInfo.InvariantCulture, DateTimeStyles.None, out var di) ? di : DateTime.Today,
+                DataFine = DateTime.TryParse(reader.GetString(3), CultureInfo.InvariantCulture, DateTimeStyles.None, out var df) ? df : DateTime.Today,
                 Luogo = reader.IsDBNull(4) ? string.Empty : reader.GetString(4),
                 CartellaDestinazioneRoot = reader.IsDBNull(5) ? string.Empty : reader.GetString(5),
                 Note = reader.IsDBNull(6) ? null : reader.GetString(6),
@@ -452,10 +446,10 @@ public class SqliteRepository : IDatabaseRepository
         {
             return new Evento
             {
-                Id = Guid.Parse(reader.GetString(0)),
+                Id = Guid.TryParse(reader.GetString(0), out var id) ? id : Guid.NewGuid(),
                 NomeEvento = reader.GetString(1),
-                DataInizio = DateTime.Parse(reader.GetString(2), CultureInfo.InvariantCulture),
-                DataFine = DateTime.Parse(reader.GetString(3), CultureInfo.InvariantCulture),
+                DataInizio = DateTime.TryParse(reader.GetString(2), CultureInfo.InvariantCulture, DateTimeStyles.None, out var di) ? di : DateTime.Today,
+                DataFine = DateTime.TryParse(reader.GetString(3), CultureInfo.InvariantCulture, DateTimeStyles.None, out var df) ? df : DateTime.Today,
                 Luogo = reader.IsDBNull(4) ? string.Empty : reader.GetString(4),
                 CartellaDestinazioneRoot = reader.IsDBNull(5) ? string.Empty : reader.GetString(5),
                 Note = reader.IsDBNull(6) ? null : reader.GetString(6),
@@ -509,10 +503,23 @@ public class SqliteRepository : IDatabaseRepository
         try
         {
             await using var conn = await OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
-            await using var cmd = conn.CreateCommand();
-            cmd.CommandText = "DELETE FROM Eventi WHERE Id = @id;";
-            cmd.Parameters.AddWithValue("@id", eventoId.ToString());
-            await cmd.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+            await using var tx = conn.BeginTransaction();
+
+            await using (var cmd = conn.CreateCommand())
+            {
+                cmd.Transaction = tx;
+                cmd.CommandText = @"
+                    DELETE FROM Foto WHERE EventoId = @id;
+                    DELETE FROM Atleti WHERE EventoId = @id;
+                    DELETE FROM Discipline WHERE EventoId = @id;
+                    DELETE FROM Acquisti WHERE EventoId = @id;
+                    DELETE FROM Eventi WHERE Id = @id;
+                ";
+                cmd.Parameters.AddWithValue("@id", eventoId.ToString());
+                await cmd.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+            }
+
+            await tx.CommitAsync(cancellationToken).ConfigureAwait(false);
         }
         finally
         {
@@ -537,8 +544,8 @@ public class SqliteRepository : IDatabaseRepository
         {
             list.Add(new Disciplina
             {
-                Id = Guid.Parse(reader.GetString(0)),
-                EventoId = Guid.Parse(reader.GetString(1)),
+                Id = Guid.TryParse(reader.GetString(0), out var did) ? did : Guid.NewGuid(),
+                EventoId = Guid.TryParse(reader.GetString(1), out var evid) ? evid : Guid.Empty,
                 NomeDisciplina = reader.GetString(2),
                 Descrizione = reader.IsDBNull(3) ? null : reader.GetString(3)
             });
@@ -608,8 +615,8 @@ public class SqliteRepository : IDatabaseRepository
         {
             list.Add(new Atleta
             {
-                Id = Guid.Parse(reader.GetString(0)),
-                EventoId = Guid.Parse(reader.GetString(1)),
+                Id = Guid.TryParse(reader.GetString(0), out var aid) ? aid : Guid.NewGuid(),
+                EventoId = Guid.TryParse(reader.GetString(1), out var evid) ? evid : Guid.Empty,
                 NumeroPettorale = reader.IsDBNull(2) ? string.Empty : reader.GetString(2),
                 Nome = reader.GetString(3),
                 Cognome = reader.GetString(4),
@@ -853,12 +860,17 @@ public class SqliteRepository : IDatabaseRepository
             }
         }
 
+        var id = Guid.TryParse(reader.GetString(0), out var parsedId) ? parsedId : Guid.NewGuid();
+        var evId = Guid.TryParse(reader.GetString(1), out var parsedEvId) ? parsedEvId : Guid.Empty;
+        var atId = Guid.TryParse(reader.GetString(2), out var parsedAtId) ? parsedAtId : Guid.Empty;
+        var discId = Guid.TryParse(reader.GetString(3), out var parsedDiscId) ? parsedDiscId : Guid.Empty;
+
         return new Foto
         {
-            Id = Guid.Parse(reader.GetString(0)),
-            EventoId = Guid.Parse(reader.GetString(1)),
-            AtletaId = Guid.Parse(reader.GetString(2)),
-            DisciplinaId = Guid.Parse(reader.GetString(3)),
+            Id = id,
+            EventoId = evId,
+            AtletaId = atId,
+            DisciplinaId = discId,
             NomeFileOriginale = reader.GetString(4),
             PathRelativo = reader.GetString(5),
             Formato = reader.GetString(6),
@@ -1013,9 +1025,9 @@ public class SqliteRepository : IDatabaseRepository
         await using var reader = await cmd.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
         while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
         {
-            var dataAcquisto = DateTime.Parse(reader.GetString(2), CultureInfo.InvariantCulture);
-            var atletaId = Guid.Parse(reader.GetString(3));
-            Guid? disciplinaId = reader.IsDBNull(6) ? null : Guid.Parse(reader.GetString(6));
+            var dataAcquisto = DateTime.TryParse(reader.GetString(2), CultureInfo.InvariantCulture, DateTimeStyles.None, out var da) ? da : DateTime.Now;
+            var atletaId = Guid.TryParse(reader.GetString(3), out var aid) ? aid : Guid.Empty;
+            Guid? disciplinaId = reader.IsDBNull(6) ? null : (Guid.TryParse(reader.GetString(6), out var did) ? did : null);
 
             var filesRaw = reader.IsDBNull(14) ? string.Empty : reader.GetString(14);
             var fileList = string.IsNullOrWhiteSpace(filesRaw)
@@ -1031,8 +1043,8 @@ public class SqliteRepository : IDatabaseRepository
 
             list.Add(new AcquistoFoto
             {
-                Id = Guid.Parse(reader.GetString(0)),
-                EventoId = Guid.Parse(reader.GetString(1)),
+                Id = Guid.TryParse(reader.GetString(0), out var id) ? id : Guid.NewGuid(),
+                EventoId = Guid.TryParse(reader.GetString(1), out var evId) ? evId : Guid.Empty,
                 DataAcquisto = dataAcquisto,
                 AtletaId = atletaId,
                 NomeAtleta = reader.IsDBNull(4) ? string.Empty : reader.GetString(4),
@@ -1083,6 +1095,12 @@ public class SqliteRepository : IDatabaseRepository
                     @email, @tel, @intera, @files,
                     @path, @vociJson, @vociSomm, @note, @stato
                 ) ON CONFLICT(Id) DO UPDATE SET
+                    DataAcquisto = excluded.DataAcquisto,
+                    AtletaId = excluded.AtletaId,
+                    NomeAtleta = excluded.NomeAtleta,
+                    NumeroPettorale = excluded.NumeroPettorale,
+                    DisciplinaId = excluded.DisciplinaId,
+                    NomeDisciplina = excluded.NomeDisciplina,
                     TotaleQuantita = excluded.TotaleQuantita,
                     TotaleCalcolato = excluded.TotaleCalcolato,
                     TotalePagato = excluded.TotalePagato,
@@ -1162,8 +1180,8 @@ public class SqliteRepository : IDatabaseRepository
             {
                 bundle.Atleti.Add(new Atleta
                 {
-                    Id = Guid.Parse(r.GetString(0)),
-                    EventoId = Guid.Parse(r.GetString(1)),
+                    Id = Guid.TryParse(r.GetString(0), out var aid) ? aid : Guid.NewGuid(),
+                    EventoId = Guid.TryParse(r.GetString(1), out var evid) ? evid : Guid.Empty,
                     NumeroPettorale = r.IsDBNull(2) ? string.Empty : r.GetString(2),
                     Nome = r.GetString(3),
                     Cognome = r.GetString(4),
@@ -1183,8 +1201,8 @@ public class SqliteRepository : IDatabaseRepository
             {
                 bundle.Discipline.Add(new Disciplina
                 {
-                    Id = Guid.Parse(r.GetString(0)),
-                    EventoId = Guid.Parse(r.GetString(1)),
+                    Id = Guid.TryParse(r.GetString(0), out var did) ? did : Guid.NewGuid(),
+                    EventoId = Guid.TryParse(r.GetString(1), out var evid) ? evid : Guid.Empty,
                     NomeDisciplina = r.GetString(2),
                     Descrizione = r.IsDBNull(3) ? null : r.GetString(3)
                 });
@@ -1258,13 +1276,13 @@ public class SqliteRepository : IDatabaseRepository
 
                 bundle.Acquisti.Add(new AcquistoFoto
                 {
-                    Id = Guid.Parse(r.GetString(0)),
-                    EventoId = Guid.Parse(r.GetString(1)),
-                    DataAcquisto = DateTime.Parse(r.GetString(2), CultureInfo.InvariantCulture),
-                    AtletaId = Guid.Parse(r.GetString(3)),
+                    Id = Guid.TryParse(r.GetString(0), out var id) ? id : Guid.NewGuid(),
+                    EventoId = Guid.TryParse(r.GetString(1), out var evId) ? evId : Guid.Empty,
+                    DataAcquisto = DateTime.TryParse(r.GetString(2), CultureInfo.InvariantCulture, DateTimeStyles.None, out var da) ? da : DateTime.Now,
+                    AtletaId = Guid.TryParse(r.GetString(3), out var aid) ? aid : Guid.Empty,
                     NomeAtleta = r.IsDBNull(4) ? string.Empty : r.GetString(4),
                     NumeroPettorale = r.IsDBNull(5) ? string.Empty : r.GetString(5),
-                    DisciplinaId = r.IsDBNull(6) ? null : Guid.Parse(r.GetString(6)),
+                    DisciplinaId = r.IsDBNull(6) ? null : (Guid.TryParse(r.GetString(6), out var did) ? did : null),
                     NomeDisciplina = r.IsDBNull(7) ? string.Empty : r.GetString(7),
                     TotaleQuantita = r.GetInt32(8),
                     TotaleCalcolato = Convert.ToDecimal(r.GetDouble(9)),

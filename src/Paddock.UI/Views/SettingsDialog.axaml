@@ -498,9 +498,13 @@
 
             <!-- 3. Feedback Banner & Footer -->
             <StackPanel Grid.Row="2" Spacing="10" Margin="0,12,0,0">
-                <Border Background="#1F2F20" BorderBrush="#2ECC71" BorderThickness="1" CornerRadius="4" Padding="12,8"
+                <Border Background="{Binding StatusBannerBackground}" 
+                        BorderBrush="{Binding StatusBannerBorderBrush}" 
+                        BorderThickness="1" CornerRadius="4" Padding="12,8"
                         IsVisible="{Binding StatusMessage, Converter={x:Static ObjectConverters.IsNotNull}}">
-                    <TextBlock Text="{Binding StatusMessage}" Foreground="#2ECC71" FontSize="11" TextWrapping="Wrap"/>
+                    <TextBlock Text="{Binding StatusMessage}" 
+                               Foreground="{Binding StatusBannerForeground}" 
+                               FontSize="11" TextWrapping="Wrap"/>
                 </Border>
 
                 <Grid ColumnDefinitions="*,Auto">

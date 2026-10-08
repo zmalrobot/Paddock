@@ -116,7 +116,40 @@ public class DatabaseRepositoryRouterTests : IDisposable
             PathRelativo = @"Crono\GANNA_01.JPG",
             DimensioneByte = 8192
         };
-        await excelRepo.AddFotoBatchAsync(new[] { foto });
+
+        var fotoPrem = new Foto
+        {
+            EventoId = evento.Id,
+            AtletaId = Guid.Empty,
+            DisciplinaId = Guid.Empty,
+            NomeFileOriginale = "PODIO_01.JPG",
+            PathRelativo = @"Premiazioni\PODIO_01.JPG",
+            IsPremiazione = true,
+            DimensioneByte = 12000
+        };
+
+        var fotoOrfana = new Foto
+        {
+            EventoId = evento.Id,
+            AtletaId = Guid.NewGuid(), // Atleta non presente nel foglio Atleti
+            DisciplinaId = Guid.Empty,
+            NomeFileOriginale = "PAESAGGIO.JPG",
+            PathRelativo = @"Generiche\PAESAGGIO.JPG",
+            DimensioneByte = 15000
+        };
+
+        await excelRepo.AddFotoBatchAsync(new[] { foto, fotoPrem, fotoOrfana });
+
+        var acquisto = new AcquistoFoto
+        {
+            EventoId = evento.Id,
+            AtletaId = atleta.Id,
+            NomeAtleta = "Filippo Ganna",
+            TotaleCalcolato = 30m,
+            TotalePagato = 30m,
+            EmailCliente = "fan@cycling.com"
+        };
+        await excelRepo.UpsertAcquistoFotoAsync(acquisto);
 
         var router = new DatabaseRepositoryRouter(excelPath);
 
@@ -136,7 +169,13 @@ public class DatabaseRepositoryRouterTests : IDisposable
         var bundle = await router.GetEventDataBundleAsync(evento.Id);
         bundle.Atleti.Should().ContainSingle(a => a.Nome == "Filippo" && a.Cognome == "Ganna");
         bundle.Discipline.Should().ContainSingle(d => d.NomeDisciplina == "Crono");
-        bundle.Foto.Should().ContainSingle(f => f.NomeFileOriginale == "GANNA_01.JPG");
+        bundle.Foto.Should().HaveCount(3);
+        bundle.Foto.Should().Contain(f => f.NomeFileOriginale == "GANNA_01.JPG");
+        bundle.Foto.Should().Contain(f => f.NomeFileOriginale == "PODIO_01.JPG" && f.IsPremiazione && f.AtletaId == Guid.Empty);
+        bundle.Foto.Should().Contain(f => f.NomeFileOriginale == "PAESAGGIO.JPG");
+
+        var acquisti = await router.GetAcquistiByEventoAsync(evento.Id);
+        acquisti.Should().ContainSingle(a => a.EmailCliente == "fan@cycling.com");
     }
 }
 

@@ -195,6 +195,23 @@ public class DatabaseRepositoryRouter : IDatabaseRepository, IExcelRepository
         var tempExcel = new ExcelRepository(sourceExcelPath);
         var tempSqlite = new SqliteRepository(destinationSqlitePath);
 
+        // Assicura il rilascio di eventuali connessioni residue e pulizia del file di destinazione per una migrazione vergine
+        Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+        var resolvedDest = tempSqlite.ResolvedDatabaseFilePath;
+        if (File.Exists(resolvedDest))
+        {
+            try
+            {
+                File.Delete(resolvedDest);
+                if (File.Exists(resolvedDest + "-wal")) File.Delete(resolvedDest + "-wal");
+                if (File.Exists(resolvedDest + "-shm")) File.Delete(resolvedDest + "-shm");
+            }
+            catch
+            {
+                // Se bloccato o non eliminabile, procederà sovrascrivendo tramite upsert
+            }
+        }
+
         await tempExcel.EnsureDatabaseInitializedAsync(cancellationToken).ConfigureAwait(false);
         await tempSqlite.EnsureDatabaseInitializedAsync(cancellationToken).ConfigureAwait(false);
 
@@ -242,6 +259,8 @@ public class DatabaseRepositoryRouter : IDatabaseRepository, IExcelRepository
                 await tempSqlite.UpsertAcquistoFotoAsync(acq, cancellationToken).ConfigureAwait(false);
             }
         }
+
+        Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
 
         // Commuta il router sul nuovo SQLite
         await SwitchDatabaseAsync(destinationSqlitePath, cancellationToken).ConfigureAwait(false);
