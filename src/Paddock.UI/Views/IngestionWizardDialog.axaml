@@ -89,6 +89,18 @@
                     </StackPanel>
                 </Border>
 
+                <!-- Sezione Rotazione Automatica -->
+                <Border Background="#22252B" CornerRadius="6" Padding="14" BorderBrush="#2E323B" BorderThickness="1">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                            <TextBlock Text="Rotazione Automatica Immagini" FontWeight="SemiBold" Foreground="#EDEDED"/>
+                            <TextBlock Text="Rileva l'orientamento di scatto dai metadati EXIF (scatti verticali/portrait) e ruota automaticamente la foto."
+                                       FontSize="11" Foreground="#9EA3AE"/>
+                        </StackPanel>
+                        <CheckBox Grid.Column="1" Content="Ruota automaticamente" IsChecked="{Binding AutoRotate}" VerticalAlignment="Center" FontSize="12"/>
+                    </Grid>
+                </Border>
+
                 <!-- Sezione Watermark (Solo JPEG/PNG) -->
                 <Border Background="#22252B" CornerRadius="6" Padding="14" BorderBrush="#2E323B" BorderThickness="1">
                     <StackPanel Spacing="10">

@@ -1,5 +1,8 @@
+using MetadataExtractor;
+using MetadataExtractor.Formats.Exif;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Jpeg;
+using SixLabors.ImageSharp.Metadata.Profiles.Exif;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 using Paddock.Core.DTOs;
@@ -14,6 +17,96 @@ public class ImageSharpProcessingService : IImageProcessingService
     {
         ".jpg", ".jpeg", ".png", ".bmp", ".webp"
     };
+
+    public async Task<bool> AutoRotateImageAsync(
+        string imagePath,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(imagePath) || !File.Exists(imagePath))
+        {
+            return false;
+        }
+
+        var ext = Path.GetExtension(imagePath);
+        if (!RasterExtensions.Contains(ext))
+        {
+            // I file RAW proprietari non vengono alterati/ricodificati
+            return false;
+        }
+
+        return await Task.Run(() =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // 1. Rileva l'orientamento EXIF con MetadataExtractor in-process
+            int orientation = 1;
+            try
+            {
+                var directories = ImageMetadataReader.ReadMetadata(imagePath);
+                var exifDir = directories.OfType<ExifDirectoryBase>()
+                    .FirstOrDefault(d => d.ContainsTag(ExifDirectoryBase.TagOrientation));
+                if (exifDir != null && exifDir.TryGetInt32(ExifDirectoryBase.TagOrientation, out var parsedVal))
+                {
+                    orientation = parsedVal;
+                }
+            }
+            catch
+            {
+                // Fallback successivo
+            }
+
+            // 2. Se non rilevato, ispeziona i metadati con Image.Identify
+            if (orientation <= 1)
+            {
+                try
+                {
+                    var info = Image.Identify(imagePath);
+                    if (info?.Metadata.ExifProfile != null &&
+                        info.Metadata.ExifProfile.TryGetValue(ExifTag.Orientation, out var exifVal))
+                    {
+                        orientation = (int)(ushort)exifVal.Value;
+                    }
+                }
+                catch
+                {
+                    // Fallback
+                }
+            }
+
+            // Se l'immagine è già orientata normalmente (1 o sconosciuto), non serve rielaborare
+            if (orientation <= 1 || orientation > 8)
+            {
+                return false;
+            }
+
+            // 3. Esegui la rotazione fisica e aggiorna l'orientamento a TopLeft (1)
+            using var image = Image.Load<Rgba32>(imagePath);
+
+            // Assicura che l'ExifProfile contenga il valore di orientamento rilevato
+            if (image.Metadata.ExifProfile == null)
+            {
+                image.Metadata.ExifProfile = new ExifProfile();
+            }
+            image.Metadata.ExifProfile.SetValue(ExifTag.Orientation, (ushort)orientation);
+
+            // AutoOrient ruota/ribalta fisicamente la matrice pixel e reimposta Orientation su TopLeft (1)
+            image.Mutate(ctx => ctx.AutoOrient());
+
+            // Salvataggio sul percorso di destinazione mantenendo alta qualità fotografica
+            if (string.Equals(ext, ".jpg", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(ext, ".jpeg", StringComparison.OrdinalIgnoreCase))
+            {
+                var jpegEncoder = new JpegEncoder { Quality = 95 };
+                image.Save(imagePath, jpegEncoder);
+            }
+            else
+            {
+                image.Save(imagePath);
+            }
+
+            return true;
+        }, cancellationToken).ConfigureAwait(false);
+    }
 
     public async Task ApplyWatermarkAsync(
         string sourceImagePath,
@@ -73,11 +166,15 @@ public class ImageSharpProcessingService : IImageProcessingService
             cancellationToken.ThrowIfCancellationRequested();
             using var image = Image.Load<Rgba32>(imagePath);
 
-            image.Mutate(x => x.Resize(new ResizeOptions
+            image.Mutate(x =>
             {
-                Size = new Size(maxWidth, maxHeight),
-                Mode = ResizeMode.Max
-            }));
+                x.AutoOrient();
+                x.Resize(new ResizeOptions
+                {
+                    Size = new Size(maxWidth, maxHeight),
+                    Mode = ResizeMode.Max
+                });
+            });
 
             using var ms = new MemoryStream();
             image.SaveAsJpeg(ms, new JpegEncoder { Quality = 75 });

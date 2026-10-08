@@ -31,6 +31,7 @@ public class IngestionJobRequest
     public bool IsPremiazioni { get; set; }
     public Atleta? AtletaTarget { get; set; }
     public Disciplina? DisciplinaTarget { get; set; }
+    public bool AutoRotate { get; set; } = true;
     public WatermarkOptions Watermark { get; set; } = new();
     public MetadataOptions Metadata { get; set; } = new();
     public bool RecursiveScan { get; set; } = true;

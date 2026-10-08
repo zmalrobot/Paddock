@@ -233,5 +233,52 @@ public class ChannelIngestionPipelineTests : IDisposable
         File.Exists(fullRawPath).Should().BeTrue();
         File.Exists(fullJpgPath).Should().BeTrue();
     }
+
+    [Fact]
+    public async Task Pipeline_WithAutoRotateEnabled_InvokesAutoRotateImageAsync_OnRasterFiles()
+    {
+        // Arrange
+        var jpgFile = Path.Combine(_sourceDir, "IMG_1001.JPG");
+        var rawFile = Path.Combine(_sourceDir, "IMG_1001.CR2");
+        await File.WriteAllBytesAsync(jpgFile, new byte[] { 10, 20, 30 });
+        await File.WriteAllBytesAsync(rawFile, new byte[] { 40, 50, 60 });
+
+        var fileOrg = new FileOrganizationService();
+        var mockImageService = new Mock<IImageProcessingService>();
+        mockImageService.Setup(i => i.AutoRotateImageAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var mockMetadata = new Mock<IMetadataService>();
+        var mockExcelRepo = new Mock<IExcelRepository>();
+
+        var pipeline = new ChannelIngestionPipelineService(
+            fileOrg,
+            mockImageService.Object,
+            mockMetadata.Object,
+            mockExcelRepo.Object);
+
+        var request = new IngestionJobRequest
+        {
+            SourceDirectory = _sourceDir,
+            EventoTarget = new Evento { NomeEvento = "Gara Rotazione", CartellaDestinazioneRoot = _destDir },
+            AtletaTarget = new Atleta { NumeroPettorale = "1", Nome = "Mario", Cognome = "Rossi" },
+            DisciplinaTarget = new Disciplina { NomeDisciplina = "Salto" },
+            AutoRotate = true,
+            Watermark = new WatermarkOptions { Enabled = false }
+        };
+
+        var completedTcs = new TaskCompletionSource<IngestionProgressReport>();
+        pipeline.JobCompleted += (s, r) => completedTcs.TrySetResult(r);
+
+        // Act
+        await pipeline.EnqueueJobAsync(request);
+        var report = await completedTcs.Task.WaitAsync(TimeSpan.FromSeconds(10));
+
+        // Assert
+        report.Status.Should().Be(IngestionStatus.Completed);
+        // AutoRotateImageAsync deve essere invocato per il file JPEG raster, ma NON per il file RAW
+        mockImageService.Verify(i => i.AutoRotateImageAsync(It.Is<string>(p => p.EndsWith(".JPG", StringComparison.OrdinalIgnoreCase)), It.IsAny<CancellationToken>()), Times.Once);
+        mockImageService.Verify(i => i.AutoRotateImageAsync(It.Is<string>(p => p.EndsWith(".CR2", StringComparison.OrdinalIgnoreCase)), It.IsAny<CancellationToken>()), Times.Never);
+    }
 }
 

@@ -65,6 +65,12 @@ public class AppPreferencesService : IAppPreferencesService
         set => _data.DefaultCopyrightNotice = value;
     }
 
+    public bool DefaultAutoRotate
+    {
+        get => _data.DefaultAutoRotate;
+        set => _data.DefaultAutoRotate = value;
+    }
+
     public AppPreferencesService(string? customConfigPath = null)
     {
         if (string.IsNullOrWhiteSpace(customConfigPath))
@@ -169,5 +175,6 @@ public class AppPreferencesService : IAppPreferencesService
         public float DefaultWatermarkScalePercent { get; set; } = 0.20f;
         public string DefaultPhotographerName { get; set; } = string.Empty;
         public string DefaultCopyrightNotice { get; set; } = string.Empty;
+        public bool DefaultAutoRotate { get; set; } = true;
     }
 }

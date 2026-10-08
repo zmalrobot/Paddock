@@ -45,6 +45,9 @@ public partial class IngestionWizardViewModel : ViewModelBase
     }
 
     [ObservableProperty]
+    private bool _autoRotate = true;
+
+    [ObservableProperty]
     private bool _watermarkEnabled = false;
 
     [ObservableProperty]
@@ -105,6 +108,7 @@ public partial class IngestionWizardViewModel : ViewModelBase
 
         if (_prefsService != null)
         {
+            AutoRotate = _prefsService.DefaultAutoRotate;
             WatermarkEnabled = _prefsService.DefaultWatermarkEnabled;
             WatermarkImagePath = _prefsService.DefaultWatermarkImagePath;
             WatermarkOpacity = _prefsService.DefaultWatermarkOpacity > 0 ? _prefsService.DefaultWatermarkOpacity : 0.65f;
@@ -230,6 +234,7 @@ public partial class IngestionWizardViewModel : ViewModelBase
             IsPremiazioni = IsPremiazioni,
             AtletaTarget = IsPremiazioni ? null : SelectedAtleta,
             DisciplinaTarget = IsPremiazioni ? null : SelectedDisciplina,
+            AutoRotate = AutoRotate,
             Watermark = new WatermarkOptions
             {
                 Enabled = WatermarkEnabled,

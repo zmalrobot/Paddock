@@ -129,6 +129,66 @@ public class ExifToolMetadataService : IMetadataService
         }, cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task<int?> ExtractOrientationAsync(string filePath, CancellationToken cancellationToken = default)
+    {
+        if (!File.Exists(filePath)) return null;
+
+        return await Task.Run(async () =>
+        {
+            // 1. Prova lettura rapida in-process con MetadataExtractor
+            try
+            {
+                var directories = ImageMetadataReader.ReadMetadata(filePath);
+                var exifDir = directories.OfType<ExifDirectoryBase>()
+                    .FirstOrDefault(d => d.ContainsTag(ExifDirectoryBase.TagOrientation));
+                if (exifDir != null && exifDir.TryGetInt32(ExifDirectoryBase.TagOrientation, out var orientation))
+                {
+                    return (int?)orientation;
+                }
+            }
+            catch
+            {
+                // Fallback successivo
+            }
+
+            // 2. Se MetadataExtractor non ha rilevato l'orientamento, prova con ExifTool se disponibile
+            if (IsExifToolAvailable && !string.IsNullOrEmpty(_resolvedExifToolPath))
+            {
+                try
+                {
+                    var psi = new ProcessStartInfo
+                    {
+                        FileName = _resolvedExifToolPath,
+                        UseShellExecute = false,
+                        CreateNoWindow = true,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true
+                    };
+                    psi.ArgumentList.Add("-Orientation#");
+                    psi.ArgumentList.Add("-s3");
+                    psi.ArgumentList.Add(filePath);
+
+                    using var process = Process.Start(psi);
+                    if (process != null)
+                    {
+                        var output = await process.StandardOutput.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+                        await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+                        if (process.ExitCode == 0 && int.TryParse(output.Trim(), out var parsedOrientation))
+                        {
+                            return parsedOrientation;
+                        }
+                    }
+                }
+                catch
+                {
+                    // Ignora errori processo
+                }
+            }
+
+            return null;
+        }, cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task<bool> WritePhotographerMetadataAsync(
         string filePath,
         string photographerName,

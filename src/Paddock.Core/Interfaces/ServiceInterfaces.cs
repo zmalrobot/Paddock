@@ -74,6 +74,7 @@ public interface IAppPreferencesService
     float DefaultWatermarkScalePercent { get; set; }
     string DefaultPhotographerName { get; set; }
     string DefaultCopyrightNotice { get; set; }
+    bool DefaultAutoRotate { get; set; }
 
     void Load();
     Task LoadAsync();
@@ -102,6 +103,7 @@ public interface IFileOrganizationService
 
 public interface IImageProcessingService
 {
+    Task<bool> AutoRotateImageAsync(string imagePath, CancellationToken cancellationToken = default);
     Task ApplyWatermarkAsync(string sourceImagePath, string destinationImagePath, WatermarkOptions options, CancellationToken cancellationToken = default);
     Task<byte[]> GenerateThumbnailAsync(string imagePath, int maxWidth = 260, int maxHeight = 260, CancellationToken cancellationToken = default);
     Task<byte[]> GenerateWatermarkPreviewJpegAsync(
@@ -116,6 +118,7 @@ public interface IMetadataService
 {
     bool IsExifToolAvailable { get; }
     string? ExifToolPath { get; set; }
+    Task<int?> ExtractOrientationAsync(string filePath, CancellationToken cancellationToken = default);
     Task<DateTime?> ExtractCaptureDateAsync(string filePath, CancellationToken cancellationToken = default);
     Task<bool> WritePhotographerMetadataAsync(string filePath, string photographerName, string copyright, CancellationToken cancellationToken = default);
 }

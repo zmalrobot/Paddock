@@ -187,12 +187,30 @@ public class ChannelIngestionPipelineService : IIngestionPipelineService
                                 request.IsPremiazioni,
                                 token).ConfigureAwait(false);
 
+                            var fileModified = false;
+
+                            // Fase A2: Rotazione Automatica (se abilitata e formato raster)
+                            if (request.AutoRotate && !isRaw)
+                            {
+                                var rotated = await _imageService.AutoRotateImageAsync(destPath, token).ConfigureAwait(false);
+                                if (rotated)
+                                {
+                                    fileModified = true;
+                                }
+                            }
+
                             // Fase B: Watermark (se abilitato e formato raster)
                             var watermarkApplied = false;
                             if (request.Watermark.Enabled && !isRaw)
                             {
                                 await _imageService.ApplyWatermarkAsync(destPath, destPath, request.Watermark, token).ConfigureAwait(false);
                                 watermarkApplied = true;
+                                fileModified = true;
+                            }
+
+                            if (fileModified && File.Exists(destPath))
+                            {
+                                sizeBytes = new FileInfo(destPath).Length;
                             }
 
                             // Fase C: Iniezione Metadati Fotografo & Copyright

@@ -525,6 +525,7 @@ public class ViewModelTests
         mockPrefs.Setup(p => p.DefaultWatermarkScalePercent).Returns(0.22f);
         mockPrefs.Setup(p => p.DefaultPhotographerName).Returns("Paddock Pro Studio");
         mockPrefs.Setup(p => p.DefaultCopyrightNotice).Returns("© Paddock Pro 2026");
+        mockPrefs.Setup(p => p.DefaultAutoRotate).Returns(true);
 
         var vm = new IngestionWizardViewModel(
             evento,
@@ -534,6 +535,7 @@ public class ViewModelTests
             mockPrefs.Object);
 
         // Verifica precompilazione
+        vm.AutoRotate.Should().BeTrue();
         vm.WatermarkEnabled.Should().BeTrue();
         vm.WatermarkImagePath.Should().Be(@"C:\Brand\Logo.png");
         vm.WatermarkOpacity.Should().Be(0.75f);
@@ -554,7 +556,8 @@ public class ViewModelTests
             vm.StartIngestionCommand.Execute(null);
 
             request.Should().NotBeNull();
-            request!.Watermark.Enabled.Should().BeTrue();
+            request!.AutoRotate.Should().BeTrue();
+            request.Watermark.Enabled.Should().BeTrue();
             request.Watermark.WatermarkImagePath.Should().Be(@"C:\Brand\Logo.png");
             request.Watermark.Opacity.Should().Be(0.75f);
             request.Watermark.Position.Should().Be(WatermarkPosition.Center);
@@ -565,6 +568,47 @@ public class ViewModelTests
         finally
         {
             Directory.Delete(tempSource, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void IngestionWizardViewModel_AutoRotate_DefaultsToTrue_AndPropagatesToRequest()
+    {
+        var evento = new Evento { NomeEvento = "Gara Rotazione" };
+        var atleta = new Atleta { NumeroPettorale = "10", Nome = "Paolo", Cognome = "Maldini" };
+        var disc = new Disciplina { NomeDisciplina = "Calcio" };
+        var mockWatcher = new Mock<ISdCardWatcherService>();
+
+        var vm = new IngestionWizardViewModel(
+            evento,
+            new[] { atleta },
+            new[] { disc },
+            mockWatcher.Object);
+
+        // Di default AutoRotate deve essere abilitato
+        vm.AutoRotate.Should().BeTrue();
+
+        var tempDir = Path.Combine(Path.GetTempPath(), "TempSource_AutoRotate_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            vm.SourceDirectory = tempDir;
+            IngestionJobRequest? request = null;
+            vm.RequestClose += r => request = r;
+
+            // Avvio con AutoRotate true
+            vm.StartIngestionCommand.Execute(null);
+            request.Should().NotBeNull();
+            request!.AutoRotate.Should().BeTrue();
+
+            // Toggle a false
+            vm.AutoRotate = false;
+            vm.StartIngestionCommand.Execute(null);
+            request!.AutoRotate.Should().BeFalse();
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
         }
     }
 
