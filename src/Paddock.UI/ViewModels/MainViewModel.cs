@@ -189,7 +189,7 @@ public partial class MainViewModel : ViewModelBase
         try
         {
             var updateService = new GitHubUpdateService();
-            var currentVersion = typeof(MainViewModel).Assembly.GetName().Version?.ToString(3) ?? "0.5.6";
+            var currentVersion = typeof(MainViewModel).Assembly.GetName().Version?.ToString(3) ?? "0.5.7";
             var info = await updateService.CheckForUpdatesAsync(currentVersion, includePrerelease: true);
             if (info.IsUpdateAvailable)
             {

@@ -549,7 +549,7 @@ public partial class SettingsViewModel : ViewModelBase
             return $"{ver.Major}.{ver.Minor}.{ver.Build}";
         }
 
-        return "0.5.6";
+        return "0.5.7";
     }
 
     [RelayCommand]

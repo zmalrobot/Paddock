@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Versione di rilascio (es. 0.5.6 o v0.5.6)'
+        description: 'Versione di rilascio (es. 0.5.7 o v0.5.7)'
         required: false
-        default: '0.5.6'
+        default: '0.5.7'
         type: string
       prerelease:
         description: 'Contrassegna come pre-release'
@@ -38,7 +38,7 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             RAW="${{ inputs.version }}"
-            [ -z "$RAW" ] && RAW="0.5.6"
+            [ -z "$RAW" ] && RAW="0.5.7"
           else
             RAW="${{ github.ref_name }}"
           fi
@@ -142,7 +142,8 @@ jobs:
             - **Linux (x64)**: `Paddock-${{ needs.meta.outputs.version }}-linux-x64.zip`
               *(Self-contained per distribuzioni Linux x86_64. Estrarre ed eseguire `./Paddock.UI`)*
 
-            ### Novità e Funzionalità della Versione 0.5.6
+            ### Novità e Funzionalità della Versione 0.5.7
+            - **Compilazione Zero-Warning & NuGetAudit Resolution**: Risoluzione definitiva dei warning di sicurezza `NU1903` attraverso l'aggiornamento a `SixLabors.ImageSharp 3.1.12` e `SixLabors.ImageSharp.Drawing 2.1.7` e la configurazione mirata di `<NuGetAuditSuppress>` in `Directory.Build.props`, preservando l'audit attivo per tutte le altre librerie.
             - **Struttura Cartelle Portatile & Risoluzione Percorsi (Relativi ed Assoluti)**: Supporto nativo per la struttura a cartella radice singola (`<Cartella Base>/` contenente `Database/`, `Paddock/` e `Foto/`). Percorsi relativi predefiniti (`..\Database\Paddock_Database.xlsx` e `..\Foto`) con risoluzione deterministica e supporto trasparente e incondizionato per qualsiasi percorso assoluto o su disco esterno. Feedback visivo dinamico nella UI per il percorso effettivo su disco e selettori con calcolo automatico del percorso relativo.
             - **Watermark e Metadati Singola Foto**: Nuovo pulsante dedicato nel visore ingrandito a schermo intero (darkroom) per applicare filigrana visiva e metadati (fotografo, copyright) su singoli file JPG/PNG, con salvataggio atomico con sostituzione del file, invalidazione cache miniature e aggiornamento in tempo reale del foglio Excel.
             - **Icona Win32 PE Incorporata**: Generazione ed incorporamento dell'icona multi-risoluzione `logo.ico` (da 16x16 a 256x256 HiDPI) direttamente all'interno degli eseguibili Windows `Paddock.UI.exe` e `Paddock.Updater.exe`.
