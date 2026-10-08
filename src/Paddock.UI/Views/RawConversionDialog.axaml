@@ -1,0 +1,204 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Paddock.UI.ViewModels"
+             x:Class="Paddock.UI.Views.RawConversionDialog"
+             x:DataType="vm:RawConversionDialogViewModel"
+             Width="680">
+
+    <Border Background="#1A1C20"
+            BorderBrush="#2E323B"
+            BorderThickness="1"
+            CornerRadius="8"
+            Padding="24"
+            BoxShadow="0 8 32 #50000000">
+        <ScrollViewer MaxHeight="620">
+            <StackPanel Spacing="16">
+
+                <!-- Header Dialogo -->
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="Genera JPEG Mancanti da RAW" FontSize="18" FontWeight="SemiBold" Foreground="#EDEDED"/>
+                        <TextBlock Text="{Binding Evento.NomeEvento, StringFormat='Evento: {0}'}" FontSize="12" Foreground="#FF8C32"/>
+                    </StackPanel>
+                    <Border Grid.Column="1" Background="#22252B" CornerRadius="4" Padding="10,4" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Atleta.DisplayPettoraleNome}" FontSize="12" FontWeight="Bold" Foreground="#EDEDED"/>
+                    </Border>
+                </Grid>
+
+                <!-- Stato Scansione Iniziale -->
+                <Border Background="#22252B" CornerRadius="6" Padding="14" BorderBrush="#2E323B" BorderThickness="1"
+                        IsVisible="{Binding IsScanning}">
+                    <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                        <ProgressBar IsIndeterminate="True" Width="20" Height="20" Classes="accent" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding ScanMessage}" FontSize="12" Foreground="#9EA3AE" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Empty State: Nessuna foto RAW da convertire -->
+                <Border Background="#22252B" CornerRadius="6" Padding="16" BorderBrush="#2E323B" BorderThickness="1"
+                        IsVisible="{Binding TotalCandidateCount, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=0}">
+                    <StackPanel Spacing="6" HorizontalAlignment="Center">
+                        <TextBlock Text="Nessuna foto RAW priva di JPEG trovata" FontWeight="SemiBold" FontSize="13" Foreground="#2ECC71" HorizontalAlignment="Center"/>
+                        <TextBlock Text="Tutte le foto RAW dell'atleta dispongono già del corrispettivo file JPEG generato." FontSize="11" Foreground="#9EA3AE" HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Elenco Foto RAW Rilevate (Se presenti) -->
+                <Border Background="#22252B" CornerRadius="6" Padding="14" BorderBrush="#2E323B" BorderThickness="1"
+                        IsVisible="{Binding TotalCandidateCount, Converter={x:Static ObjectConverters.NotEqual}, ConverterParameter=0}">
+                    <StackPanel Spacing="10">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                <TextBlock Text="Foto RAW senza JPEG" FontWeight="SemiBold" Foreground="#EDEDED" VerticalAlignment="Center"/>
+                                <Border Background="#1A1C20" CornerRadius="10" Padding="8,2" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding SelectedCandidateCount, StringFormat='Selezionate: {0} / '}" FontSize="11" Foreground="#9EA3AE"/>
+                                </Border>
+                                <TextBlock Text="{Binding TotalCandidateCount}" FontSize="11" Foreground="#9EA3AE" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <CheckBox Grid.Column="1" Content="Seleziona tutti" IsChecked="{Binding SelectAll}" VerticalAlignment="Center" FontSize="12"/>
+                        </Grid>
+
+                        <!-- Lista Scrollabile delle Foto RAW -->
+                        <Border Background="#16181C" BorderBrush="#2E323B" BorderThickness="1" CornerRadius="4" MaxHeight="180">
+                            <ScrollViewer>
+                                <ItemsControl ItemsSource="{Binding RawCandidates}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="vm:RawCandidateItemViewModel">
+                                            <Border BorderBrush="#22252B" BorderThickness="0,0,0,1" Padding="8,6">
+                                                <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto">
+                                                    <!-- CheckBox di Selezione -->
+                                                    <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+
+                                                    <!-- Mini-anteprima / Badge RAW -->
+                                                    <Border Grid.Column="1" Width="36" Height="36" Background="#22252B" CornerRadius="4" Margin="0,0,10,0" ClipToBounds="True">
+                                                        <Panel>
+                                                            <Image Source="{Binding ThumbnailBitmap}" Stretch="UniformToFill"
+                                                                   IsVisible="{Binding ThumbnailBitmap, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                                                            <TextBlock Text="RAW" FontSize="9" FontWeight="Bold" Foreground="#FF8C32"
+                                                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                       IsVisible="{Binding ThumbnailBitmap, Converter={x:Static ObjectConverters.IsNull}}"/>
+                                                        </Panel>
+                                                    </Border>
+
+                                                    <!-- Nome File -->
+                                                    <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" FontSize="12" Foreground="#EDEDED"/>
+                                                        <TextBlock Text="{Binding Disciplina.NomeDisciplina, StringFormat='Disciplina: {0}'}" FontSize="10" Foreground="#9EA3AE"/>
+                                                    </StackPanel>
+
+                                                    <!-- Dimensione File -->
+                                                    <Border Grid.Column="3" Background="#1A1C20" CornerRadius="4" Padding="6,2" VerticalAlignment="Center" Margin="0,0,4,0">
+                                                        <TextBlock Text="{Binding DisplaySize}" FontSize="10" Foreground="#9EA3AE"/>
+                                                    </Border>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <!-- Opzioni di Conversione & Elaborazione -->
+                <Border Background="#22252B" CornerRadius="6" Padding="14" BorderBrush="#2E323B" BorderThickness="1">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="Opzioni di Elaborazione" FontWeight="SemiBold" Foreground="#EDEDED"/>
+
+                        <!-- Rotazione e Correzione Colore -->
+                        <Grid ColumnDefinitions="*,*">
+                            <CheckBox Grid.Column="0" Content="Rotazione automatica (EXIF)"
+                                      IsChecked="{Binding AutoRotate}"
+                                      ToolTip.Tip="Rileva l'orientamento di scatto dai metadati EXIF e ruota la foto automaticamente"
+                                      FontSize="12"/>
+                            <CheckBox Grid.Column="1" Content="Correzione colore (Foto di Windows)"
+                                      IsChecked="{Binding ApplyColorCorrection}"
+                                      ToolTip.Tip="Applica contrasto dinamico (+12%), saturazione (+15%) e luminosità per rimuovere l'effetto piatto del RAW"
+                                      FontSize="12"/>
+                        </Grid>
+
+                        <Separator Background="#2E323B" Height="1" Margin="0,2"/>
+
+                        <!-- Sezione Watermark Grafico -->
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Grid.Column="0" Text="Watermark Grafico (Logo PNG)" FontSize="12" FontWeight="SemiBold" Foreground="#EDEDED" VerticalAlignment="Center"/>
+                            <ToggleSwitch Grid.Column="1" IsChecked="{Binding WatermarkEnabled}" OnContent="Attivo" OffContent="Disattivo"/>
+                        </Grid>
+
+                        <StackPanel Spacing="8" IsVisible="{Binding WatermarkEnabled}">
+                            <TextBlock Text="File Immagine Watermark (PNG):" FontSize="11" Foreground="#9EA3AE"/>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBox Grid.Column="0" Text="{Binding WatermarkImagePath}" PlaceholderText="C:\Loghi\WatermarkStudio.png" Margin="0,0,8,0"/>
+                                <Button Grid.Column="1" Classes="secondary" Content="Sfoglia..." Click="BrowseWatermark_Click"/>
+                            </Grid>
+
+                            <Grid ColumnDefinitions="*,*">
+                                <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,6,0">
+                                    <TextBlock Text="{Binding WatermarkOpacity, StringFormat='Opacità: {0:P0}'}" FontSize="11" Foreground="#9EA3AE"/>
+                                    <Slider Minimum="0.1" Maximum="1.0" Value="{Binding WatermarkOpacity}"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Spacing="2" Margin="6,0,0,0">
+                                    <TextBlock Text="Posizione Watermark:" FontSize="11" Foreground="#9EA3AE"/>
+                                    <ComboBox ItemsSource="{Binding AvailablePositions}" SelectedItem="{Binding WatermarkPosition}" HorizontalAlignment="Stretch"/>
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+
+                        <Separator Background="#2E323B" Height="1" Margin="0,2"/>
+
+                        <!-- Sezione Iniezione Metadati -->
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Grid.Column="0" Text="Iniezione Metadati Fotografo &amp; Copyright" FontSize="12" FontWeight="SemiBold" Foreground="#EDEDED" VerticalAlignment="Center"/>
+                            <CheckBox Grid.Column="1" Content="Inietta" IsChecked="{Binding InjectMetadata}" VerticalAlignment="Center" FontSize="12"/>
+                        </Grid>
+
+                        <Grid ColumnDefinitions="*,*" IsVisible="{Binding InjectMetadata}">
+                            <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,6,0">
+                                <TextBlock Text="Nome Fotografo:" FontSize="11" Foreground="#9EA3AE"/>
+                                <TextBox Text="{Binding PhotographerName}" PlaceholderText="es. Mario Rossi"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Spacing="4" Margin="6,0,0,0">
+                                <TextBlock Text="Copyright Notice:" FontSize="11" Foreground="#9EA3AE"/>
+                                <TextBox Text="{Binding CopyrightNotice}" PlaceholderText="es. © 2026 Tutti i diritti riservati"/>
+                            </StackPanel>
+                        </Grid>
+
+                    </StackPanel>
+                </Border>
+
+                <!-- Barra di Progresso in Tempo Reale (Durante o dopo elaborazione) -->
+                <Border Background="#22252B" CornerRadius="6" Padding="14" BorderBrush="#2E323B" BorderThickness="1"
+                        IsVisible="{Binding IsProcessing}">
+                    <StackPanel Spacing="8">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Grid.Column="0" Text="{Binding StatusMessage}" FontSize="12" Foreground="#EDEDED" FontWeight="SemiBold"/>
+                            <TextBlock Grid.Column="1" Text="{Binding ProgressPercentage, StringFormat='{}{0:F0}%'}" FontSize="12" FontWeight="Bold" Foreground="#FF8C32"/>
+                        </Grid>
+                        <ProgressBar Value="{Binding ProgressPercentage}" Minimum="0" Maximum="100" Height="6" Classes="accent"/>
+                        <TextBlock Text="{Binding CurrentProcessingFile, StringFormat='File: {0}'}" FontSize="10" Foreground="#9EA3AE"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Feedback Completamento con Successo -->
+                <Border Background="#1C2E24" BorderBrush="#2ECC71" BorderThickness="1" CornerRadius="6" Padding="12"
+                        IsVisible="{Binding IsCompleted}">
+                    <TextBlock Text="{Binding StatusMessage}" FontSize="12" FontWeight="SemiBold" Foreground="#2ECC71" HorizontalAlignment="Center"/>
+                </Border>
+
+                <!-- Footer Azioni: Esclusivamente 2 Pulsanti affiancati (Converti e Chiudi) -->
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12">
+                    <Button Classes="primary"
+                            Content="{Binding SelectedCandidateCount, StringFormat='Converti ({0})'}"
+                            Command="{Binding ConvertCommand}"
+                            IsEnabled="{Binding CanConvert}"/>
+                    <Button Classes="secondary"
+                            Content="Chiudi"
+                            Command="{Binding CloseCommand}"/>
+                </StackPanel>
+
+            </StackPanel>
+        </ScrollViewer>
+    </Border>
+
+</UserControl>
+

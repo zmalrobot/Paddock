@@ -130,7 +130,7 @@ public class FileOrganizationService : IFileOrganizationService
         }, cancellationToken);
     }
 
-    private static string SanitizeFolderName(string raw)
+    public string SanitizeFolderName(string raw)
     {
         if (string.IsNullOrWhiteSpace(raw)) return "Generale";
         var invalid = Path.GetInvalidFileNameChars();

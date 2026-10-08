@@ -186,6 +186,9 @@
                     <DataTemplate DataType="vm:SlideshowConfigViewModel">
                         <views:SlideshowConfigDialog/>
                     </DataTemplate>
+                    <DataTemplate DataType="vm:RawConversionDialogViewModel">
+                        <views:RawConversionDialog/>
+                    </DataTemplate>
                 </ContentControl.DataTemplates>
             </ContentControl>
         </Grid>

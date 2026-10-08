@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Versione di rilascio (es. 0.5.7 o v0.5.7)'
+        description: 'Versione di rilascio (es. 0.5.8 o v0.5.8)'
         required: false
-        default: '0.5.7'
+        default: '0.5.8'
         type: string
       prerelease:
         description: 'Contrassegna come pre-release'
@@ -38,7 +38,7 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             RAW="${{ inputs.version }}"
-            [ -z "$RAW" ] && RAW="0.5.7"
+            [ -z "$RAW" ] && RAW="0.5.8"
           else
             RAW="${{ github.ref_name }}"
           fi
@@ -142,13 +142,9 @@ jobs:
             - **Linux (x64)**: `Paddock-${{ needs.meta.outputs.version }}-linux-x64.zip`
               *(Self-contained per distribuzioni Linux x86_64. Estrarre ed eseguire `./Paddock.UI`)*
 
-            ### Novità e Funzionalità della Versione 0.5.7
-            - **Compilazione Zero-Warning & NuGetAudit Resolution**: Risoluzione definitiva dei warning di sicurezza `NU1903` attraverso l'aggiornamento a `SixLabors.ImageSharp 3.1.12` e `SixLabors.ImageSharp.Drawing 2.1.7` e la configurazione mirata di `<NuGetAuditSuppress>` in `Directory.Build.props`, preservando l'audit attivo per tutte le altre librerie.
-            - **Struttura Cartelle Portatile & Risoluzione Percorsi (Relativi ed Assoluti)**: Supporto nativo per la struttura a cartella radice singola (`<Cartella Base>/` contenente `Database/`, `Paddock/` e `Foto/`). Percorsi relativi predefiniti (`..\Database\Paddock_Database.xlsx` e `..\Foto`) con risoluzione deterministica e supporto trasparente e incondizionato per qualsiasi percorso assoluto o su disco esterno. Feedback visivo dinamico nella UI per il percorso effettivo su disco e selettori con calcolo automatico del percorso relativo.
-            - **Watermark e Metadati Singola Foto**: Nuovo pulsante dedicato nel visore ingrandito a schermo intero (darkroom) per applicare filigrana visiva e metadati (fotografo, copyright) su singoli file JPG/PNG, con salvataggio atomico con sostituzione del file, invalidazione cache miniature e aggiornamento in tempo reale del foglio Excel.
-            - **Icona Win32 PE Incorporata**: Generazione ed incorporamento dell'icona multi-risoluzione `logo.ico` (da 16x16 a 256x256 HiDPI) direttamente all'interno degli eseguibili Windows `Paddock.UI.exe` e `Paddock.Updater.exe`.
-            - **Packaging Linux Desktop**: Creazione e distribuzione del file desktop FreeDesktop `paddock.desktop` e automazione dello script di packaging Linux multipiattaforma.
-            - **Riorganizzazione Tab Informazioni nelle Impostazioni**: Layout a blocchi pulito e gerarchico (Paddock Organizer -> Aggiornamenti software -> Versioni componenti -> Link GitHub -> Copyright/Autore).
-            - **Funzionalità Ereditate**: Sistema di aggiornamento automatico (`Paddock.Updater`), supporto foto RAW / Canon CR2, rotazione automatica lossless in ingestione, browser a due tab con Premiazioni, ridenominazione metadati da SD, slideshow multi-monitor con 10 effetti e catalogo prezzi vendita.
+            ### Novità e Funzionalità della Versione 0.5.8
+            - **Conversione RAW/CR2 in JPEG per Atleta ("Genera Jpeg mancanti")**: Nuovo pulsante integrato nel banner collassabile di ciascun atleta all'interno del dettaglio evento. Apertura di un modale dedicato con scansione automatica di tutte le foto RAW/CR2 che non presentano il corrispettivo file JPEG con lo stesso nome base. Selezione singola/multipla/totale, opzioni configurabili per applicazione filigrana/watermark, inserimento metadati (autore e copyright) e auto-rotazione EXIF lossless. Conversione ad alta qualità con correzione colore automatica bilanciata (luminosità, contrasto e saturazione stile applicazione Foto di Windows), barra di avanzamento e stato in tempo reale, e blocco preventivo dell'azione se nessun elemento è selezionabile o in lista.
+            - **Risoluzione Bug Sintassi e Percorsi nell'Auto-Updater (Paddock.Updater)**: Risolto definitivamente il problema di errore Win32 `ERROR_INVALID_NAME` causato dall'escape di trailing backslash `\"` nell'invocazione di `Paddock.Updater.exe`. Introdotta sanitizzazione automatica delle stringhe di percorso in `GitHubUpdateService`, parser con auto-ripristino per argomenti `--target` e `--version` malformati provenienti da versioni precedenti, estrazione con protezione Zip-Slip e retry resiliente dei lock sui file in esecuzione.
+            - **Funzionalità Ereditate**: Risoluzione preventiva warning di compilazione (zero-warning), architettura a percorsi relativi e assoluti portatili (`Database/`, `Paddock/`, `Foto/`), applicazione filigrana e metadati su singola foto nel visore darkroom, icone multi-risoluzione incorporate negli eseguibili PE, packaging Linux multipiattaforma, rotazione automatica lossless in ingestione, browser a due tab con Premiazioni, ridenominazione metadati da SD, slideshow multi-monitor con 10 effetti e catalogo prezzi vendita.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

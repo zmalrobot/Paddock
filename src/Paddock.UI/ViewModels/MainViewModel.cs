@@ -109,6 +109,12 @@ public partial class MainViewModel : ViewModelBase
 
     private static void SafeDispatch(Action action)
     {
+        if (Avalonia.Application.Current == null)
+        {
+            action();
+            return;
+        }
+
         try
         {
             if (Dispatcher.UIThread.CheckAccess())
@@ -189,7 +195,7 @@ public partial class MainViewModel : ViewModelBase
         try
         {
             var updateService = new GitHubUpdateService();
-            var currentVersion = typeof(MainViewModel).Assembly.GetName().Version?.ToString(3) ?? "0.5.7";
+            var currentVersion = typeof(MainViewModel).Assembly.GetName().Version?.ToString(3) ?? "0.5.8";
             var info = await updateService.CheckForUpdatesAsync(currentVersion, includePrerelease: true);
             if (info.IsUpdateAvailable)
             {
@@ -286,6 +292,7 @@ public partial class MainViewModel : ViewModelBase
         detailVm.RequestEditEvent += OnEditEventRequested;
         detailVm.RequestDeleteEvent += OnDeleteEventRequested;
         detailVm.RequestOpenPhotoViewer += vm => RequestOpenPhotoViewer?.Invoke(vm);
+        detailVm.RequestOpenRawConversion += OnOpenRawConversionRequested;
 
         ActiveEventDetail = detailVm;
         _ = detailVm.LoadEventDataAsync();
@@ -363,6 +370,38 @@ public partial class MainViewModel : ViewModelBase
 
         CurrentModal = deleteVm;
         IsModalOpen = true;
+    }
+
+    private async void OnOpenRawConversionRequested(Evento evento, Atleta atleta)
+    {
+        var dialogVm = new RawConversionDialogViewModel(
+            evento,
+            atleta,
+            _excelRepo,
+            _fileOrgService,
+            _imageService,
+            _metadataService,
+            _prefsService);
+
+        dialogVm.RequestClose += async () =>
+        {
+            CloseModal();
+            if (dialogVm.PhotosConverted && ActiveEventDetail != null)
+            {
+                await ActiveEventDetail.LoadEventDataAsync();
+                var ev = AllEventi.FirstOrDefault(e => e.Id == evento.Id);
+                if (ev != null)
+                {
+                    ev.TotaleFoto = ActiveEventDetail.Evento.TotaleFoto;
+                    ev.TotaleByteOccupati = ActiveEventDetail.Evento.TotaleByteOccupati;
+                }
+            }
+        };
+
+        CurrentModal = dialogVm;
+        IsModalOpen = true;
+
+        await dialogVm.InitializeAndScanAsync();
     }
 
     [RelayCommand]

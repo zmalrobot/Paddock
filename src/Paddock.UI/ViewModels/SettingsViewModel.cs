@@ -549,7 +549,7 @@ public partial class SettingsViewModel : ViewModelBase
             return $"{ver.Major}.{ver.Minor}.{ver.Build}";
         }
 
-        return "0.5.7";
+        return "0.5.8";
     }
 
     [RelayCommand]
@@ -613,7 +613,7 @@ public partial class SettingsViewModel : ViewModelBase
             UpdateStatusMessage = "Avvio dell'utility di aggiornamento e chiusura applicazione...";
             UpdateStatusIsError = false;
 
-            var appDir = AppContext.BaseDirectory;
+            var appDir = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
             await _updateService.LaunchUpdaterAndExitAsync(AvailableUpdateInfo, appDir);
         }
         catch (Exception ex)

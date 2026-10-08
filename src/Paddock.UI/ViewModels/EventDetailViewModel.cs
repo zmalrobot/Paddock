@@ -122,6 +122,7 @@ public partial class EventDetailViewModel : ViewModelBase
     public event Action<Evento>? RequestEditEvent;
     public event Action<Evento>? RequestDeleteEvent;
     public event Action<PhotoViewerViewModel>? RequestOpenPhotoViewer;
+    public event Action<Evento, Atleta>? RequestOpenRawConversion;
 
     public EventDetailViewModel(
         Evento evento,
@@ -391,6 +392,15 @@ public partial class EventDetailViewModel : ViewModelBase
             {
                 dg.IsExpanded = false;
             }
+        }
+    }
+
+    [RelayCommand]
+    public void OpenGenerateMissingJpegs(Atleta? atleta)
+    {
+        if (atleta != null)
+        {
+            RequestOpenRawConversion?.Invoke(Evento, atleta);
         }
     }
 

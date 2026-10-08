@@ -346,6 +346,88 @@ public class ImageSharpProcessingService : IImageProcessingService
         }, cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task<bool> ConvertRawToJpegAsync(
+        string rawFilePath,
+        string destinationJpegPath,
+        RawConversionOptions options,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(rawFilePath) || !File.Exists(rawFilePath))
+        {
+            throw new FileNotFoundException("File RAW non trovato", rawFilePath);
+        }
+
+        // 1. Estrae l'anteprima JPEG ad alta risoluzione nativa dal RAW (ad es. container TIFF / Canon CR2)
+        var exifToolPath = _metadataService?.ExifToolPath;
+        var rawBytes = await RawPreviewExtractor.ExtractEmbeddedJpegAsync(rawFilePath, preferLargest: true, exifToolPath, cancellationToken).ConfigureAwait(false);
+        if (rawBytes == null || rawBytes.Length == 0)
+        {
+            throw new InvalidOperationException($"Impossibile estrarre l'anteprima JPEG dal file RAW: {rawFilePath}");
+        }
+
+        await Task.Run(async () =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            using var image = Image.Load<Rgba32>(rawBytes);
+
+            // 2. Rotazione EXIF automatica se richiesta
+            if (options.AutoRotate)
+            {
+                image.Mutate(x => x.AutoOrient());
+            }
+
+            // 3. Correzione colore calibrata (stile Foto di Windows: compensazione gamma, contrasto e saturazione dinamica)
+            if (options.ApplyColorCorrection)
+            {
+                image.Mutate(ctx =>
+                {
+                    ctx.Brightness(1.02f);
+                    ctx.Contrast(1.12f);
+                    ctx.Saturate(1.15f);
+                });
+            }
+
+            // 4. Applicazione Watermark se configurato ed attivo
+            if (options.Watermark != null && options.Watermark.Enabled)
+            {
+                ApplyWatermarkToImage(image, options.Watermark);
+            }
+
+            // 5. Scrittura atomica del file JPEG su percorso temporaneo
+            var destDir = Path.GetDirectoryName(destinationJpegPath);
+            if (!string.IsNullOrEmpty(destDir))
+            {
+                System.IO.Directory.CreateDirectory(destDir);
+            }
+
+            var tempDest = Path.Combine(destDir ?? Path.GetTempPath(), $".tmp_conv_{Guid.NewGuid():N}.jpg");
+            try
+            {
+                var encoder = new JpegEncoder { Quality = 95 };
+                image.Save(tempDest, encoder);
+
+                // 6. Iniezione metadati fotografo e copyright se abilitata
+                if (options.Metadata != null && options.Metadata.InjectPhotographer && !string.IsNullOrWhiteSpace(options.Metadata.PhotographerName) && _metadataService != null)
+                {
+                    await _metadataService.WritePhotographerMetadataAsync(
+                        tempDest,
+                        options.Metadata.PhotographerName,
+                        options.Metadata.CopyrightNotice,
+                        cancellationToken).ConfigureAwait(false);
+                }
+
+                File.Copy(tempDest, destinationJpegPath, overwrite: true);
+            }
+            finally
+            {
+                try { if (File.Exists(tempDest)) File.Delete(tempDest); } catch { }
+            }
+        }, cancellationToken).ConfigureAwait(false);
+
+        return true;
+    }
+
     private static void ApplyWatermarkToImage(Image<Rgba32> image, WatermarkOptions options)
     {
         if (!options.Enabled || string.IsNullOrWhiteSpace(options.WatermarkImagePath) || !File.Exists(options.WatermarkImagePath))

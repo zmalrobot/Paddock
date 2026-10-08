@@ -149,7 +149,8 @@ public class GitHubUpdateService : IUpdateService
         var updaterFileName = OperatingSystem.IsWindows() ? "Paddock.Updater.exe" : "Paddock.Updater";
         var mainExeFileName = OperatingSystem.IsWindows() ? "Paddock.UI.exe" : "Paddock.UI";
 
-        var updaterSourcePath = Path.Combine(targetAppDir, updaterFileName);
+        var cleanTargetAppDir = Path.GetFullPath(targetAppDir).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var updaterSourcePath = Path.Combine(cleanTargetAppDir, updaterFileName);
 
         // Directory di staging temporanea per evitare che Paddock.Updater si blocchi su disco
         var tempStagingDir = Path.Combine(Path.GetTempPath(), "Paddock_Updater_Staging");
@@ -161,7 +162,7 @@ public class GitHubUpdateService : IUpdateService
             File.Copy(updaterSourcePath, stagedUpdaterPath, overwrite: true);
 
             // Copia eventuali file di runtime condivisi nella stessa directory se non single-file
-            foreach (var file in Directory.EnumerateFiles(targetAppDir, "*.dll"))
+            foreach (var file in Directory.EnumerateFiles(cleanTargetAppDir, "*.dll"))
             {
                 var dest = Path.Combine(tempStagingDir, Path.GetFileName(file));
                 try { File.Copy(file, dest, overwrite: true); } catch { }
@@ -169,14 +170,20 @@ public class GitHubUpdateService : IUpdateService
         }
         else if (!File.Exists(stagedUpdaterPath))
         {
-            throw new FileNotFoundException($"L'eseguibile dell'utility di aggiornamento '{updaterFileName}' non è stato trovato in '{targetAppDir}'.");
+            throw new FileNotFoundException($"L'eseguibile dell'utility di aggiornamento '{updaterFileName}' non è stato trovato in '{cleanTargetAppDir}'.");
         }
 
+        var cleanDownloadUrl = updateInfo.DownloadUrl.Trim('\"');
+        var cleanVersion = updateInfo.NewVersion?.Trim('\"') ?? "0.0.0";
+        var cleanLaunch = mainExeFileName.Trim('\"');
+
+        // Su Windows le stringhe tra virgolette NON devono terminare con backslash,
+        // altrimenti la virgoletta di chiusura viene considerata un carattere di escape letterale (\").
         var arguments = $"--pid {Environment.ProcessId} " +
-                        $"--download-url \"{updateInfo.DownloadUrl}\" " +
-                        $"--target \"{targetAppDir}\" " +
-                        $"--version \"{updateInfo.NewVersion}\" " +
-                        $"--launch \"{mainExeFileName}\"";
+                        $"--download-url \"{cleanDownloadUrl}\" " +
+                        $"--target \"{cleanTargetAppDir}\" " +
+                        $"--version \"{cleanVersion}\" " +
+                        $"--launch \"{cleanLaunch}\"";
 
         var startInfo = new ProcessStartInfo
         {

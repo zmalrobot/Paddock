@@ -211,4 +211,41 @@ public class UpdateServiceTests
         vm.HasError.Should().BeFalse();
         vm.ProgressValue.Should().Be(0);
     }
+
+    [Fact]
+    public void UpdaterMainWindowViewModel_FromArgs_HandlesWindowsTrailingBackslashEscapedArgs_RecoversTargetAndVersion()
+    {
+        // Simula l'effetto del parsing Windows CLI quando --target "C:\App\" ha il trailing backslash che fa l'escape delle virgolette:
+        // Windows produce un token 'C:\App" --version ' e il valore successivo '0.5.7'
+        var args = new[]
+        {
+            "--pid", "1234",
+            "--download-url", "https://example.com/download.zip",
+            "--target", @"C:\PaddockApp\"" --version ",
+            "0.5.7",
+            "--launch", "Paddock.UI.exe"
+        };
+
+        var vm = UpdaterMainWindowViewModel.FromArgs(args);
+
+        // Deve aver recuperato la versione correttamente
+        vm.TargetVersion.Should().Be("0.5.7");
+        vm.HasError.Should().BeFalse();
+    }
+
+    [Fact]
+    public void UpdaterMainWindowViewModel_FromArgs_CleansTrailingSlashesAndQuotes()
+    {
+        var args = new[]
+        {
+            "--pid", "100",
+            "--target", "\"C:\\PaddockPortable\\\"",
+            "--version", "\"0.5.7\""
+        };
+
+        var vm = UpdaterMainWindowViewModel.FromArgs(args);
+
+        vm.TargetVersion.Should().Be("0.5.7");
+        vm.HasError.Should().BeFalse();
+    }
 }

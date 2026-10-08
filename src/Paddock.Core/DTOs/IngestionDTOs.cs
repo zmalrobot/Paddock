@@ -60,3 +60,10 @@ public class IngestionProgressReport
     public Exception? Exception { get; set; }
 }
 
+public class RawConversionOptions
+{
+    public bool AutoRotate { get; set; } = true;
+    public bool ApplyColorCorrection { get; set; } = true;
+    public WatermarkOptions Watermark { get; set; } = new();
+    public MetadataOptions Metadata { get; set; } = new();
+}

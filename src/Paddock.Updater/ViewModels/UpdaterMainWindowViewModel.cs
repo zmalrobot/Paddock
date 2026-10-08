@@ -86,7 +86,22 @@ public partial class UpdaterMainWindowViewModel : ObservableObject
             }
             else if (arg.Equals("--target", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
             {
-                targetDir = args[++i];
+                var rawTarget = args[++i];
+                // Rileva se il bug Windows CLI di escape ('\"') ha inglobato --version nel target:
+                // es. 'C:\Paddock" --version ' oppure 'C:\Paddock\" --version '
+                if (rawTarget.Contains("--version"))
+                {
+                    var parts = rawTarget.Split(new[] { "--version" }, StringSplitOptions.None);
+                    targetDir = parts[0];
+                    if (string.IsNullOrWhiteSpace(version) && i + 1 < args.Length)
+                    {
+                        version = args[++i];
+                    }
+                }
+                else
+                {
+                    targetDir = rawTarget;
+                }
             }
             else if (arg.Equals("--version", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
             {
@@ -101,6 +116,32 @@ public partial class UpdaterMainWindowViewModel : ObservableObject
                 localZip = args[++i];
             }
         }
+
+        // Sanitizzazione di difesa in profondità per evitare caratteri illegali o quote residue
+        targetDir = (targetDir ?? string.Empty)
+            .Replace("\"", string.Empty)
+            .Trim('\'', ' ', '\t')
+            .TrimEnd('\\', '/');
+
+        if (string.IsNullOrWhiteSpace(targetDir))
+        {
+            targetDir = AppContext.BaseDirectory.TrimEnd('\\', '/');
+        }
+        else
+        {
+            try
+            {
+                targetDir = Path.GetFullPath(targetDir);
+            }
+            catch
+            {
+                targetDir = AppContext.BaseDirectory.TrimEnd('\\', '/');
+            }
+        }
+
+        version = (version ?? string.Empty).Replace("\"", string.Empty).Trim('\'', ' ', '\t');
+        downloadUrl = (downloadUrl ?? string.Empty).Replace("\"", string.Empty).Trim('\'', ' ', '\t');
+        launchExe = (launchExe ?? string.Empty).Replace("\"", string.Empty).Trim('\'', ' ', '\t');
 
         return new UpdaterMainWindowViewModel(pid, downloadUrl, targetDir, version, launchExe, localZip);
     }
@@ -254,6 +295,8 @@ public partial class UpdaterMainWindowViewModel : ObservableObject
 
     private static async Task ExtractAndApplyZipAsync(string zipPath, string targetDir, CancellationToken token)
     {
+        var normalizedTargetDir = Path.GetFullPath(targetDir);
+
         await Task.Run(() =>
         {
             using var archive = ZipFile.OpenRead(zipPath);
@@ -262,34 +305,44 @@ public partial class UpdaterMainWindowViewModel : ObservableObject
             {
                 token.ThrowIfCancellationRequested();
 
-                if (string.IsNullOrEmpty(entry.Name))
+                var relativeEntry = entry.FullName.TrimStart('/', '\\');
+                var destinationPath = Path.GetFullPath(Path.Combine(normalizedTargetDir, relativeEntry));
+
+                // Protezione contro attacchi Zip Slip / directory traversal
+                if (!destinationPath.StartsWith(normalizedTargetDir, StringComparison.OrdinalIgnoreCase))
                 {
-                    // Cartella
-                    var dirPath = Path.Combine(targetDir, entry.FullName);
-                    Directory.CreateDirectory(dirPath);
                     continue;
                 }
 
-                var destinationPath = Path.Combine(targetDir, entry.FullName);
+                if (string.IsNullOrEmpty(entry.Name) || entry.FullName.EndsWith('/') || entry.FullName.EndsWith('\\'))
+                {
+                    // Cartella
+                    if (!Directory.Exists(destinationPath))
+                    {
+                        Directory.CreateDirectory(destinationPath);
+                    }
+                    continue;
+                }
+
                 var parentDir = Path.GetDirectoryName(destinationPath);
                 if (!string.IsNullOrEmpty(parentDir) && !Directory.Exists(parentDir))
                 {
                     Directory.CreateDirectory(parentDir);
                 }
 
-                // Retry a 3 tentativi per gestire eventuali ritardi nel rilascio file del SO
+                // Retry a 5 tentativi per gestire eventuali ritardi nel rilascio file del SO o scansioni antivirus
                 int attempts = 0;
-                while (attempts < 3)
+                while (attempts < 5)
                 {
                     try
                     {
                         entry.ExtractToFile(destinationPath, overwrite: true);
                         break;
                     }
-                    catch (IOException) when (attempts < 2)
+                    catch (Exception ex) when ((ex is IOException || ex is UnauthorizedAccessException) && attempts < 4)
                     {
                         attempts++;
-                        Thread.Sleep(300);
+                        Thread.Sleep(350);
                     }
                 }
             }

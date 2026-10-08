@@ -89,6 +89,7 @@ public interface IAppPreferencesService
 public interface IFileOrganizationService
 {
     bool IsRawFormat(string extension);
+    string SanitizeFolderName(string raw);
     string GetRelativePhotoPath(string eventName, Atleta atleta, Disciplina disciplina, string extension, string fileName);
     string GetDestinationDirectory(string rootPath, string eventName, Atleta atleta, Disciplina disciplina, string extension);
     string GetPremiazioniRelativePath(string eventName, string fileName);
@@ -117,6 +118,11 @@ public interface IImageProcessingService
         WatermarkOptions options,
         int previewWidth = 640,
         int previewHeight = 426,
+        CancellationToken cancellationToken = default);
+    Task<bool> ConvertRawToJpegAsync(
+        string rawFilePath,
+        string destinationJpegPath,
+        RawConversionOptions options,
         CancellationToken cancellationToken = default);
 }
 
