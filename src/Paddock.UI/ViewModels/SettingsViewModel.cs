@@ -59,6 +59,11 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     private string _resolvedDatabasePath = string.Empty;
 
+    public string EngineTypeDisplay => _excelRepo.EngineType == DatabaseEngine.Sqlite ? "SQLite (Nuovo e performante)" : "Excel (Legacy ClosedXML)";
+    public string EngineTypeBadge => _excelRepo.EngineType == DatabaseEngine.Sqlite ? "SQLITE" : "EXCEL";
+    public string EngineTypeBadgeBackground => _excelRepo.EngineType == DatabaseEngine.Sqlite ? "#2ECC71" : "#00B4D8";
+    public bool CanMigrateToSqlite => _excelRepo.EngineType == DatabaseEngine.Excel;
+
     [ObservableProperty]
     private string _basePath = string.Empty;
 
@@ -169,6 +174,10 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnDatabaseFilePathChanged(string value)
     {
         ResolvedDatabasePath = _excelRepo.ResolvedDatabaseFilePath;
+        OnPropertyChanged(nameof(EngineTypeDisplay));
+        OnPropertyChanged(nameof(EngineTypeBadge));
+        OnPropertyChanged(nameof(EngineTypeBadgeBackground));
+        OnPropertyChanged(nameof(CanMigrateToSqlite));
     }
 
     partial void OnBasePathChanged(string value)
@@ -285,6 +294,11 @@ public partial class SettingsViewModel : ViewModelBase
             StatusMessage = "Database commutato con successo!";
             IsErrorMessage = false;
 
+            OnPropertyChanged(nameof(EngineTypeDisplay));
+            OnPropertyChanged(nameof(EngineTypeBadge));
+            OnPropertyChanged(nameof(EngineTypeBadgeBackground));
+            OnPropertyChanged(nameof(CanMigrateToSqlite));
+
             if (DatabaseChanged != null)
             {
                 await DatabaseChanged.Invoke();
@@ -298,6 +312,54 @@ public partial class SettingsViewModel : ViewModelBase
         finally
         {
             IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    public async Task MigrateToSqliteAsync(string targetSqlitePath)
+    {
+        if (string.IsNullOrWhiteSpace(targetSqlitePath)) return;
+        if (_excelRepo is DatabaseRepositoryRouter router)
+        {
+            try
+            {
+                IsBusy = true;
+                StatusMessage = "Migrazione in corso da Excel a SQLite...";
+                IsErrorMessage = false;
+
+                await router.MigrateExcelToSqliteAsync(_excelRepo.ResolvedDatabaseFilePath, targetSqlitePath);
+                DatabaseFilePath = router.DatabaseFilePath;
+                ResolvedDatabasePath = router.ResolvedDatabaseFilePath;
+                _prefsService.AddRecentDatabase(targetSqlitePath);
+                await _prefsService.SaveAsync();
+                RefreshRecentDatabases();
+
+                var currentBase = await _excelRepo.GetBasePathAsync();
+                BasePath = currentBase ?? string.Empty;
+                ResolvedBasePath = _excelRepo.ResolvePath(BasePath);
+
+                OnPropertyChanged(nameof(EngineTypeDisplay));
+                OnPropertyChanged(nameof(EngineTypeBadge));
+                OnPropertyChanged(nameof(EngineTypeBadgeBackground));
+                OnPropertyChanged(nameof(CanMigrateToSqlite));
+
+                StatusMessage = "Migrazione completata con successo! Paddock ora utilizza il database SQLite.";
+                IsErrorMessage = false;
+
+                if (DatabaseChanged != null)
+                {
+                    await DatabaseChanged.Invoke();
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Errore durante la migrazione a SQLite: {ex.Message}";
+                IsErrorMessage = true;
+            }
+            finally
+            {
+                IsBusy = false;
+            }
         }
     }
 
@@ -549,7 +611,7 @@ public partial class SettingsViewModel : ViewModelBase
             return $"{ver.Major}.{ver.Minor}.{ver.Build}";
         }
 
-        return "0.5.8";
+        return "0.6.0";
     }
 
     [RelayCommand]

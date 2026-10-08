@@ -7,6 +7,7 @@ using Paddock.Infrastructure.Hardware;
 using Paddock.Infrastructure.ImageProcessing;
 using Paddock.Infrastructure.Ingestion;
 using Paddock.Infrastructure.Metadata;
+using Paddock.Infrastructure.Services;
 using Paddock.Infrastructure.Storage;
 using Paddock.UI.ViewModels;
 
@@ -27,7 +28,7 @@ public partial class App : Application
             prefsService.Load();
 
             var initialDb = prefsService.LastDatabasePath;
-            var excelRepo = new ExcelRepository(initialDb);
+            var dbRepo = new DatabaseRepositoryRouter(initialDb);
             var fileOrgService = new FileOrganizationService();
             var imageService = new ImageSharpProcessingService();
             var metadataService = new ExifToolMetadataService();
@@ -37,11 +38,11 @@ public partial class App : Application
                 fileOrgService,
                 imageService,
                 metadataService,
-                excelRepo,
+                dbRepo,
                 photoRenamerService);
 
             var mainVm = new MainViewModel(
-                excelRepo,
+                dbRepo,
                 fileOrgService,
                 pipelineService,
                 sdWatcherService,

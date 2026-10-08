@@ -5,11 +5,35 @@ using Paddock.Core.Interfaces;
 
 namespace Paddock.UI.ViewModels;
 
+public class RecentDatabaseItemViewModel
+{
+    public string Path { get; }
+    public string EngineBadge { get; }
+    public string BadgeBackground { get; }
+    public bool IsSqlite { get; }
+
+    public RecentDatabaseItemViewModel(string path)
+    {
+        Path = path;
+        var ext = System.IO.Path.GetExtension(path)?.ToLowerInvariant();
+        IsSqlite = ext switch
+        {
+            ".xlsx" or ".xlsm" or ".xls" => false,
+            _ => true
+        };
+        EngineBadge = IsSqlite ? "SQLITE" : "EXCEL";
+        BadgeBackground = IsSqlite ? "#2ECC71" : "#00B4D8";
+    }
+}
+
 public partial class DatabaseStartupDialogViewModel : ViewModelBase
 {
     private readonly IAppPreferencesService _prefsService;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(LastDatabaseEngineBadge))]
+    [NotifyPropertyChangedFor(nameof(LastDatabaseBadgeBackground))]
+    [NotifyPropertyChangedFor(nameof(IsLastDatabaseSqlite))]
     private string? _lastDatabasePath;
 
     [ObservableProperty]
@@ -21,7 +45,19 @@ public partial class DatabaseStartupDialogViewModel : ViewModelBase
     [ObservableProperty]
     private string? _errorMessage;
 
-    public ObservableCollection<string> RecentDatabases { get; } = new();
+    public string LastDatabaseEngineBadge => IsLastDatabaseSqlite ? "SQLITE" : "EXCEL";
+    public string LastDatabaseBadgeBackground => IsLastDatabaseSqlite ? "#2ECC71" : "#00B4D8";
+
+    public bool IsLastDatabaseSqlite
+    {
+        get
+        {
+            var ext = Path.GetExtension(LastDatabasePath)?.ToLowerInvariant();
+            return ext != ".xlsx" && ext != ".xlsm" && ext != ".xls";
+        }
+    }
+
+    public ObservableCollection<RecentDatabaseItemViewModel> RecentDatabases { get; } = new();
 
     public event Action<string?>? DatabaseSelected;
 
@@ -41,14 +77,22 @@ public partial class DatabaseStartupDialogViewModel : ViewModelBase
         HasLastDatabase = !string.IsNullOrWhiteSpace(resolvedLast) && File.Exists(resolvedLast);
         AutoOpenLastDatabase = _prefsService.AutoOpenLastDatabase;
 
-        // Se non c'è un ultimo database configurato ma esiste già la struttura standard ..\Database\Paddock_Database.xlsx
+        // Se non c'è un ultimo database configurato, cerca se esiste la struttura standard
         if (!HasLastDatabase && string.IsNullOrWhiteSpace(LastDatabasePath))
         {
-            var defaultRel = Path.Combine("..", "Database", "Paddock_Database.xlsx");
-            var defaultAbs = ResolveDbPath(defaultRel);
-            if (File.Exists(defaultAbs))
+            var defaultSqliteRel = Path.Combine("..", "Database", "Paddock_Database.db");
+            var defaultSqliteAbs = ResolveDbPath(defaultSqliteRel);
+            var defaultExcelRel = Path.Combine("..", "Database", "Paddock_Database.xlsx");
+            var defaultExcelAbs = ResolveDbPath(defaultExcelRel);
+
+            if (File.Exists(defaultSqliteAbs))
             {
-                LastDatabasePath = defaultRel;
+                LastDatabasePath = defaultSqliteRel;
+                HasLastDatabase = true;
+            }
+            else if (File.Exists(defaultExcelAbs))
+            {
+                LastDatabasePath = defaultExcelRel;
                 HasLastDatabase = true;
             }
         }
@@ -57,7 +101,7 @@ public partial class DatabaseStartupDialogViewModel : ViewModelBase
         {
             if (File.Exists(ResolveDbPath(p)))
             {
-                RecentDatabases.Add(p);
+                RecentDatabases.Add(new RecentDatabaseItemViewModel(p));
             }
         }
     }
@@ -92,4 +136,3 @@ public partial class DatabaseStartupDialogViewModel : ViewModelBase
         await _prefsService.SaveAsync();
     }
 }
-

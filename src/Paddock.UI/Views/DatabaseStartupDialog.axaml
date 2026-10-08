@@ -3,7 +3,7 @@
              xmlns:vm="using:Paddock.UI.ViewModels"
              x:Class="Paddock.UI.Views.DatabaseStartupDialog"
              x:DataType="vm:DatabaseStartupDialogViewModel"
-             Width="620">
+             Width="660">
 
     <Border Background="#1A1C20" BorderBrush="#2E323B" BorderThickness="1" CornerRadius="8" Padding="28">
         <StackPanel Spacing="20">
@@ -17,7 +17,7 @@
                 <StackPanel Spacing="4" HorizontalAlignment="Center">
                     <TextBlock Text="PADDOCK" FontSize="20" FontWeight="Bold" Foreground="#EDEDED"
                                LetterSpacing="1.5" HorizontalAlignment="Center"/>
-                    <TextBlock Text="Seleziona o crea il database Excel per organizzare il tuo archivio fotografico"
+                    <TextBlock Text="Seleziona o crea il database per organizzare il tuo archivio fotografico"
                                FontSize="12" Foreground="#9EA3AE" HorizontalAlignment="Center"/>
                 </StackPanel>
             </StackPanel>
@@ -34,8 +34,13 @@
             <Border Background="#121316" BorderBrush="#FF8C32" BorderThickness="1" CornerRadius="6" Padding="16"
                     IsVisible="{Binding HasLastDatabase}">
                 <Grid ColumnDefinitions="*,Auto">
-                    <StackPanel Grid.Column="0" Spacing="4">
-                        <TextBlock Text="ULTIMO DATABASE UTILIZZATO" FontSize="11" FontWeight="Bold" Foreground="#FF8C32"/>
+                    <StackPanel Grid.Column="0" Spacing="6">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Border Background="{Binding LastDatabaseBadgeBackground}" CornerRadius="4" Padding="6,2">
+                                <TextBlock Text="{Binding LastDatabaseEngineBadge}" FontSize="10" FontWeight="Bold" Foreground="#FFFFFF"/>
+                            </Border>
+                            <TextBlock Text="ULTIMO DATABASE UTILIZZATO" FontSize="11" FontWeight="Bold" Foreground="#FF8C32" VerticalAlignment="Center"/>
+                        </StackPanel>
                         <TextBlock Text="{Binding LastDatabasePath}" FontSize="12" Foreground="#00B4D8" TextTrimming="CharacterEllipsis"/>
                     </StackPanel>
                     <Button Grid.Column="1" Classes="primary" Content="Continua" Padding="16,8" FontSize="12"
@@ -51,10 +56,14 @@
                         CornerRadius="6" Padding="16" Margin="0,0,6,0">
                     <StackPanel Spacing="10">
                         <TextBlock Text="Nuovo Archivio" FontWeight="Bold" FontSize="14" Foreground="#EDEDED"/>
-                        <TextBlock Text="Crea un nuovo database Excel (.xlsx) vuoto nel percorso che preferisci."
+                        <TextBlock Text="Scegli il tipo di database che desideri creare nella cartella preferita:"
                                    FontSize="11" Foreground="#9EA3AE" TextWrapping="Wrap" MinHeight="32"/>
-                        <Button Classes="secondary" Content="Crea Nuovo DB..." HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                Padding="10,8" Click="BrowseNewDatabase_Click"/>
+                        <Button Classes="primary" Content="🚀 Nuovo SQLite (.db)..." HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                Padding="10,8" Click="BrowseNewDatabaseSqlite_Click"
+                                ToolTip.Tip="Nuovo e performante, consigliato per massima velocità con migliaia di foto"/>
+                        <Button Classes="secondary" Content="📊 Vecchio Excel (.xlsx)..." HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                Padding="10,6" Click="BrowseNewDatabaseExcel_Click"
+                                ToolTip.Tip="Formato storico compatibile con Microsoft Excel e ClosedXML"/>
                     </StackPanel>
                 </Border>
 
@@ -63,9 +72,9 @@
                         CornerRadius="6" Padding="16" Margin="6,0,0,0">
                     <StackPanel Spacing="10">
                         <TextBlock Text="Apri Esistente" FontWeight="Bold" FontSize="14" Foreground="#EDEDED"/>
-                        <TextBlock Text="Importa o apri un file .xlsx già creato in precedenza o condiviso su cloud."
+                        <TextBlock Text="Importa o apri un file di database già esistente (.db, .sqlite o .xlsx)."
                                    FontSize="11" Foreground="#9EA3AE" TextWrapping="Wrap" MinHeight="32"/>
-                        <Button Classes="secondary" Content="Sfoglia File .xlsx..." HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                        <Button Classes="secondary" Content="Sfoglia Archivio..." HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                                 Padding="10,8" Click="BrowseOpenDatabase_Click"/>
                     </StackPanel>
                 </Border>
@@ -80,8 +89,13 @@
                         <DataTemplate>
                             <Button Classes="secondary" HorizontalAlignment="Stretch" Margin="0,2" Padding="8,4"
                                     Command="{Binding $parent[UserControl].((vm:DatabaseStartupDialogViewModel)DataContext).SelectDatabasePathCommand}"
-                                    CommandParameter="{Binding}">
-                                <TextBlock Text="{Binding}" FontSize="11" Foreground="#9EA3AE" TextTrimming="CharacterEllipsis"/>
+                                    CommandParameter="{Binding Path}">
+                                <Grid ColumnDefinitions="Auto,*">
+                                    <Border Grid.Column="0" Background="{Binding BadgeBackground}" CornerRadius="3" Padding="5,1" Margin="0,0,8,0">
+                                        <TextBlock Text="{Binding EngineBadge}" FontSize="9" FontWeight="Bold" Foreground="#FFFFFF"/>
+                                    </Border>
+                                    <TextBlock Grid.Column="1" Text="{Binding Path}" FontSize="11" Foreground="#9EA3AE" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                </Grid>
                             </Button>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
@@ -99,4 +113,3 @@
         </StackPanel>
     </Border>
 </UserControl>
-

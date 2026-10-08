@@ -15,6 +15,7 @@ public class ExcelRepository : IExcelRepository
     private readonly AsyncRetryPolicy _retryPolicy;
 
     public string DatabaseFilePath { get; set; }
+    public DatabaseEngine EngineType => DatabaseEngine.Excel;
 
     public string ResolvedDatabaseFilePath
     {
