@@ -2,6 +2,7 @@ using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Paddock.Core.DTOs;
 using Paddock.Core.Interfaces;
 
 namespace Paddock.UI.ViewModels;
@@ -11,6 +12,9 @@ public partial class PhotoViewerViewModel : ViewModelBase, IDisposable
     private readonly List<PhotoItemViewModel> _photos;
     private readonly IImageProcessingService? _imageService;
     private readonly Func<PhotoItemViewModel, Task<bool>>? _deleteCallback;
+    private readonly IMetadataService? _metadataService;
+    private readonly IAppPreferencesService? _prefsService;
+    private readonly IExcelRepository? _excelRepo;
     private CancellationTokenSource? _loadCts;
 
     [ObservableProperty]
@@ -31,6 +35,12 @@ public partial class PhotoViewerViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     private bool _isDeleting;
 
+    [ObservableProperty]
+    private bool _isWatermarkDialogOpen;
+
+    [ObservableProperty]
+    private PhotoWatermarkDialogViewModel? _watermarkDialog;
+
     public Func<Stream, IImage>? BitmapStreamLoader { get; set; }
 
     public IReadOnlyList<PhotoItemViewModel> Photos => _photos;
@@ -44,8 +54,20 @@ public partial class PhotoViewerViewModel : ViewModelBase, IDisposable
         ? $"{CurrentIndex + 1} / {PhotosCount}"
         : "0 / 0";
 
-    public bool CanGoPrevious => CurrentIndex > 0 && !IsDeleting;
-    public bool CanGoNext => CurrentIndex < _photos.Count - 1 && !IsDeleting;
+    public bool CanGoPrevious => CurrentIndex > 0 && !IsDeleting && !IsWatermarkDialogOpen;
+    public bool CanGoNext => CurrentIndex < _photos.Count - 1 && !IsDeleting && !IsWatermarkDialogOpen;
+
+    public bool CanApplyWatermark
+    {
+        get
+        {
+            if (CurrentPhoto == null || CurrentPhoto.IsRaw || string.IsNullOrWhiteSpace(FullPath))
+                return false;
+
+            var ext = Path.GetExtension(FullPath)?.ToLowerInvariant();
+            return ext is ".jpg" or ".jpeg" or ".png";
+        }
+    }
 
     public string NomeFile => CurrentPhoto?.NomeFile ?? "-";
     public string AtletaDisplay => CurrentPhoto?.AtletaDisplay ?? "-";
@@ -63,11 +85,17 @@ public partial class PhotoViewerViewModel : ViewModelBase, IDisposable
         IReadOnlyList<PhotoItemViewModel> photos,
         int initialIndex,
         IImageProcessingService? imageService = null,
-        Func<PhotoItemViewModel, Task<bool>>? deleteCallback = null)
+        Func<PhotoItemViewModel, Task<bool>>? deleteCallback = null,
+        IMetadataService? metadataService = null,
+        IAppPreferencesService? prefsService = null,
+        IExcelRepository? excelRepo = null)
     {
         _photos = photos != null ? new List<PhotoItemViewModel>(photos) : new List<PhotoItemViewModel>();
         _imageService = imageService;
         _deleteCallback = deleteCallback;
+        _metadataService = metadataService;
+        _prefsService = prefsService;
+        _excelRepo = excelRepo;
 
         if (_photos.Count > 0)
         {
@@ -279,6 +307,102 @@ public partial class PhotoViewerViewModel : ViewModelBase, IDisposable
     }
 
     [RelayCommand]
+    public void OpenWatermarkDialog()
+    {
+        if (!CanApplyWatermark || CurrentPhoto == null) return;
+
+        WatermarkDialog = new PhotoWatermarkDialogViewModel(
+            CurrentPhoto,
+            _prefsService,
+            _imageService,
+            ApplyWatermarkAndMetadataAsync);
+
+        WatermarkDialog.RequestClose += CloseWatermarkDialog;
+        IsWatermarkDialogOpen = true;
+    }
+
+    [RelayCommand]
+    public void CloseWatermarkDialog()
+    {
+        IsWatermarkDialogOpen = false;
+        WatermarkDialog = null;
+    }
+
+    public async Task<bool> ApplyWatermarkAndMetadataAsync(
+        WatermarkOptions watermarkOptions,
+        MetadataOptions metadataOptions)
+    {
+        if (CurrentPhoto == null || !CanApplyWatermark || !File.Exists(FullPath))
+            return false;
+
+        try
+        {
+            var sourcePath = FullPath;
+            var ext = Path.GetExtension(sourcePath);
+            var tempPath = Path.Combine(Path.GetTempPath(), $".paddock_wm_work_{Guid.NewGuid()}{ext}");
+
+            // 1. Applica Watermark (se abilitato)
+            if (_imageService != null && watermarkOptions.Enabled)
+            {
+                await _imageService.ApplyWatermarkAsync(sourcePath, tempPath, watermarkOptions);
+            }
+            else
+            {
+                File.Copy(sourcePath, tempPath, overwrite: true);
+            }
+
+            // 2. Inietta Metadati (se abilitati)
+            if (metadataOptions.InjectPhotographer && !string.IsNullOrWhiteSpace(metadataOptions.PhotographerName))
+            {
+                if (_metadataService != null)
+                {
+                    await _metadataService.WritePhotographerMetadataAsync(
+                        tempPath,
+                        metadataOptions.PhotographerName,
+                        metadataOptions.CopyrightNotice);
+                }
+            }
+
+            // 3. Sostituzione definitiva su disco
+            File.Copy(tempPath, sourcePath, overwrite: true);
+            try { File.Delete(tempPath); } catch { }
+
+            // 4. Aggiorna modello Foto e proprietà
+            var fileInfo = new FileInfo(sourcePath);
+            CurrentPhoto.Foto.DimensioneByte = fileInfo.Length;
+            CurrentPhoto.Foto.WatermarkApplicato = watermarkOptions.Enabled;
+            if (metadataOptions.InjectPhotographer && !string.IsNullOrWhiteSpace(metadataOptions.PhotographerName))
+            {
+                CurrentPhoto.Foto.Fotografo = metadataOptions.PhotographerName;
+            }
+
+            // 5. Aggiorna record nel database Excel (se disponibile)
+            if (_excelRepo != null)
+            {
+                await _excelRepo.UpdateFotoAsync(CurrentPhoto.Foto);
+            }
+
+            // 6. Ricarica l'immagine nel visore a risoluzione piena
+            await LoadPhotoAtCurrentIndexAsync();
+
+            // 7. Ricarica la miniatura nel PhotoItemViewModel
+            CurrentPhoto.ThumbnailBitmap = null;
+            _ = CurrentPhoto.LoadThumbnailAsync(_imageService);
+
+            // 8. Notifica proprietà aggiornate
+            NotifyNavigationChanged();
+            StatusMessage = "Foto salvata con successo con watermark e metadati.";
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Errore salvataggio foto: {ex.Message}";
+            return false;
+        }
+    }
+
+    [RelayCommand]
     public void CloseViewer()
     {
         RequestClose?.Invoke();
@@ -291,6 +415,7 @@ public partial class PhotoViewerViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(PhotosCount));
         OnPropertyChanged(nameof(CanGoPrevious));
         OnPropertyChanged(nameof(CanGoNext));
+        OnPropertyChanged(nameof(CanApplyWatermark));
         OnPropertyChanged(nameof(NomeFile));
         OnPropertyChanged(nameof(AtletaDisplay));
         OnPropertyChanged(nameof(DisciplinaDisplay));

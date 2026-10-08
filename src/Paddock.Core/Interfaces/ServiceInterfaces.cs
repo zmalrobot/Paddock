@@ -42,6 +42,7 @@ public interface IExcelRepository
     Task<List<Foto>> GetFotoByEventoAsync(Guid eventoId, CancellationToken cancellationToken = default);
     Task<List<Foto>> GetFotoByAtletaAsync(Guid atletaId, CancellationToken cancellationToken = default);
     Task AddFotoBatchAsync(IEnumerable<Foto> fotoList, CancellationToken cancellationToken = default);
+    Task UpdateFotoAsync(Foto foto, CancellationToken cancellationToken = default);
     Task DeleteFotoAsync(Guid fotoId, CancellationToken cancellationToken = default);
 
     // Catalogo Prezzi

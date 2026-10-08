@@ -18,6 +18,7 @@ public partial class MainViewModel : ViewModelBase
     private readonly ISdCardWatcherService _sdCardWatcher;
     private readonly IAppPreferencesService _prefsService;
     private readonly IImageProcessingService? _imageService;
+    private readonly IMetadataService? _metadataService;
 
     [ObservableProperty]
     private string _eventSearchFilter = string.Empty;
@@ -68,7 +69,8 @@ public partial class MainViewModel : ViewModelBase
         IIngestionPipelineService pipelineService,
         ISdCardWatcherService sdCardWatcher,
         IAppPreferencesService? prefsService = null,
-        IImageProcessingService? imageService = null)
+        IImageProcessingService? imageService = null,
+        IMetadataService? metadataService = null)
     {
         _excelRepo = excelRepo;
         _fileOrgService = fileOrgService;
@@ -76,6 +78,7 @@ public partial class MainViewModel : ViewModelBase
         _sdCardWatcher = sdCardWatcher;
         _prefsService = prefsService ?? new Paddock.Infrastructure.Configuration.AppPreferencesService();
         _imageService = imageService;
+        _metadataService = metadataService ?? new Paddock.Infrastructure.Metadata.ExifToolMetadataService();
 
         JobManager = new JobManagerViewModel(_pipelineService);
 
@@ -273,7 +276,7 @@ public partial class MainViewModel : ViewModelBase
             return;
         }
 
-        var detailVm = new EventDetailViewModel(value, _excelRepo, _fileOrgService, _imageService);
+        var detailVm = new EventDetailViewModel(value, _excelRepo, _fileOrgService, _imageService, _metadataService, _prefsService);
         detailVm.RequestStartIngestion += OnStartIngestionRequested;
         detailVm.RequestEditEvent += OnEditEventRequested;
         detailVm.RequestDeleteEvent += OnDeleteEventRequested;

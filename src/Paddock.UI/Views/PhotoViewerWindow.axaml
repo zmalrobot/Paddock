@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Paddock.UI.ViewModels"
+        xmlns:views="using:Paddock.UI.Views"
         x:Class="Paddock.UI.Views.PhotoViewerWindow"
         x:DataType="vm:PhotoViewerViewModel"
         Title="{Binding WindowTitle}"
@@ -10,7 +11,8 @@
         WindowStartupLocation="CenterScreen"
         Background="#101215">
 
-    <Grid RowDefinitions="Auto,*,Auto">
+    <Grid>
+        <Grid RowDefinitions="Auto,*,Auto">
 
         <!-- Top Header Bar -->
         <Border Grid.Row="0" Background="#16181C" BorderBrush="#2E323B" BorderThickness="0,0,0,1" Height="48" Padding="16,0">
@@ -122,6 +124,10 @@
 
                 <!-- Action Buttons -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                    <Button Classes="primary" Content="Watermark &amp; Metadati..."
+                            Command="{Binding OpenWatermarkDialogCommand}"
+                            IsVisible="{Binding CanApplyWatermark}"
+                            Padding="14,7" FontSize="11" FontWeight="SemiBold"/>
                     <Button Classes="secondary" Content="Apri nella cartella" Command="{Binding OpenFileLocationCommand}"
                             Padding="12,7" FontSize="11"/>
                     <Button Classes="danger" Content="Elimina Foto" Command="{Binding DeleteCurrentPhotoCommand}"
@@ -130,6 +136,14 @@
 
             </Grid>
         </Border>
+
+        </Grid>
+
+        <!-- Overlay Modale Scrim per Popup Watermark & Metadati -->
+        <Grid Background="#B0000000" IsVisible="{Binding IsWatermarkDialogOpen}">
+            <views:PhotoWatermarkDialog DataContext="{Binding WatermarkDialog}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </Grid>
 
     </Grid>
 

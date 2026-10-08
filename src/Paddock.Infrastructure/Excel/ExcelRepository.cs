@@ -982,6 +982,31 @@ public class ExcelRepository : IExcelRepository
         }).ConfigureAwait(false);
     }
 
+    public async Task UpdateFotoAsync(Foto foto, CancellationToken cancellationToken = default)
+    {
+        await EnsureDatabaseInitializedAsync(cancellationToken).ConfigureAwait(false);
+
+        await ExecuteWithLockAndRetryAsync(async () =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            await Task.Run(() =>
+            {
+                using var wb = new XLWorkbook(DatabaseFilePath);
+                var ws = wb.Worksheet("Foto");
+                var row = ws.RangeUsed()?.RowsUsed().Skip(1)
+                    .FirstOrDefault(r => r.Cell(1).GetString() == foto.Id.ToString());
+                if (row != null)
+                {
+                    row.Cell(9).Value = foto.Fotografo ?? string.Empty;
+                    row.Cell(10).Value = foto.WatermarkApplicato;
+                    row.Cell(11).Value = foto.DimensioneByte;
+                    row.Cell(12).Value = foto.HashMd5 ?? string.Empty;
+                    wb.Save();
+                }
+            }, cancellationToken).ConfigureAwait(false);
+        }).ConfigureAwait(false);
+    }
+
     public async Task DeleteFotoAsync(Guid fotoId, CancellationToken cancellationToken = default)
     {
         await EnsureDatabaseInitializedAsync(cancellationToken).ConfigureAwait(false);

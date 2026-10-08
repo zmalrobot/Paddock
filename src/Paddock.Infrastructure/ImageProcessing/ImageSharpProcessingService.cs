@@ -2,6 +2,7 @@ using MetadataExtractor;
 using MetadataExtractor.Formats.Exif;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Jpeg;
+using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.Metadata.Profiles.Exif;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
@@ -192,9 +193,32 @@ public class ImageSharpProcessingService : IImageProcessingService
             using var image = Image.Load<Rgba32>(sourceImagePath);
             ApplyWatermarkToImage(image, options);
 
-            // Salvataggio mantenendo alta qualità JPEG
-            var jpegEncoder = new JpegEncoder { Quality = 92 };
-            image.Save(destinationImagePath, jpegEncoder);
+            // Salvataggio atomico tramite file temporaneo per prevenire lock di sovrascrittura in-place
+            var destDir = Path.GetDirectoryName(destinationImagePath);
+            if (!string.IsNullOrEmpty(destDir))
+            {
+                System.IO.Directory.CreateDirectory(destDir);
+            }
+
+            var tempDest = Path.Combine(destDir ?? Path.GetTempPath(), $".tmp_wm_{Guid.NewGuid()}{ext}");
+            try
+            {
+                if (string.Equals(ext, ".png", StringComparison.OrdinalIgnoreCase))
+                {
+                    image.Save(tempDest, new PngEncoder());
+                }
+                else
+                {
+                    var jpegEncoder = new JpegEncoder { Quality = 92 };
+                    image.Save(tempDest, jpegEncoder);
+                }
+
+                File.Copy(tempDest, destinationImagePath, overwrite: true);
+            }
+            finally
+            {
+                try { if (File.Exists(tempDest)) File.Delete(tempDest); } catch { }
+            }
 
         }, cancellationToken).ConfigureAwait(false);
     }

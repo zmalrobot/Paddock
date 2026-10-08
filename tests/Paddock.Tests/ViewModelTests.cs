@@ -1262,5 +1262,125 @@ public class ViewModelTests
         vm.CopyrightText.Should().Contain("zmalrobot").And.Contain("2026");
         vm.GitHubUrl.Should().Be("https://github.com/zmalrobot/Paddock");
     }
+
+    [Fact]
+    public void PhotoViewerViewModel_CanApplyWatermark_TrueOnlyForJpgAndPng()
+    {
+        // Arrange
+        var tempJpg = Path.Combine(Path.GetTempPath(), $"test_{Guid.NewGuid():N}.jpg");
+        var tempPng = Path.Combine(Path.GetTempPath(), $"test_{Guid.NewGuid():N}.png");
+        var tempRaw = Path.Combine(Path.GetTempPath(), $"test_{Guid.NewGuid():N}.CR2");
+        File.WriteAllBytes(tempJpg, new byte[] { 1, 2, 3 });
+        File.WriteAllBytes(tempPng, new byte[] { 1, 2, 3 });
+        File.WriteAllBytes(tempRaw, new byte[] { 1, 2, 3 });
+
+        try
+        {
+            var fotoJpg = new Foto { NomeFileOriginale = "test.jpg", Formato = "JPEG" };
+            var fotoPng = new Foto { NomeFileOriginale = "test.png", Formato = "PNG" };
+            var fotoRaw = new Foto { NomeFileOriginale = "test.cr2", Formato = "RAW" };
+
+            var itemJpg = new PhotoItemViewModel(fotoJpg, tempJpg);
+            var itemPng = new PhotoItemViewModel(fotoPng, tempPng);
+            var itemRaw = new PhotoItemViewModel(fotoRaw, tempRaw);
+
+            var vm = new PhotoViewerViewModel(new[] { itemJpg, itemPng, itemRaw }, 0);
+
+            // Act & Assert 1: JPG
+            vm.CurrentIndex = 0;
+            vm.CanApplyWatermark.Should().BeTrue();
+
+            // Act & Assert 2: PNG
+            vm.CurrentIndex = 1;
+            vm.CanApplyWatermark.Should().BeTrue();
+
+            // Act & Assert 3: RAW
+            vm.CurrentIndex = 2;
+            vm.CanApplyWatermark.Should().BeFalse();
+        }
+        finally
+        {
+            try { File.Delete(tempJpg); } catch { }
+            try { File.Delete(tempPng); } catch { }
+            try { File.Delete(tempRaw); } catch { }
+        }
+    }
+
+    [Fact]
+    public async Task PhotoViewerViewModel_ApplyWatermarkAndMetadata_UpdatesFileAndModel()
+    {
+        // Arrange
+        var tempDir = Path.Combine(Path.GetTempPath(), $"paddock_test_wm_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        var testPhotoPath = Path.Combine(tempDir, "sample.jpg");
+        File.WriteAllBytes(testPhotoPath, new byte[] { 10, 20, 30 });
+
+        var mockImageService = new Mock<IImageProcessingService>();
+        mockImageService
+            .Setup(s => s.ApplyWatermarkAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<WatermarkOptions>(), It.IsAny<CancellationToken>()))
+            .Returns<string, string, WatermarkOptions, CancellationToken>((src, dst, opt, ct) =>
+            {
+                File.WriteAllBytes(dst, new byte[] { 10, 20, 30, 40, 50 });
+                return Task.CompletedTask;
+            });
+
+        var mockMetadataService = new Mock<IMetadataService>();
+        mockMetadataService
+            .Setup(s => s.WritePhotographerMetadataAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var mockExcelRepo = new Mock<IExcelRepository>();
+        var mockPrefs = new Mock<IAppPreferencesService>();
+
+        try
+        {
+            var foto = new Foto
+            {
+                NomeFileOriginale = "sample.jpg",
+                Formato = "JPEG",
+                WatermarkApplicato = false,
+                DimensioneByte = 3
+            };
+            var item = new PhotoItemViewModel(foto, testPhotoPath);
+            var vm = new PhotoViewerViewModel(
+                new[] { item },
+                0,
+                mockImageService.Object,
+                null,
+                mockMetadataService.Object,
+                mockPrefs.Object,
+                mockExcelRepo.Object);
+
+            vm.CanApplyWatermark.Should().BeTrue();
+            vm.IsWatermarkDialogOpen.Should().BeFalse();
+
+            // Act: apri dialog
+            vm.OpenWatermarkDialog();
+            vm.IsWatermarkDialogOpen.Should().BeTrue();
+            vm.WatermarkDialog.Should().NotBeNull();
+
+            // Applica watermark e metadati
+            var wmOpt = new WatermarkOptions { Enabled = true, WatermarkImagePath = "dummy.png" };
+            var metaOpt = new MetadataOptions { InjectPhotographer = true, PhotographerName = "Fotografo Test", CopyrightNotice = "Copyright 2026" };
+            var success = await vm.ApplyWatermarkAndMetadataAsync(wmOpt, metaOpt);
+
+            // Assert
+            success.Should().BeTrue();
+            vm.WatermarkApplicato.Should().BeTrue();
+            item.Foto.WatermarkApplicato.Should().BeTrue();
+            item.Foto.Fotografo.Should().Be("Fotografo Test");
+            item.Foto.DimensioneByte.Should().Be(5);
+            mockExcelRepo.Verify(x => x.UpdateFotoAsync(It.IsAny<Foto>(), It.IsAny<CancellationToken>()), Times.Once);
+
+            // Chiudi dialog
+            vm.CloseWatermarkDialog();
+            vm.IsWatermarkDialogOpen.Should().BeFalse();
+            vm.WatermarkDialog.Should().BeNull();
+        }
+        finally
+        {
+            try { Directory.Delete(tempDir, recursive: true); } catch { }
+        }
+    }
 }
 

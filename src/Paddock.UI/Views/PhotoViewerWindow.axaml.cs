@@ -26,6 +26,16 @@ public partial class PhotoViewerWindow : Window
 
         if (DataContext is PhotoViewerViewModel vm)
         {
+            if (vm.IsWatermarkDialogOpen)
+            {
+                if (e.Key == Key.Escape)
+                {
+                    vm.CloseWatermarkDialog();
+                    e.Handled = true;
+                }
+                return;
+            }
+
             if (e.Key == Key.Escape)
             {
                 Close();

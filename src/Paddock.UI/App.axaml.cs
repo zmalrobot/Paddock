@@ -46,7 +46,8 @@ public partial class App : Application
                 pipelineService,
                 sdWatcherService,
                 prefsService,
-                imageService);
+                imageService,
+                metadataService);
 
             var mainWindow = new MainWindow
             {

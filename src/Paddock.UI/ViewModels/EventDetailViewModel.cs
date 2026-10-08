@@ -13,6 +13,8 @@ public partial class EventDetailViewModel : ViewModelBase
     private readonly IExcelRepository _excelRepo;
     private readonly IFileOrganizationService _fileOrgService;
     private readonly IImageProcessingService? _imageService;
+    private readonly IMetadataService? _metadataService;
+    private readonly IAppPreferencesService? _prefsService;
 
     [ObservableProperty]
     private Evento _evento;
@@ -125,12 +127,16 @@ public partial class EventDetailViewModel : ViewModelBase
         Evento evento,
         IExcelRepository excelRepo,
         IFileOrganizationService fileOrgService,
-        IImageProcessingService? imageService = null)
+        IImageProcessingService? imageService = null,
+        IMetadataService? metadataService = null,
+        IAppPreferencesService? prefsService = null)
     {
         _evento = evento;
         _excelRepo = excelRepo;
         _fileOrgService = fileOrgService;
         _imageService = imageService;
+        _metadataService = metadataService;
+        _prefsService = prefsService;
     }
 
     public async Task LoadEventDataAsync()
@@ -389,7 +395,10 @@ public partial class EventDetailViewModel : ViewModelBase
             list,
             index,
             _imageService,
-            deleteCallback: DeleteSinglePhotoAsync);
+            deleteCallback: DeleteSinglePhotoAsync,
+            metadataService: _metadataService,
+            prefsService: _prefsService,
+            excelRepo: _excelRepo);
 
         RequestOpenPhotoViewer?.Invoke(viewerVm);
     }
@@ -412,7 +421,10 @@ public partial class EventDetailViewModel : ViewModelBase
             FlatActivePhotoItems,
             index,
             _imageService,
-            deleteCallback: DeleteSinglePhotoAsync);
+            deleteCallback: DeleteSinglePhotoAsync,
+            metadataService: _metadataService,
+            prefsService: _prefsService,
+            excelRepo: _excelRepo);
 
         RequestOpenPhotoViewer?.Invoke(viewerVm);
     }

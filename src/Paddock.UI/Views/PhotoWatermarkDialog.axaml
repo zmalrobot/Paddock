@@ -1,0 +1,135 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Paddock.UI.ViewModels"
+             x:Class="Paddock.UI.Views.PhotoWatermarkDialog"
+             x:DataType="vm:PhotoWatermarkDialogViewModel"
+             Width="640" MaxHeight="720">
+
+    <Border Background="#16181C" CornerRadius="8" Padding="20" BorderBrush="#2E323B" BorderThickness="1">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="16">
+
+                <!-- Intestazione del Dialog -->
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="4">
+                        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                            <TextBlock Text="WATERMARK &amp; METADATI FOTO" FontWeight="Bold" FontSize="15" Foreground="#EDEDED" LetterSpacing="0.5"/>
+                            <Border Background="#22252B" CornerRadius="4" Padding="6,2" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding PhotoFormatDisplay}" FontSize="9" FontWeight="Bold" Foreground="#00B4D8"/>
+                            </Border>
+                        </StackPanel>
+                        <TextBlock Text="{Binding PhotoFileName, StringFormat='File in elaborazione: {0}'}" FontSize="12" Foreground="#9EA3AE" FontWeight="SemiBold"/>
+                    </StackPanel>
+
+                    <Button Grid.Column="1" Classes="secondary" Content="✕" Command="{Binding CancelCommand}"
+                            Padding="8,4" FontSize="12" VerticalAlignment="Top"/>
+                </Grid>
+
+                <!-- Banner Informativo Sovrascrittura -->
+                <Border Background="#1B2B3A" BorderBrush="#00B4D8" BorderThickness="1" CornerRadius="6" Padding="12,10">
+                    <TextBlock Text="Al salvataggio il file su disco verrà sostituito con la versione contenente watermark e metadati aggiornati."
+                               FontSize="11" Foreground="#00B4D8" TextWrapping="Wrap"/>
+                </Border>
+
+                <!-- Sezione 1: Watermark Grafico -->
+                <Border Background="#22252B" CornerRadius="6" Padding="14" BorderBrush="#2E323B" BorderThickness="1">
+                    <StackPanel Spacing="12">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                                <TextBlock Text="Watermark Grafico (Logo PNG)" FontWeight="SemiBold" Foreground="#EDEDED" FontSize="13"/>
+                                <TextBlock Text="Applica il tuo logo o timbro semitrasparente sull'immagine." FontSize="11" Foreground="#9EA3AE"/>
+                            </StackPanel>
+                            <ToggleSwitch Grid.Column="1" IsChecked="{Binding WatermarkEnabled}" OnContent="Attivo" OffContent="Disattivo" VerticalAlignment="Center"/>
+                        </Grid>
+
+                        <StackPanel Spacing="10" IsVisible="{Binding WatermarkEnabled}">
+                            <!-- File Logo -->
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="File Immagine Logo (PNG trasparente):" FontSize="11" Foreground="#9EA3AE"/>
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBox Grid.Column="0" Text="{Binding WatermarkImagePath}" PlaceholderText="C:\Loghi\WatermarkStudio.png" Margin="0,0,8,0"/>
+                                    <Button Grid.Column="1" Classes="secondary" Content="Sfoglia..." Click="BrowseWatermarkFile_Click" Padding="12,6"/>
+                                </Grid>
+                            </StackPanel>
+
+                            <!-- Parametri: Opacità e Posizione -->
+                            <Grid ColumnDefinitions="*,*">
+                                <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,8,0">
+                                    <TextBlock Text="{Binding WatermarkOpacity, StringFormat='Opacità: {0:P0}'}" FontSize="12" Foreground="#9EA3AE"/>
+                                    <Slider Minimum="0.1" Maximum="1.0" Value="{Binding WatermarkOpacity}"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1" Spacing="4" Margin="8,0,0,0">
+                                    <TextBlock Text="Posizione:" FontSize="12" Foreground="#9EA3AE"/>
+                                    <ComboBox ItemsSource="{Binding AvailablePositions}"
+                                              SelectedItem="{Binding WatermarkPosition}"
+                                              HorizontalAlignment="Stretch"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Scala / Dimensione -->
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="{Binding WatermarkScalePercent, StringFormat='Dimensione Relativa: {0:P0}'}" FontSize="12" Foreground="#9EA3AE"/>
+                                <Slider Minimum="0.05" Maximum="0.50" Value="{Binding WatermarkScalePercent}"/>
+                            </StackPanel>
+
+                            <!-- Anteprima Live Posizionamento sulla Foto Corrente -->
+                            <StackPanel Spacing="4" Margin="0,4,0,0">
+                                <TextBlock Text="Anteprima Live Posizionamento sulla Foto:" FontSize="11" Foreground="#9EA3AE"/>
+                                <Border Background="#101215" BorderBrush="#2E323B" BorderThickness="1" CornerRadius="6" Height="170" ClipToBounds="True">
+                                    <Panel>
+                                        <Image Source="{Binding WatermarkPreviewBitmap}" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsPreviewLoading}" Width="80" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Panel>
+                                </Border>
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Sezione 2: Metadati Autore & Copyright -->
+                <Border Background="#22252B" CornerRadius="6" Padding="14" BorderBrush="#2E323B" BorderThickness="1">
+                    <StackPanel Spacing="10">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                                <TextBlock Text="Metadati EXIF / XMP Autore &amp; Copyright" FontWeight="SemiBold" Foreground="#EDEDED" FontSize="13"/>
+                                <TextBlock Text="Scrive i tag di proprietà dell'autore all'interno dei metadati del file immagine." FontSize="11" Foreground="#9EA3AE"/>
+                            </StackPanel>
+                            <CheckBox Grid.Column="1" Content="Includi metadati" IsChecked="{Binding InjectMetadata}" VerticalAlignment="Center" FontSize="11"/>
+                        </Grid>
+
+                        <Grid ColumnDefinitions="*,*" IsVisible="{Binding InjectMetadata}">
+                            <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,8,0">
+                                <TextBlock Text="Nome Fotografo (Artist/Creator):" FontSize="12" Foreground="#9EA3AE"/>
+                                <TextBox Text="{Binding PhotographerName}" PlaceholderText="es. Mario Rossi"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Spacing="4" Margin="8,0,0,0">
+                                <TextBlock Text="Avviso Copyright:" FontSize="12" Foreground="#9EA3AE"/>
+                                <TextBox Text="{Binding CopyrightNotice}" PlaceholderText="es. © 2026 Paddock"/>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Messaggio di Errore -->
+                <Border Background="#2B1D20" BorderBrush="#E74C3C" BorderThickness="1" CornerRadius="4" Padding="12,8"
+                        IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                    <TextBlock Text="{Binding ErrorMessage}" Foreground="#FF6B6B" FontSize="11" TextWrapping="Wrap"/>
+                </Border>
+
+                <!-- Footer Azioni -->
+                <Grid ColumnDefinitions="*,Auto,Auto" VerticalAlignment="Center">
+                    <ProgressBar Grid.Column="0" IsIndeterminate="True" IsVisible="{Binding IsBusy}" VerticalAlignment="Center" Height="4" Margin="0,0,16,0"/>
+
+                    <Button Grid.Column="1" Classes="secondary" Content="Annulla" Command="{Binding CancelCommand}"
+                            IsEnabled="{Binding !IsBusy}" Padding="16,8" FontSize="11" Margin="0,0,8,0"/>
+
+                    <Button Grid.Column="2" Classes="primary" Content="Applica e Salva Foto" Command="{Binding ApplyAndSaveCommand}"
+                            IsEnabled="{Binding !IsBusy}" Padding="18,8" FontSize="11" FontWeight="Bold"/>
+                </Grid>
+
+            </StackPanel>
+        </ScrollViewer>
+    </Border>
+</UserControl>
+

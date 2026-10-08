@@ -408,5 +408,41 @@ public class ExcelRepositoryTests : IDisposable
         reloadedAtleta.IsPremiazione.Should().BeFalse();
         reloadedPremiazione.IsPremiazione.Should().BeTrue();
     }
+
+    [Fact]
+    public async Task UpdateFotoAsync_UpdatesWatermarkAndPhotographerInExcel()
+    {
+        // Arrange
+        var repo = new ExcelRepository(_testDbPath);
+        var eventoId = Guid.NewGuid();
+        var atletaId = Guid.NewGuid();
+
+        var foto = new Foto
+        {
+            EventoId = eventoId,
+            AtletaId = atletaId,
+            NomeFileOriginale = "TEST_WM.JPG",
+            PathRelativo = @"Evento\Atleta\Disciplina\Jpeg\TEST_WM.JPG",
+            WatermarkApplicato = false,
+            Fotografo = "Originale",
+            DimensioneByte = 1000
+        };
+
+        await repo.AddFotoBatchAsync(new[] { foto });
+
+        // Act: aggiorna watermark e metadati
+        foto.WatermarkApplicato = true;
+        foto.Fotografo = "Studio Foto Sport";
+        foto.DimensioneByte = 1500;
+        await repo.UpdateFotoAsync(foto);
+
+        // Assert
+        var fotoList = await repo.GetFotoByEventoAsync(eventoId);
+        fotoList.Should().ContainSingle();
+        var updated = fotoList.Single();
+        updated.WatermarkApplicato.Should().BeTrue();
+        updated.Fotografo.Should().Be("Studio Foto Sport");
+        updated.DimensioneByte.Should().Be(1500);
+    }
 }
 
