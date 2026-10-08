@@ -9,6 +9,7 @@ using Paddock.Core.Enums;
 using Paddock.Core.Interfaces;
 using Paddock.Core.Models;
 using Paddock.Infrastructure.Excel;
+using Paddock.Infrastructure.Services;
 
 namespace Paddock.UI.ViewModels;
 
@@ -17,6 +18,7 @@ public partial class SettingsViewModel : ViewModelBase
     private readonly IExcelRepository _excelRepo;
     private readonly IAppPreferencesService _prefsService;
     private readonly IImageProcessingService? _imageService;
+    private readonly IUpdateService _updateService;
 
     // Informazioni & Versioni
     public string CoreVersion { get; }
@@ -24,6 +26,29 @@ public partial class SettingsViewModel : ViewModelBase
     public string UiVersion { get; }
     public string CopyrightText { get; }
     public string GitHubUrl { get; } = "https://github.com/zmalrobot/Paddock";
+
+    // Aggiornamenti Software
+    [ObservableProperty]
+    private bool _isCheckingUpdates;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(UpdateStatusIsSuccess))]
+    private string? _updateStatusMessage;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(UpdateStatusIsSuccess))]
+    private bool _updateStatusIsError;
+
+    public bool UpdateStatusIsSuccess => !string.IsNullOrWhiteSpace(UpdateStatusMessage) && !UpdateStatusIsError;
+
+    [ObservableProperty]
+    private bool _isUpdateAvailable;
+
+    [ObservableProperty]
+    private UpdateInfo? _availableUpdateInfo;
+
+    [ObservableProperty]
+    private bool _checkUpdatesOnStartup;
 
     [ObservableProperty]
     private int _selectedTabIndex;
@@ -104,11 +129,13 @@ public partial class SettingsViewModel : ViewModelBase
     public SettingsViewModel(
         IExcelRepository excelRepo,
         IAppPreferencesService prefsService,
-        IImageProcessingService? imageService = null)
+        IImageProcessingService? imageService = null,
+        IUpdateService? updateService = null)
     {
         _excelRepo = excelRepo;
         _prefsService = prefsService;
         _imageService = imageService;
+        _updateService = updateService ?? new GitHubUpdateService();
 
         DatabaseFilePath = _excelRepo.DatabaseFilePath;
         AutoOpenLastDatabase = _prefsService.AutoOpenLastDatabase;
@@ -127,8 +154,15 @@ public partial class SettingsViewModel : ViewModelBase
         InfrastructureVersion = GetAssemblyVersion(typeof(ExcelRepository).Assembly);
         UiVersion = GetAssemblyVersion(typeof(SettingsViewModel).Assembly);
         CopyrightText = typeof(SettingsViewModel).Assembly.GetCustomAttribute<AssemblyCopyrightAttribute>()?.Copyright ?? "Copyright © 2026 zmalrobot";
+        _checkUpdatesOnStartup = _prefsService.CheckUpdatesOnStartup;
 
         RefreshRecentDatabases();
+    }
+
+    partial void OnCheckUpdatesOnStartupChanged(bool value)
+    {
+        _prefsService.CheckUpdatesOnStartup = value;
+        _ = _prefsService.SaveAsync();
     }
 
     public async Task InitializeAsync()
@@ -494,6 +528,77 @@ public partial class SettingsViewModel : ViewModelBase
         }
 
         return "0.5.0";
+    }
+
+    [RelayCommand]
+    public async Task CheckForUpdatesAsync()
+    {
+        if (IsCheckingUpdates) return;
+
+        IsCheckingUpdates = true;
+        UpdateStatusMessage = "Verifica aggiornamenti su GitHub in corso...";
+        UpdateStatusIsError = false;
+        IsUpdateAvailable = false;
+        AvailableUpdateInfo = null;
+
+        try
+        {
+            var updateInfo = await _updateService.CheckForUpdatesAsync(UiVersion, includePrerelease: true);
+
+            if (!string.IsNullOrWhiteSpace(updateInfo.ErrorMessage))
+            {
+                UpdateStatusMessage = updateInfo.ErrorMessage;
+                UpdateStatusIsError = true;
+                return;
+            }
+
+            if (updateInfo.IsUpdateAvailable)
+            {
+                AvailableUpdateInfo = updateInfo;
+                IsUpdateAvailable = true;
+                UpdateStatusMessage = $"Nuova versione disponibile: v{updateInfo.NewVersion}";
+                UpdateStatusIsError = false;
+            }
+            else
+            {
+                UpdateStatusMessage = $"Paddock è già aggiornato all'ultima versione (v{UiVersion}).";
+                UpdateStatusIsError = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            UpdateStatusMessage = $"Errore durante la verifica: {ex.Message}";
+            UpdateStatusIsError = true;
+        }
+        finally
+        {
+            IsCheckingUpdates = false;
+        }
+    }
+
+    [RelayCommand]
+    public async Task ApplyUpdateAsync()
+    {
+        if (AvailableUpdateInfo == null || string.IsNullOrWhiteSpace(AvailableUpdateInfo.DownloadUrl))
+        {
+            UpdateStatusMessage = "Nessun pacchetto di aggiornamento valido da installare.";
+            UpdateStatusIsError = true;
+            return;
+        }
+
+        try
+        {
+            UpdateStatusMessage = "Avvio dell'utility di aggiornamento e chiusura applicazione...";
+            UpdateStatusIsError = false;
+
+            var appDir = AppContext.BaseDirectory;
+            await _updateService.LaunchUpdaterAndExitAsync(AvailableUpdateInfo, appDir);
+        }
+        catch (Exception ex)
+        {
+            UpdateStatusMessage = $"Impossibile avviare l'aggiornamento: {ex.Message}";
+            UpdateStatusIsError = true;
+        }
     }
     #endregion
 

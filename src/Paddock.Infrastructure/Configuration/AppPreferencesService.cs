@@ -71,6 +71,12 @@ public class AppPreferencesService : IAppPreferencesService
         set => _data.DefaultAutoRotate = value;
     }
 
+    public bool CheckUpdatesOnStartup
+    {
+        get => _data.CheckUpdatesOnStartup;
+        set => _data.CheckUpdatesOnStartup = value;
+    }
+
     public AppPreferencesService(string? customConfigPath = null)
     {
         if (string.IsNullOrWhiteSpace(customConfigPath))
@@ -176,5 +182,6 @@ public class AppPreferencesService : IAppPreferencesService
         public string DefaultPhotographerName { get; set; } = string.Empty;
         public string DefaultCopyrightNotice { get; set; } = string.Empty;
         public bool DefaultAutoRotate { get; set; } = true;
+        public bool CheckUpdatesOnStartup { get; set; } = true;
     }
 }

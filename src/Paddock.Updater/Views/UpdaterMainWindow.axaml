@@ -1,0 +1,66 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Paddock.Updater.ViewModels"
+        x:Class="Paddock.Updater.Views.UpdaterMainWindow"
+        x:DataType="vm:UpdaterMainWindowViewModel"
+        Title="Paddock Updater"
+        Width="520" Height="320"
+        CanResize="False"
+        WindowStartupLocation="CenterScreen"
+        Background="#121316">
+
+    <Border Padding="28" Background="#121316">
+        <Grid RowDefinitions="Auto,*,Auto">
+
+            <!-- 1. Header con Badge Versione -->
+            <StackPanel Grid.Row="0" Spacing="6" Margin="0,0,0,20">
+                <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                    <TextBlock Text="PADDOCK UPDATER" FontSize="16" FontWeight="Bold" Foreground="#EDEDED" LetterSpacing="0.8"/>
+                    <Border Background="#1B3A4B" CornerRadius="4" Padding="8,2" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding TargetVersion, StringFormat='v{0}'}" FontSize="11" FontWeight="Bold" Foreground="#00B4D8"/>
+                    </Border>
+                </StackPanel>
+                <TextBlock Text="Installazione dell'aggiornamento ufficiale da GitHub Releases."
+                           FontSize="11" Foreground="#9EA3AE"/>
+            </StackPanel>
+
+            <!-- 2. Area Centrale: Avanzamento o Errore -->
+            <Border Grid.Row="1" Background="#16181C" BorderBrush="#2E323B" BorderThickness="1" CornerRadius="8" Padding="20">
+                <Grid RowDefinitions="Auto,Auto,Auto,*">
+
+                    <!-- Titolo dello Step Corrente -->
+                    <TextBlock Grid.Row="0" Text="{Binding CurrentStepTitle}" FontSize="13" FontWeight="SemiBold"
+                               Foreground="#EDEDED" Margin="0,0,0,12"/>
+
+                    <!-- Barra di Avanzamento -->
+                    <ProgressBar Grid.Row="1" Value="{Binding ProgressValue}" Maximum="100"
+                                 IsIndeterminate="{Binding IsIndeterminate}"
+                                 Height="8" CornerRadius="4"
+                                 Background="#22252B" Foreground="#00B4D8" Margin="0,0,0,10"/>
+
+                    <!-- Dettaglio Avanzamento (MB, Velocità) -->
+                    <TextBlock Grid.Row="2" Text="{Binding CurrentStepDetail}" FontSize="11"
+                               Foreground="#9EA3AE" Margin="0,0,0,8"/>
+
+                    <!-- Riquadro Errore (se presente) -->
+                    <Border Grid.Row="3" Background="#2B1D20" BorderBrush="#E74C3C" BorderThickness="1"
+                            CornerRadius="6" Padding="12,8" Margin="0,10,0,0"
+                            IsVisible="{Binding HasError}">
+                        <TextBlock Text="{Binding ErrorMessage}" Foreground="#FF6B6B" FontSize="11" TextWrapping="Wrap"/>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- 3. Footer con Pulsanti (visibili in caso di errore) -->
+            <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,16,0,0">
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" IsVisible="{Binding HasError}">
+                    <Button Classes="secondary" Content="Annulla" Command="{Binding CancelCommand}"
+                            Padding="16,7" FontSize="11"/>
+                    <Button Classes="primary" Content="Riprova" Command="{Binding RetryCommand}"
+                            Padding="16,7" FontSize="11"/>
+                </StackPanel>
+            </Grid>
+
+        </Grid>
+    </Border>
+</Window>

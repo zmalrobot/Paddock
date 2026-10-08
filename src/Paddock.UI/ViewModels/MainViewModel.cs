@@ -6,6 +6,7 @@ using Paddock.Core.DTOs;
 using Paddock.Core.Enums;
 using Paddock.Core.Interfaces;
 using Paddock.Core.Models;
+using Paddock.Infrastructure.Services;
 
 namespace Paddock.UI.ViewModels;
 
@@ -38,6 +39,12 @@ public partial class MainViewModel : ViewModelBase
 
     [ObservableProperty]
     private string _lockBannerMessage = string.Empty;
+
+    [ObservableProperty]
+    private bool _isUpdateBannerVisible;
+
+    [ObservableProperty]
+    private string _updateBannerMessage = string.Empty;
 
     [ObservableProperty]
     private bool _isSlideshowActive;
@@ -131,9 +138,31 @@ public partial class MainViewModel : ViewModelBase
         IsLockBannerVisible = false;
     }
 
+    [RelayCommand]
+    private void DismissUpdateBanner()
+    {
+        IsUpdateBannerVisible = false;
+    }
+
+    [RelayCommand]
+    private async Task OpenSettingsToUpdateAsync()
+    {
+        IsUpdateBannerVisible = false;
+        await OpenSettingsDialogAsync();
+        if (CurrentModal is SettingsViewModel sVm)
+        {
+            sVm.SelectedTabIndex = 3; // Tab Informazioni
+        }
+    }
+
     public async Task InitializeAsync()
     {
         await _prefsService.LoadAsync();
+
+        if (_prefsService.CheckUpdatesOnStartup)
+        {
+            _ = CheckForUpdatesQuietlyAsync();
+        }
 
         if (_prefsService.AutoOpenLastDatabase &&
             !string.IsNullOrWhiteSpace(_prefsService.LastDatabasePath) &&
@@ -144,6 +173,28 @@ public partial class MainViewModel : ViewModelBase
         else
         {
             ShowStartupDatabaseDialog();
+        }
+    }
+
+    private async Task CheckForUpdatesQuietlyAsync()
+    {
+        try
+        {
+            var updateService = new GitHubUpdateService();
+            var currentVersion = typeof(MainViewModel).Assembly.GetName().Version?.ToString(3) ?? "0.5.0";
+            var info = await updateService.CheckForUpdatesAsync(currentVersion, includePrerelease: true);
+            if (info.IsUpdateAvailable)
+            {
+                SafeDispatch(() =>
+                {
+                    UpdateBannerMessage = $"È disponibile la nuova versione v{info.NewVersion} di Paddock!";
+                    IsUpdateBannerVisible = true;
+                });
+            }
+        }
+        catch
+        {
+            // Controllo in background silenzioso
         }
     }
 

@@ -75,6 +75,7 @@ public interface IAppPreferencesService
     string DefaultPhotographerName { get; set; }
     string DefaultCopyrightNotice { get; set; }
     bool DefaultAutoRotate { get; set; }
+    bool CheckUpdatesOnStartup { get; set; }
 
     void Load();
     Task LoadAsync();
@@ -156,4 +157,27 @@ public interface IIngestionPipelineService : IDisposable
     void CancelJob(Guid jobId);
     void CancelAllJobs();
 }
+
+public class UpdateInfo
+{
+    public string CurrentVersion { get; set; } = string.Empty;
+    public string NewVersion { get; set; } = string.Empty;
+    public string ReleaseTag { get; set; } = string.Empty;
+    public string ReleaseName { get; set; } = string.Empty;
+    public string ReleaseNotes { get; set; } = string.Empty;
+    public DateTime? PublishedAt { get; set; }
+    public bool IsPrerelease { get; set; }
+    public string DownloadUrl { get; set; } = string.Empty;
+    public string AssetFileName { get; set; } = string.Empty;
+    public long AssetSizeBytes { get; set; }
+    public bool IsUpdateAvailable { get; set; }
+    public string? ErrorMessage { get; set; }
+}
+
+public interface IUpdateService
+{
+    Task<UpdateInfo> CheckForUpdatesAsync(string currentVersion, bool includePrerelease = true, CancellationToken cancellationToken = default);
+    Task LaunchUpdaterAndExitAsync(UpdateInfo updateInfo, string targetAppDir, CancellationToken cancellationToken = default);
+}
+
 

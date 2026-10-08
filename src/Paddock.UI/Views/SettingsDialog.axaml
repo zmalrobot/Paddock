@@ -405,6 +405,63 @@
                                 </Grid>
                             </Border>
 
+                            <!-- Aggiornamenti Software & GitHub Releases -->
+                            <Border Background="#16181C" CornerRadius="6" Padding="16" BorderBrush="#2E323B" BorderThickness="1">
+                                <StackPanel Spacing="14">
+                                    <TextBlock Text="AGGIORNAMENTI SOFTWARE" FontSize="12" FontWeight="SemiBold" Foreground="#FF8C32" LetterSpacing="0.5"/>
+                                    <TextBlock Text="Verifica la disponibilità di nuove versioni ufficiali su GitHub Releases." FontSize="11" Foreground="#9EA3AE"/>
+
+                                    <!-- Nuova Versione Rilevata Card -->
+                                    <Border Background="#1B2B3A" BorderBrush="#00B4D8" BorderThickness="1" CornerRadius="6" Padding="16,14"
+                                            IsVisible="{Binding IsUpdateAvailable}">
+                                        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+                                            <StackPanel Grid.Column="0" Grid.Row="0" Spacing="4">
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <TextBlock Text="{Binding AvailableUpdateInfo.ReleaseName, StringFormat='Nuova versione: {0}'}"
+                                                               FontWeight="Bold" FontSize="13" Foreground="#EDEDED"/>
+                                                    <Border Background="#2ECC71" CornerRadius="3" Padding="6,1" VerticalAlignment="Center">
+                                                        <TextBlock Text="DISPONIBILE" FontSize="9" FontWeight="Bold" Foreground="#121316"/>
+                                                    </Border>
+                                                </StackPanel>
+                                                <TextBlock Text="{Binding AvailableUpdateInfo.ReleaseNotes}" FontSize="11" Foreground="#9EA3AE"
+                                                           TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis"/>
+                                            </StackPanel>
+
+                                            <Button Grid.Column="1" Grid.Row="0" Classes="primary" Content="Aggiorna ora"
+                                                    Command="{Binding ApplyUpdateCommand}"
+                                                    Padding="18,9" FontSize="12" FontWeight="Bold" VerticalAlignment="Center" Margin="16,0,0,0"/>
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- Feedback Informativo / Successo -->
+                                    <Border Background="#121316" BorderBrush="#2E323B" BorderThickness="1" CornerRadius="4" Padding="12,8"
+                                            IsVisible="{Binding UpdateStatusIsSuccess}">
+                                        <TextBlock Text="{Binding UpdateStatusMessage}" Foreground="#EDEDED" FontSize="11" TextWrapping="Wrap"/>
+                                    </Border>
+
+                                    <!-- Feedback Errore -->
+                                    <Border Background="#2B1D20" BorderBrush="#E74C3C" BorderThickness="1" CornerRadius="4" Padding="12,8"
+                                            IsVisible="{Binding UpdateStatusIsError}">
+                                        <TextBlock Text="{Binding UpdateStatusMessage}" Foreground="#FF6B6B" FontSize="11" TextWrapping="Wrap"/>
+                                    </Border>
+
+                                    <!-- Controlli: Checkbox e Bottone -->
+                                    <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+                                        <CheckBox Grid.Column="0" Content="Controlla aggiornamenti all'avvio dell'applicazione"
+                                                  IsChecked="{Binding CheckUpdatesOnStartup}"
+                                                  Foreground="#EDEDED" FontSize="11" VerticalAlignment="Center"/>
+
+                                        <Button Grid.Column="1" Classes="secondary" Content="Controlla aggiornamenti"
+                                                Command="{Binding CheckForUpdatesCommand}"
+                                                IsEnabled="{Binding !IsCheckingUpdates}"
+                                                Padding="16,8" FontSize="11" VerticalAlignment="Center"/>
+                                    </Grid>
+
+                                    <ProgressBar IsIndeterminate="True" Height="3" IsVisible="{Binding IsCheckingUpdates}"
+                                                 Foreground="#00B4D8" Background="#22252B" CornerRadius="2"/>
+                                </StackPanel>
+                            </Border>
+
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>

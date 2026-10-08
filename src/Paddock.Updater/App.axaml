@@ -1,0 +1,53 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Paddock.Updater.App"
+             RequestedThemeVariant="Dark">
+
+    <Application.Resources>
+        <SolidColorBrush x:Key="BgPrimary" Color="#121316" />
+        <SolidColorBrush x:Key="BgSecondary" Color="#16181C" />
+        <SolidColorBrush x:Key="BgTertiary" Color="#22252B" />
+        <SolidColorBrush x:Key="BorderMuted" Color="#2E323B" />
+        <SolidColorBrush x:Key="AccentAmber" Color="#FF8C32" />
+        <SolidColorBrush x:Key="AccentCyan" Color="#00B4D8" />
+        <SolidColorBrush x:Key="StatusSuccess" Color="#2ECC71" />
+        <SolidColorBrush x:Key="StatusDanger" Color="#E74C3C" />
+        <SolidColorBrush x:Key="TextPrimary" Color="#EDEDED" />
+        <SolidColorBrush x:Key="TextSecondary" Color="#9EA3AE" />
+        <SolidColorBrush x:Key="TextMuted" Color="#636773" />
+    </Application.Resources>
+
+    <Application.Styles>
+        <FluentTheme />
+
+        <Style Selector="Window">
+            <Setter Property="Background" Value="#121316" />
+            <Setter Property="Foreground" Value="#EDEDED" />
+            <Setter Property="FontFamily" Value="Segoe UI Variable, Inter, Roboto, sans-serif" />
+        </Style>
+
+        <Style Selector="Button.primary">
+            <Setter Property="Background" Value="#FF8C32" />
+            <Setter Property="Foreground" Value="#121316" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Padding" Value="14,8" />
+        </Style>
+        <Style Selector="Button.primary:pointerover">
+            <Setter Property="Background" Value="#FFA054" />
+        </Style>
+
+        <Style Selector="Button.secondary">
+            <Setter Property="Background" Value="#22252B" />
+            <Setter Property="Foreground" Value="#EDEDED" />
+            <Setter Property="BorderBrush" Value="#2E323B" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Padding" Value="12,7" />
+        </Style>
+        <Style Selector="Button.secondary:pointerover">
+            <Setter Property="Background" Value="#2A2E36" />
+        </Style>
+    </Application.Styles>
+</Application>

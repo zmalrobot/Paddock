@@ -24,6 +24,7 @@
     <ProjectReference Include="..\..\src\Paddock.Core\Paddock.Core.csproj" />
     <ProjectReference Include="..\..\src\Paddock.Infrastructure\Paddock.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Paddock.UI\Paddock.UI.csproj" />
+    <ProjectReference Include="..\..\src\Paddock.Updater\Paddock.Updater.csproj" />
   </ItemGroup>
 
 </Project>

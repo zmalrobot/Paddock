@@ -16,6 +16,7 @@ $ErrorActionPreference = "Stop"
 
 $RootDir = Resolve-Path (Join-Path $PSScriptRoot "..")
 $ProjectFile = Join-Path $RootDir "src/Paddock.UI/Paddock.UI.csproj"
+$UpdaterProjectFile = Join-Path $RootDir "src/Paddock.Updater/Paddock.Updater.csproj"
 $ArtifactsDir = Join-Path $RootDir "artifacts"
 $WindowsTempDir = Join-Path $ArtifactsDir "windows-temp"
 $PublishDir = Join-Path $WindowsTempDir "publish"
@@ -42,7 +43,7 @@ if (-not (Test-Path $ArtifactsDir)) {
 }
 
 # 2. Compilazione e pubblicazione nativa self-contained
-Write-Host "[2/4] Esecuzione dotnet publish (win-x64, self-contained)..." -ForegroundColor Green
+Write-Host "[2/4] Esecuzione dotnet publish Paddock.UI (win-x64, self-contained)..." -ForegroundColor Green
 $dotnetArgs = @(
     "publish",
     $ProjectFile,
@@ -63,10 +64,37 @@ if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
 
-# 3. Verifica presenza file eseguibile e librerie native
+Write-Host "[2b/4] Esecuzione dotnet publish Paddock.Updater (win-x64, self-contained)..." -ForegroundColor Green
+$updaterArgs = @(
+    "publish",
+    $UpdaterProjectFile,
+    "-c", $Configuration,
+    "-r", "win-x64",
+    "--self-contained",
+    "-p:PublishSingleFile=true",
+    "-p:Version=$Version",
+    "-p:AssemblyVersion=$Version.0",
+    "-p:FileVersion=$Version.0",
+    "-o", $PublishDir
+)
+
+& dotnet @updaterArgs
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "La pubblicazione di Paddock.Updater per win-x64 e fallita con codice $LASTEXITCODE."
+    exit $LASTEXITCODE
+}
+
+# 3. Verifica presenza file eseguibili e librerie native
 $ExePath = Join-Path $PublishDir "Paddock.UI.exe"
 if (-not (Test-Path $ExePath)) {
     Write-Error "L eseguibile principale Paddock.UI.exe non e stato trovato in $PublishDir."
+    exit 1
+}
+
+$UpdaterExePath = Join-Path $PublishDir "Paddock.Updater.exe"
+if (-not (Test-Path $UpdaterExePath)) {
+    Write-Error "L eseguibile Paddock.Updater.exe non e stato trovato in $PublishDir."
     exit 1
 }
 

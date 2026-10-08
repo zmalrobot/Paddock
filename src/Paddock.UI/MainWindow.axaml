@@ -29,16 +29,32 @@
                                    LetterSpacing="1.2" VerticalAlignment="Center"/>
                     </StackPanel>
 
-                    <!-- Banner Conflitti Excel non-bloccante -->
-                    <Border Grid.Column="1" Margin="24,0" Background="#3D2914" BorderBrush="#FF8C32" BorderThickness="1"
-                            CornerRadius="4" Padding="12,4" VerticalAlignment="Center"
-                            IsVisible="{Binding IsLockBannerVisible}">
-                        <Grid ColumnDefinitions="*,Auto">
-                            <TextBlock Grid.Column="0" Text="{Binding LockBannerMessage}" Foreground="#FFB703" FontSize="11" VerticalAlignment="Center"/>
-                            <Button Grid.Column="1" Classes="secondary" Content="Chiudi" Padding="8,2" FontSize="10" Margin="8,0,0,0"
-                                    Command="{Binding DismissLockBannerCommand}"/>
-                        </Grid>
-                    </Border>
+                    <!-- Banner Notifiche: Conflitti Excel e Aggiornamenti -->
+                    <StackPanel Grid.Column="1" Margin="24,0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                        <!-- Banner Conflitti Excel non-bloccante -->
+                        <Border Background="#3D2914" BorderBrush="#FF8C32" BorderThickness="1"
+                                CornerRadius="4" Padding="12,4" VerticalAlignment="Center"
+                                IsVisible="{Binding IsLockBannerVisible}">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0" Text="{Binding LockBannerMessage}" Foreground="#FFB703" FontSize="11" VerticalAlignment="Center"/>
+                                <Button Grid.Column="1" Classes="secondary" Content="Chiudi" Padding="8,2" FontSize="10" Margin="8,0,0,0"
+                                        Command="{Binding DismissLockBannerCommand}"/>
+                            </Grid>
+                        </Border>
+
+                        <!-- Banner Nuovo Aggiornamento Disponibile -->
+                        <Border Background="#1B3A4B" BorderBrush="#00B4D8" BorderThickness="1"
+                                CornerRadius="4" Padding="12,4" VerticalAlignment="Center"
+                                IsVisible="{Binding IsUpdateBannerVisible}">
+                            <Grid ColumnDefinitions="*,Auto,Auto">
+                                <TextBlock Grid.Column="0" Text="{Binding UpdateBannerMessage}" Foreground="#00B4D8" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                <Button Grid.Column="1" Classes="primary" Content="Aggiorna" Padding="10,2" FontSize="10" Margin="10,0,0,0"
+                                        Command="{Binding OpenSettingsToUpdateCommand}"/>
+                                <Button Grid.Column="2" Classes="secondary" Content="Chiudi" Padding="8,2" FontSize="10" Margin="6,0,0,0"
+                                        Command="{Binding DismissUpdateBannerCommand}"/>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
 
                     <!-- Stato Database Excel, Slideshow & Impostazioni -->
                     <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
