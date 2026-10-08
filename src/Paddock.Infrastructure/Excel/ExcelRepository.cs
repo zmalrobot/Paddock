@@ -15,17 +15,69 @@ public class ExcelRepository : IExcelRepository
     private readonly AsyncRetryPolicy _retryPolicy;
 
     public string DatabaseFilePath { get; set; }
+
+    public string ResolvedDatabaseFilePath
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(DatabaseFilePath))
+                return string.Empty;
+
+            if (Path.IsPathRooted(DatabaseFilePath))
+                return Path.GetFullPath(DatabaseFilePath);
+
+            return Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, DatabaseFilePath));
+        }
+    }
+
+    public string ResolvePath(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return string.Empty;
+
+        if (Path.IsPathRooted(path))
+            return Path.GetFullPath(path);
+
+        var referenceDir = !string.IsNullOrWhiteSpace(ResolvedDatabaseFilePath)
+            ? Path.GetDirectoryName(ResolvedDatabaseFilePath)
+            : AppContext.BaseDirectory;
+
+        if (string.IsNullOrWhiteSpace(referenceDir))
+        {
+            referenceDir = AppContext.BaseDirectory;
+        }
+
+        return Path.GetFullPath(Path.Combine(referenceDir, path));
+    }
+
+    public async Task<string> GetResolvedBasePathAsync(CancellationToken cancellationToken = default)
+    {
+        var raw = await GetBasePathAsync(cancellationToken).ConfigureAwait(false);
+        return ResolvePath(raw);
+    }
+
     public event EventHandler<LockContentionEventArgs>? LockContentionDetected;
 
     public ExcelRepository(string? databaseFilePath = null)
     {
         if (string.IsNullOrWhiteSpace(databaseFilePath))
         {
-            var defaultFolder = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-                "Paddock");
-            Directory.CreateDirectory(defaultFolder);
-            DatabaseFilePath = Path.Combine(defaultFolder, "Paddock_Database.xlsx");
+            var containerDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, ".."));
+            var defaultDbDir = Path.Combine(containerDir, "Database");
+            var defaultDbFile = Path.Combine(defaultDbDir, "Paddock_Database.xlsx");
+
+            if (Directory.Exists(defaultDbDir) || File.Exists(defaultDbFile))
+            {
+                DatabaseFilePath = Path.Combine("..", "Database", "Paddock_Database.xlsx");
+            }
+            else
+            {
+                var defaultFolder = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                    "Paddock");
+                Directory.CreateDirectory(defaultFolder);
+                DatabaseFilePath = Path.Combine(defaultFolder, "Paddock_Database.xlsx");
+            }
         }
         else
         {
@@ -43,7 +95,7 @@ public class ExcelRepository : IExcelRepository
                 {
                     LockContentionDetected?.Invoke(this, new LockContentionEventArgs
                     {
-                        FilePath = DatabaseFilePath,
+                        FilePath = ResolvedDatabaseFilePath,
                         Message = $"File Excel temporaneamente occupato ({exception.Message}). Nuovo tentativo {retryCount}/5...",
                         AttemptCount = retryCount,
                         IsRetrying = true
@@ -82,13 +134,14 @@ public class ExcelRepository : IExcelRepository
         await ExecuteWithLockAndRetryAsync(async () =>
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var dir = Path.GetDirectoryName(DatabaseFilePath);
+            var targetPath = ResolvedDatabaseFilePath;
+            var dir = Path.GetDirectoryName(targetPath);
             if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
             {
                 Directory.CreateDirectory(dir);
             }
 
-            if (!File.Exists(DatabaseFilePath))
+            if (!File.Exists(targetPath))
             {
                 using var workbook = new XLWorkbook();
                 CreateSheetEventi(workbook);
@@ -99,12 +152,19 @@ public class ExcelRepository : IExcelRepository
                 CreateSheetListinoPrezzi(workbook);
                 CreateSheetAcquisti(workbook);
 
-                await Task.Run(() => workbook.SaveAs(DatabaseFilePath), cancellationToken).ConfigureAwait(false);
+                await Task.Run(() => workbook.SaveAs(targetPath), cancellationToken).ConfigureAwait(false);
+
+                // Assicura l'esistenza della cartella Foto di default a fianco del database
+                var defaultFotoDir = ResolvePath(@"..\Foto");
+                if (!string.IsNullOrEmpty(defaultFotoDir) && !Directory.Exists(defaultFotoDir))
+                {
+                    try { Directory.CreateDirectory(defaultFotoDir); } catch { /* ignore */ }
+                }
             }
             else
             {
                 // Verifica che tutti i fogli necessari esistano
-                using var workbook = new XLWorkbook(DatabaseFilePath);
+                using var workbook = new XLWorkbook(targetPath);
                 var modified = false;
 
                 if (!workbook.Worksheets.Contains("Eventi")) { CreateSheetEventi(workbook); modified = true; }
@@ -131,14 +191,10 @@ public class ExcelRepository : IExcelRepository
         ws.Cell(1, 3).Value = "Descrizione";
         FormatHeader(ws, 3);
 
-        // Valori di default
-        var defaultPictures = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
-            "Paddock");
-
+        // Valori di default: percorso relativo standard alla cartella Foto (<Cartella Base>\Foto)
         ws.Cell(2, 1).Value = "BasePath";
-        ws.Cell(2, 2).Value = defaultPictures;
-        ws.Cell(2, 3).Value = "Percorso radice per l'archivio delle foto";
+        ws.Cell(2, 2).Value = @"..\Foto";
+        ws.Cell(2, 3).Value = "Percorso radice per l'archivio delle foto (relativo o completo)";
 
         ws.Cell(3, 1).Value = "VersioneSchema";
         ws.Cell(3, 2).Value = "1.0";
@@ -361,7 +417,7 @@ public class ExcelRepository : IExcelRepository
             cancellationToken.ThrowIfCancellationRequested();
             return await Task.Run(() =>
             {
-                using var wb = new XLWorkbook(DatabaseFilePath);
+                using var wb = new XLWorkbook(ResolvedDatabaseFilePath);
                 if (!wb.Worksheets.Contains("Impostazioni")) return null;
                 var ws = wb.Worksheet("Impostazioni");
                 var rows = ws.RangeUsed()?.RowsUsed().Skip(1);
@@ -388,7 +444,7 @@ public class ExcelRepository : IExcelRepository
             cancellationToken.ThrowIfCancellationRequested();
             await Task.Run(() =>
             {
-                using var wb = new XLWorkbook(DatabaseFilePath);
+                using var wb = new XLWorkbook(ResolvedDatabaseFilePath);
                 var ws = wb.Worksheets.Contains("Impostazioni") ? wb.Worksheet("Impostazioni") : wb.Worksheets.Add("Impostazioni");
                 var rows = ws.RangeUsed()?.RowsUsed().Skip(1).ToList();
                 var existingRow = rows?.FirstOrDefault(r => string.Equals(r.Cell(1).GetString().Trim(), key, StringComparison.OrdinalIgnoreCase));
@@ -433,7 +489,7 @@ public class ExcelRepository : IExcelRepository
             cancellationToken.ThrowIfCancellationRequested();
             await Task.Run(() =>
             {
-                using var wb = new XLWorkbook(DatabaseFilePath);
+                using var wb = new XLWorkbook(ResolvedDatabaseFilePath);
 
                 // 1. Aggiorna valore nel foglio Impostazioni
                 var wsSettings = wb.Worksheets.Contains("Impostazioni") ? wb.Worksheet("Impostazioni") : wb.Worksheets.Add("Impostazioni");
@@ -485,7 +541,7 @@ public class ExcelRepository : IExcelRepository
 
             await Task.Run(() =>
             {
-                using var wb = new XLWorkbook(DatabaseFilePath);
+                using var wb = new XLWorkbook(ResolvedDatabaseFilePath);
                 var ws = wb.Worksheet("Eventi");
                 var rows = ws.RangeUsed()?.RowsUsed().Skip(1);
                 if (rows == null) return;
@@ -595,7 +651,7 @@ public class ExcelRepository : IExcelRepository
             cancellationToken.ThrowIfCancellationRequested();
             await Task.Run(() =>
             {
-                using var wb = new XLWorkbook(DatabaseFilePath);
+                using var wb = new XLWorkbook(ResolvedDatabaseFilePath);
                 var ws = wb.Worksheet("Eventi");
                 var rows = ws.RangeUsed()?.RowsUsed().Skip(1);
                 var existingRow = rows?.FirstOrDefault(r => r.Cell(1).GetString() == evento.Id.ToString());
@@ -625,7 +681,7 @@ public class ExcelRepository : IExcelRepository
             cancellationToken.ThrowIfCancellationRequested();
             await Task.Run(() =>
             {
-                using var wb = new XLWorkbook(DatabaseFilePath);
+                using var wb = new XLWorkbook(ResolvedDatabaseFilePath);
                 var evIdStr = eventoId.ToString();
 
                 // 1. Elimina da Eventi
@@ -681,7 +737,7 @@ public class ExcelRepository : IExcelRepository
 
             await Task.Run(() =>
             {
-                using var wb = new XLWorkbook(DatabaseFilePath);
+                using var wb = new XLWorkbook(ResolvedDatabaseFilePath);
                 var ws = wb.Worksheet("Discipline");
                 var rows = ws.RangeUsed()?.RowsUsed().Skip(1);
                 if (rows == null) return;
@@ -714,7 +770,7 @@ public class ExcelRepository : IExcelRepository
             cancellationToken.ThrowIfCancellationRequested();
             await Task.Run(() =>
             {
-                using var wb = new XLWorkbook(DatabaseFilePath);
+                using var wb = new XLWorkbook(ResolvedDatabaseFilePath);
                 var ws = wb.Worksheet("Discipline");
                 var rows = ws.RangeUsed()?.RowsUsed().Skip(1);
                 var existingRow = rows?.FirstOrDefault(r => r.Cell(1).GetString() == disciplina.Id.ToString());
@@ -741,7 +797,7 @@ public class ExcelRepository : IExcelRepository
             cancellationToken.ThrowIfCancellationRequested();
             await Task.Run(() =>
             {
-                using var wb = new XLWorkbook(DatabaseFilePath);
+                using var wb = new XLWorkbook(ResolvedDatabaseFilePath);
                 var ws = wb.Worksheet("Discipline");
                 var row = ws.RangeUsed()?.RowsUsed().Skip(1)
                     .FirstOrDefault(r => r.Cell(1).GetString() == disciplinaId.ToString());
@@ -767,7 +823,7 @@ public class ExcelRepository : IExcelRepository
 
             await Task.Run(() =>
             {
-                using var wb = new XLWorkbook(DatabaseFilePath);
+                using var wb = new XLWorkbook(ResolvedDatabaseFilePath);
                 var ws = wb.Worksheet("Atleti");
                 var rows = ws.RangeUsed()?.RowsUsed().Skip(1);
                 if (rows == null) return;
@@ -803,7 +859,7 @@ public class ExcelRepository : IExcelRepository
             cancellationToken.ThrowIfCancellationRequested();
             await Task.Run(() =>
             {
-                using var wb = new XLWorkbook(DatabaseFilePath);
+                using var wb = new XLWorkbook(ResolvedDatabaseFilePath);
                 var ws = wb.Worksheet("Atleti");
                 var rows = ws.RangeUsed()?.RowsUsed().Skip(1);
                 var existingRow = rows?.FirstOrDefault(r => r.Cell(1).GetString() == atleta.Id.ToString());
@@ -833,7 +889,7 @@ public class ExcelRepository : IExcelRepository
             cancellationToken.ThrowIfCancellationRequested();
             await Task.Run(() =>
             {
-                using var wb = new XLWorkbook(DatabaseFilePath);
+                using var wb = new XLWorkbook(ResolvedDatabaseFilePath);
                 var ws = wb.Worksheet("Atleti");
                 var row = ws.RangeUsed()?.RowsUsed().Skip(1)
                     .FirstOrDefault(r => r.Cell(1).GetString() == atletaId.ToString());
@@ -859,7 +915,7 @@ public class ExcelRepository : IExcelRepository
 
             await Task.Run(() =>
             {
-                using var wb = new XLWorkbook(DatabaseFilePath);
+                using var wb = new XLWorkbook(ResolvedDatabaseFilePath);
                 var ws = wb.Worksheet("Foto");
                 var rows = ws.RangeUsed()?.RowsUsed().Skip(1);
                 if (rows == null) return;
@@ -910,7 +966,7 @@ public class ExcelRepository : IExcelRepository
 
             await Task.Run(() =>
             {
-                using var wb = new XLWorkbook(DatabaseFilePath);
+                using var wb = new XLWorkbook(ResolvedDatabaseFilePath);
                 var ws = wb.Worksheet("Foto");
                 var rows = ws.RangeUsed()?.RowsUsed().Skip(1);
                 if (rows == null) return;
@@ -954,7 +1010,7 @@ public class ExcelRepository : IExcelRepository
             cancellationToken.ThrowIfCancellationRequested();
             await Task.Run(() =>
             {
-                using var wb = new XLWorkbook(DatabaseFilePath);
+                using var wb = new XLWorkbook(ResolvedDatabaseFilePath);
                 var ws = wb.Worksheet("Foto");
                 var currentRow = (ws.LastRowUsed()?.RowNumber() ?? 1) + 1;
 
@@ -991,7 +1047,7 @@ public class ExcelRepository : IExcelRepository
             cancellationToken.ThrowIfCancellationRequested();
             await Task.Run(() =>
             {
-                using var wb = new XLWorkbook(DatabaseFilePath);
+                using var wb = new XLWorkbook(ResolvedDatabaseFilePath);
                 var ws = wb.Worksheet("Foto");
                 var row = ws.RangeUsed()?.RowsUsed().Skip(1)
                     .FirstOrDefault(r => r.Cell(1).GetString() == foto.Id.ToString());
@@ -1016,7 +1072,7 @@ public class ExcelRepository : IExcelRepository
             cancellationToken.ThrowIfCancellationRequested();
             await Task.Run(() =>
             {
-                using var wb = new XLWorkbook(DatabaseFilePath);
+                using var wb = new XLWorkbook(ResolvedDatabaseFilePath);
                 var ws = wb.Worksheet("Foto");
                 var row = ws.RangeUsed()?.RowsUsed().Skip(1)
                     .FirstOrDefault(r => r.Cell(1).GetString() == fotoId.ToString());
@@ -1037,7 +1093,7 @@ public class ExcelRepository : IExcelRepository
             cancellationToken.ThrowIfCancellationRequested();
             return await Task.Run(() =>
             {
-                using var wb = new XLWorkbook(DatabaseFilePath);
+                using var wb = new XLWorkbook(ResolvedDatabaseFilePath);
                 if (!wb.Worksheets.Contains("ListinoPrezzi"))
                 {
                     return GetDefaultCatalogoItems();
@@ -1087,7 +1143,7 @@ public class ExcelRepository : IExcelRepository
             cancellationToken.ThrowIfCancellationRequested();
             await Task.Run(() =>
             {
-                using var wb = new XLWorkbook(DatabaseFilePath);
+                using var wb = new XLWorkbook(ResolvedDatabaseFilePath);
                 var ws = wb.Worksheets.Contains("ListinoPrezzi")
                     ? wb.Worksheet("ListinoPrezzi")
                     : wb.Worksheets.Add("ListinoPrezzi");
@@ -1123,7 +1179,7 @@ public class ExcelRepository : IExcelRepository
             cancellationToken.ThrowIfCancellationRequested();
             await Task.Run(() =>
             {
-                using var wb = new XLWorkbook(DatabaseFilePath);
+                using var wb = new XLWorkbook(ResolvedDatabaseFilePath);
                 var ws = wb.Worksheets.Contains("ListinoPrezzi")
                     ? wb.Worksheet("ListinoPrezzi")
                     : wb.Worksheets.Add("ListinoPrezzi");
@@ -1154,7 +1210,7 @@ public class ExcelRepository : IExcelRepository
             cancellationToken.ThrowIfCancellationRequested();
             await Task.Run(() =>
             {
-                using var wb = new XLWorkbook(DatabaseFilePath);
+                using var wb = new XLWorkbook(ResolvedDatabaseFilePath);
                 if (!wb.Worksheets.Contains("ListinoPrezzi")) return;
 
                 var ws = wb.Worksheet("ListinoPrezzi");
@@ -1177,7 +1233,7 @@ public class ExcelRepository : IExcelRepository
             cancellationToken.ThrowIfCancellationRequested();
             return await Task.Run(() =>
             {
-                using var wb = new XLWorkbook(DatabaseFilePath);
+                using var wb = new XLWorkbook(ResolvedDatabaseFilePath);
                 if (!wb.Worksheets.Contains("Acquisti")) return new List<AcquistoFoto>();
 
                 var ws = wb.Worksheet("Acquisti");
@@ -1274,7 +1330,7 @@ public class ExcelRepository : IExcelRepository
             cancellationToken.ThrowIfCancellationRequested();
             await Task.Run(() =>
             {
-                using var wb = new XLWorkbook(DatabaseFilePath);
+                using var wb = new XLWorkbook(ResolvedDatabaseFilePath);
                 var ws = wb.Worksheets.Contains("Acquisti")
                     ? wb.Worksheet("Acquisti")
                     : wb.Worksheets.Add("Acquisti");
@@ -1319,7 +1375,7 @@ public class ExcelRepository : IExcelRepository
             cancellationToken.ThrowIfCancellationRequested();
             await Task.Run(() =>
             {
-                using var wb = new XLWorkbook(DatabaseFilePath);
+                using var wb = new XLWorkbook(ResolvedDatabaseFilePath);
                 if (!wb.Worksheets.Contains("Acquisti")) return;
 
                 var ws = wb.Worksheet("Acquisti");
@@ -1344,7 +1400,7 @@ public class ExcelRepository : IExcelRepository
             cancellationToken.ThrowIfCancellationRequested();
             return await Task.Run(() =>
             {
-                using var wb = new XLWorkbook(DatabaseFilePath);
+                using var wb = new XLWorkbook(ResolvedDatabaseFilePath);
                 var bundle = new EventDataBundle();
                 var evIdStr = eventoId.ToString();
 

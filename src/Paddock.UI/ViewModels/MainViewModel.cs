@@ -167,9 +167,14 @@ public partial class MainViewModel : ViewModelBase
             _ = CheckForUpdatesQuietlyAsync();
         }
 
+        var resolvedLastDb = !string.IsNullOrWhiteSpace(_prefsService.LastDatabasePath)
+            ? _excelRepo.ResolvePath(_prefsService.LastDatabasePath)
+            : null;
+
         if (_prefsService.AutoOpenLastDatabase &&
             !string.IsNullOrWhiteSpace(_prefsService.LastDatabasePath) &&
-            File.Exists(_prefsService.LastDatabasePath))
+            resolvedLastDb != null &&
+            File.Exists(resolvedLastDb))
         {
             await SwitchDatabaseAsync(_prefsService.LastDatabasePath);
         }
@@ -184,7 +189,7 @@ public partial class MainViewModel : ViewModelBase
         try
         {
             var updateService = new GitHubUpdateService();
-            var currentVersion = typeof(MainViewModel).Assembly.GetName().Version?.ToString(3) ?? "0.5.5";
+            var currentVersion = typeof(MainViewModel).Assembly.GetName().Version?.ToString(3) ?? "0.5.6";
             var info = await updateService.CheckForUpdatesAsync(currentVersion, includePrerelease: true);
             if (info.IsUpdateAvailable)
             {
@@ -292,7 +297,7 @@ public partial class MainViewModel : ViewModelBase
     private async Task OpenCreateEventDialog()
     {
         var basePath = await _excelRepo.GetBasePathAsync();
-        var editVm = new EventEditDialogViewModel(defaultRootPath: basePath);
+        var editVm = new EventEditDialogViewModel(defaultRootPath: basePath, pathResolver: _excelRepo.ResolvePath);
         editVm.RequestClose += async success =>
         {
             CloseModal();
@@ -311,7 +316,7 @@ public partial class MainViewModel : ViewModelBase
     private async void OnEditEventRequested(Evento evento)
     {
         var basePath = await _excelRepo.GetBasePathAsync();
-        var editVm = new EventEditDialogViewModel(evento, defaultRootPath: basePath);
+        var editVm = new EventEditDialogViewModel(evento, defaultRootPath: basePath, pathResolver: _excelRepo.ResolvePath);
         editVm.RequestClose += async success =>
         {
             CloseModal();
@@ -348,7 +353,9 @@ public partial class MainViewModel : ViewModelBase
             {
                 // Opzione 2: Rimuove da Excel e cancella file fisici da disco
                 await _excelRepo.DeleteEventoAsync(evento.Id);
-                await _fileOrgService.DeleteEventFilesOnDiskAsync(evento.CartellaDestinazioneRoot, evento.NomeEvento);
+                var resolved = _excelRepo.ResolvePath(evento.CartellaDestinazioneRoot);
+                var resolvedRoot = !string.IsNullOrWhiteSpace(resolved) ? resolved : (evento.CartellaDestinazioneRoot ?? string.Empty);
+                await _fileOrgService.DeleteEventFilesOnDiskAsync(resolvedRoot, evento.NomeEvento);
                 SelectedEvento = null;
                 await LoadEventsAsync();
             }
@@ -424,7 +431,7 @@ public partial class MainViewModel : ViewModelBase
                 // Inietta il BasePath configurato nel DB Excel se non già presente
                 if (string.IsNullOrWhiteSpace(request.BasePath))
                 {
-                    request.BasePath = await _excelRepo.GetBasePathAsync();
+                    request.BasePath = await _excelRepo.GetResolvedBasePathAsync();
                 }
 
                 await _pipelineService.EnqueueJobAsync(request);

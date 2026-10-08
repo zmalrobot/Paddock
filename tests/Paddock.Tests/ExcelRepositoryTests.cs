@@ -444,5 +444,74 @@ public class ExcelRepositoryTests : IDisposable
         updated.Fotografo.Should().Be("Studio Foto Sport");
         updated.DimensioneByte.Should().Be(1500);
     }
+
+    [Fact]
+    public async Task EnsureDatabaseInitializedAsync_SetsDefaultRelativeBasePath_AndResolvesCorrectly()
+    {
+        // Arrange
+        var repo = new ExcelRepository(_testDbPath);
+
+        // Act
+        await repo.EnsureDatabaseInitializedAsync();
+
+        // Assert
+        var rawBasePath = await repo.GetBasePathAsync();
+        rawBasePath.Should().Be(@"..\Foto");
+
+        var resolvedBasePath = await repo.GetResolvedBasePathAsync();
+        var expectedResolved = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(_testDbPath)!, @"..\Foto"));
+        resolvedBasePath.Should().Be(expectedResolved);
+        repo.ResolvedDatabaseFilePath.Should().Be(Path.GetFullPath(_testDbPath));
+    }
+
+    [Fact]
+    public void ResolvePath_HandlesRelativeAndAbsolutePathsDeterministically()
+    {
+        // Arrange
+        var repo = new ExcelRepository(_testDbPath);
+        var dbDir = Path.GetDirectoryName(_testDbPath)!;
+
+        // Act & Assert - Absolute path
+        var absolute = Path.GetFullPath(@"C:\Archivio\Foto2026");
+        repo.ResolvePath(absolute).Should().Be(absolute);
+
+        // Act & Assert - Relative path with parent ..\
+        var relParent = @"..\Foto";
+        var expectedRelParent = Path.GetFullPath(Path.Combine(dbDir, relParent));
+        repo.ResolvePath(relParent).Should().Be(expectedRelParent);
+
+        // Act & Assert - Relative subfolder
+        var relSub = @"SubDir\Test.jpg";
+        var expectedRelSub = Path.GetFullPath(Path.Combine(dbDir, relSub));
+        repo.ResolvePath(relSub).Should().Be(expectedRelSub);
+
+        // Act & Assert - Null or empty
+        repo.ResolvePath(null).Should().BeEmpty();
+        repo.ResolvePath("   ").Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task SetBasePathAsync_PreservesRelativeAndAbsolutePaths()
+    {
+        // Arrange
+        var repo = new ExcelRepository(_testDbPath);
+        await repo.EnsureDatabaseInitializedAsync();
+
+        // Act 1: Update to absolute path
+        var customAbsolute = Path.GetFullPath(@"C:\CustomDrive\PhotoArchive");
+        await repo.SetBasePathAsync(customAbsolute);
+
+        // Assert 1
+        (await repo.GetBasePathAsync()).Should().Be(customAbsolute);
+        (await repo.GetResolvedBasePathAsync()).Should().Be(customAbsolute);
+
+        // Act 2: Update back to relative path
+        await repo.SetBasePathAsync(@"..\Foto");
+
+        // Assert 2
+        (await repo.GetBasePathAsync()).Should().Be(@"..\Foto");
+        var dbDir = Path.GetDirectoryName(_testDbPath)!;
+        (await repo.GetResolvedBasePathAsync()).Should().Be(Path.GetFullPath(Path.Combine(dbDir, @"..\Foto")));
+    }
 }
 

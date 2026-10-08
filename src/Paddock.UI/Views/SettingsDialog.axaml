@@ -47,6 +47,7 @@
                                         <StackPanel Grid.Column="0" Spacing="2">
                                             <TextBlock Text="File Database Corrente:" FontSize="10" Foreground="#636773" FontWeight="SemiBold"/>
                                             <TextBlock Text="{Binding DatabaseFilePath}" FontSize="12" Foreground="#00B4D8" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding ResolvedDatabasePath, StringFormat='Percorso effettivo: {0}'}" FontSize="10" Foreground="#636773" TextTrimming="CharacterEllipsis"/>
                                         </StackPanel>
                                     </Grid>
                                 </Border>
@@ -88,17 +89,19 @@
                                 <TextBlock Text="PERCORSO BASE ARCHIVIO FOTO (BASEPATH)" FontSize="12" FontWeight="SemiBold" Foreground="#FF8C32" LetterSpacing="0.5"/>
 
                                 <Border Background="#16181C" BorderBrush="#2E323B" BorderThickness="1" CornerRadius="4" Padding="12">
-                                    <TextBlock Text="Le foto vengono salvate con percorso relativo ('Evento / Atleta / Disciplina / Formato / File'). Il BasePath definisce la cartella radice su disco."
+                                    <TextBlock Text="Le foto vengono salvate con percorso relativo ('Evento / Atleta / Disciplina / Formato / File'). Il BasePath definisce la cartella radice su disco (può essere relativo es. '..\Foto' o completo)."
                                                TextWrapping="Wrap" FontSize="11" Foreground="#9EA3AE" LineHeight="16"/>
                                 </Border>
 
                                 <StackPanel Spacing="6">
-                                    <TextBlock Text="Cartella Radice Archivio Foto:" FontSize="11" Foreground="#EDEDED"/>
+                                    <TextBlock Text="Cartella Radice Archivio Foto (relativo o completo):" FontSize="11" Foreground="#EDEDED"/>
                                     <Grid ColumnDefinitions="*,Auto">
-                                        <TextBox Grid.Column="0" Text="{Binding BasePath}" PlaceholderText="C:\Users\...\Pictures\Paddock"/>
+                                        <TextBox Grid.Column="0" Text="{Binding BasePath}" PlaceholderText="..\Foto"/>
                                         <Button Grid.Column="1" Classes="secondary" Content="Sfoglia..." Margin="8,0,0,0"
                                                 Click="BrowseBasePath_Click"/>
                                     </Grid>
+                                    <TextBlock Text="{Binding ResolvedBasePath, StringFormat='Percorso effettivo su disco: {0}'}"
+                                               FontSize="10" Foreground="#00B4D8" TextTrimming="CharacterEllipsis"/>
                                 </StackPanel>
 
                                 <Button Classes="primary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"

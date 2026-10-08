@@ -1315,9 +1315,9 @@ public class ViewModelTests
 
         var vm = new SettingsViewModel(mockRepo.Object, mockPrefs.Object);
 
-        vm.CoreVersion.Should().Be("0.5.5");
-        vm.InfrastructureVersion.Should().Be("0.5.5");
-        vm.UiVersion.Should().Be("0.5.5");
+        vm.CoreVersion.Should().Be("0.5.6");
+        vm.InfrastructureVersion.Should().Be("0.5.6");
+        vm.UiVersion.Should().Be("0.5.6");
         vm.CopyrightText.Should().Contain("zmalrobot").And.Contain("2026");
         vm.GitHubUrl.Should().Be("https://github.com/zmalrobot/Paddock");
     }
@@ -1440,6 +1440,72 @@ public class ViewModelTests
         {
             try { Directory.Delete(tempDir, recursive: true); } catch { }
         }
+    }
+
+    [Fact]
+    public void EventEditDialogViewModel_HandlesRelativeAndResolvedPaths()
+    {
+        string Resolver(string? p) => Path.GetFullPath(Path.Combine(@"C:\AppRoot\Database", p ?? string.Empty));
+
+        var vm = new EventEditDialogViewModel(pathResolver: Resolver);
+
+        // Default value for CartellaDestinazioneRoot should be relative ..\Foto
+        vm.CartellaDestinazioneRoot.Should().Be(@"..\Foto");
+        vm.ResolvedCartellaDestinazioneRoot.Should().Be(Path.GetFullPath(@"C:\AppRoot\Database\..\Foto"));
+
+        // Changing path updates resolved path
+        vm.CartellaDestinazioneRoot = @"..\ArchivioFoto";
+        vm.ResolvedCartellaDestinazioneRoot.Should().Be(Path.GetFullPath(@"C:\AppRoot\Database\..\ArchivioFoto"));
+    }
+
+    [Fact]
+    public async Task SettingsViewModel_ResolvedPaths_SynchronizeWithExcelRepo()
+    {
+        var mockRepo = new Mock<IExcelRepository>();
+        mockRepo.Setup(r => r.DatabaseFilePath).Returns(@"..\Database\Paddock_Database.xlsx");
+        mockRepo.Setup(r => r.ResolvedDatabaseFilePath).Returns(@"C:\BaseFolder\Database\Paddock_Database.xlsx");
+        mockRepo.Setup(r => r.GetBasePathAsync(It.IsAny<CancellationToken>())).ReturnsAsync(@"..\Foto");
+        mockRepo.Setup(r => r.GetResolvedBasePathAsync(It.IsAny<CancellationToken>())).ReturnsAsync(@"C:\BaseFolder\Foto");
+        mockRepo.Setup(r => r.ResolvePath(It.IsAny<string?>())).Returns<string?>(p => Path.GetFullPath(Path.Combine(@"C:\BaseFolder\Database", p ?? "")));
+
+        var mockPrefs = new Mock<IAppPreferencesService>();
+        mockPrefs.Setup(p => p.RecentDatabases).Returns(new List<string>());
+
+        var vm = new SettingsViewModel(mockRepo.Object, mockPrefs.Object);
+        await vm.InitializeAsync();
+
+        vm.DatabaseFilePath.Should().Be(@"..\Database\Paddock_Database.xlsx");
+        vm.ResolvedDatabasePath.Should().Be(@"C:\BaseFolder\Database\Paddock_Database.xlsx");
+        vm.BasePath.Should().Be(@"..\Foto");
+        vm.ResolvedBasePath.Should().Be(@"C:\BaseFolder\Foto");
+
+        // Updating BasePath
+        vm.BasePath = @"D:\ArchivioEsterno";
+        await vm.UpdateBasePathAsync();
+
+        mockRepo.Verify(r => r.UpdateAllEventRootsAsync(@"D:\ArchivioEsterno", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task DatabaseStartupDialogViewModel_HandlesRelativePathsAndResolution()
+    {
+        var mockPrefs = new Mock<IAppPreferencesService>();
+        mockPrefs.Setup(p => p.LastDatabasePath).Returns(string.Empty);
+        mockPrefs.Setup(p => p.RecentDatabases).Returns(new List<string>());
+
+        var vm = new DatabaseStartupDialogViewModel(mockPrefs.Object);
+
+        // Test ResolveDbPath
+        var relativeDb = @"..\Database\Paddock_Database.xlsx";
+        var resolved = DatabaseStartupDialogViewModel.ResolveDbPath(relativeDb);
+        resolved.Should().NotBeNullOrWhiteSpace();
+        Path.IsPathRooted(resolved).Should().BeTrue();
+
+        string? selectedDb = null;
+        vm.DatabaseSelected += db => selectedDb = db;
+
+        await vm.SelectDatabasePathAsync(relativeDb);
+        selectedDb.Should().Be(relativeDb);
     }
 }
 

@@ -17,10 +17,17 @@ public partial class SettingsDialog : UserControl
         var topLevel = TopLevel.GetTopLevel(this);
         if (topLevel != null)
         {
+            var containerDir = System.IO.Path.GetFullPath(System.IO.Path.Combine(AppContext.BaseDirectory, ".."));
+            var defaultDbDir = System.IO.Path.Combine(containerDir, "Database");
+            var startFolder = System.IO.Directory.Exists(defaultDbDir)
+                ? await topLevel.StorageProvider.TryGetFolderFromPathAsync(defaultDbDir)
+                : null;
+
             var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
             {
                 Title = "Seleziona Database Excel (.xlsx)",
                 AllowMultiple = false,
+                SuggestedStartLocation = startFolder,
                 FileTypeFilter = new[]
                 {
                     new FilePickerFileType("File Excel (*.xlsx)")
@@ -32,7 +39,10 @@ public partial class SettingsDialog : UserControl
 
             if (files.Count > 0 && DataContext is SettingsViewModel vm)
             {
-                await vm.SwitchDatabaseAsync(files[0].Path.LocalPath);
+                var chosenPath = files[0].Path.LocalPath;
+                var relPath = System.IO.Path.GetRelativePath(AppContext.BaseDirectory, chosenPath);
+                var pathToUse = (!relPath.StartsWith("..\\..\\..") && !relPath.StartsWith("../../../")) ? relPath : chosenPath;
+                await vm.SwitchDatabaseAsync(pathToUse);
             }
         }
     }
@@ -42,11 +52,20 @@ public partial class SettingsDialog : UserControl
         var topLevel = TopLevel.GetTopLevel(this);
         if (topLevel != null)
         {
+            var containerDir = System.IO.Path.GetFullPath(System.IO.Path.Combine(AppContext.BaseDirectory, ".."));
+            var defaultDbDir = System.IO.Path.Combine(containerDir, "Database");
+            if (!System.IO.Directory.Exists(defaultDbDir))
+            {
+                try { System.IO.Directory.CreateDirectory(defaultDbDir); } catch { /* ignore */ }
+            }
+            var startFolder = await topLevel.StorageProvider.TryGetFolderFromPathAsync(defaultDbDir);
+
             var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
             {
                 Title = "Crea Nuovo Database Excel",
                 DefaultExtension = "xlsx",
                 SuggestedFileName = "Paddock_Database.xlsx",
+                SuggestedStartLocation = startFolder,
                 FileTypeChoices = new[]
                 {
                     new FilePickerFileType("File Excel (*.xlsx)")
@@ -58,7 +77,10 @@ public partial class SettingsDialog : UserControl
 
             if (file != null && DataContext is SettingsViewModel vm)
             {
-                await vm.SwitchDatabaseAsync(file.Path.LocalPath);
+                var chosenPath = file.Path.LocalPath;
+                var relPath = System.IO.Path.GetRelativePath(AppContext.BaseDirectory, chosenPath);
+                var pathToUse = (!relPath.StartsWith("..\\..\\..") && !relPath.StartsWith("../../../")) ? relPath : chosenPath;
+                await vm.SwitchDatabaseAsync(pathToUse);
             }
         }
     }
@@ -68,15 +90,29 @@ public partial class SettingsDialog : UserControl
         var topLevel = TopLevel.GetTopLevel(this);
         if (topLevel != null)
         {
+            var containerDir = System.IO.Path.GetFullPath(System.IO.Path.Combine(AppContext.BaseDirectory, ".."));
+            var defaultFotoDir = System.IO.Path.Combine(containerDir, "Foto");
+            var startFolder = System.IO.Directory.Exists(defaultFotoDir)
+                ? await topLevel.StorageProvider.TryGetFolderFromPathAsync(defaultFotoDir)
+                : null;
+
             var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
             {
                 Title = "Seleziona Cartella Radice BasePath per l'Archivio Foto",
-                AllowMultiple = false
+                AllowMultiple = false,
+                SuggestedStartLocation = startFolder
             });
 
             if (folders.Count > 0 && DataContext is SettingsViewModel vm)
             {
-                vm.BasePath = folders[0].Path.LocalPath;
+                var chosenPath = folders[0].Path.LocalPath;
+                var refDir = !string.IsNullOrWhiteSpace(vm.ResolvedDatabasePath)
+                    ? System.IO.Path.GetDirectoryName(vm.ResolvedDatabasePath) ?? AppContext.BaseDirectory
+                    : AppContext.BaseDirectory;
+
+                var relPath = System.IO.Path.GetRelativePath(refDir, chosenPath);
+                var pathToUse = (!relPath.StartsWith("..\\..\\..") && !relPath.StartsWith("../../../")) ? relPath : chosenPath;
+                vm.BasePath = pathToUse;
             }
         }
     }

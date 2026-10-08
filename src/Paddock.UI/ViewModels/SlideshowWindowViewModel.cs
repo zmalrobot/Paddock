@@ -146,10 +146,10 @@ public partial class SlideshowWindowViewModel : ViewModelBase
 
     private async Task LoadPhotosAsync()
     {
-        var basePath = await _excelRepo.GetBasePathAsync();
+        var basePath = await _excelRepo.GetResolvedBasePathAsync();
         if (string.IsNullOrWhiteSpace(basePath))
         {
-            basePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "Paddock");
+            basePath = (await _excelRepo.GetBasePathAsync()) ?? string.Empty;
         }
 
         var allFoto = await _excelRepo.GetFotoByEventoAsync(_config.EventoId);
@@ -173,14 +173,16 @@ public partial class SlideshowWindowViewModel : ViewModelBase
             var cleanRel = f.PathRelativo.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
             var absPath = Path.IsPathRooted(cleanRel)
                 ? cleanRel
-                : Path.Combine(basePath, cleanRel);
+                : (!string.IsNullOrWhiteSpace(basePath) ? Path.Combine(basePath, cleanRel) : cleanRel);
 
             if (!File.Exists(absPath))
             {
                 // Fallback: cerca nella cartella destinazione root dell'evento
                 if (evento != null && !string.IsNullOrWhiteSpace(evento.CartellaDestinazioneRoot))
                 {
-                    var altPath = Path.Combine(evento.CartellaDestinazioneRoot, Path.GetFileName(cleanRel));
+                    var resolvedRoot = _excelRepo.ResolvePath(evento.CartellaDestinazioneRoot);
+                    var rootDir = !string.IsNullOrWhiteSpace(resolvedRoot) ? resolvedRoot : evento.CartellaDestinazioneRoot;
+                    var altPath = Path.Combine(rootDir, Path.GetFileName(cleanRel));
                     if (File.Exists(altPath))
                     {
                         absPath = altPath;
@@ -199,10 +201,19 @@ public partial class SlideshowWindowViewModel : ViewModelBase
 
         if (_config.IncludePremiazioni)
         {
-            var eventFolder = !string.IsNullOrWhiteSpace(evento?.CartellaDestinazioneRoot)
-                ? evento.CartellaDestinazioneRoot
-                : Path.Combine(basePath, eventoName);
-            var premiazioniFolder = Path.Combine(eventFolder, "Premiazioni");
+            string eventFolder;
+            if (evento != null && !string.IsNullOrWhiteSpace(evento.CartellaDestinazioneRoot))
+            {
+                var resolvedRoot = _excelRepo.ResolvePath(evento.CartellaDestinazioneRoot);
+                eventFolder = !string.IsNullOrWhiteSpace(resolvedRoot) ? resolvedRoot : evento.CartellaDestinazioneRoot;
+            }
+            else
+            {
+                eventFolder = !string.IsNullOrWhiteSpace(basePath) && evento != null
+                    ? Path.Combine(basePath, evento.NomeEvento)
+                    : (evento?.NomeEvento ?? string.Empty);
+            }
+            var premiazioniFolder = !string.IsNullOrWhiteSpace(eventFolder) ? Path.Combine(eventFolder, "Premiazioni") : string.Empty;
 
             if (Directory.Exists(premiazioniFolder))
             {

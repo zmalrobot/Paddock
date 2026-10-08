@@ -57,7 +57,13 @@ public partial class SettingsViewModel : ViewModelBase
     private string _databaseFilePath = string.Empty;
 
     [ObservableProperty]
+    private string _resolvedDatabasePath = string.Empty;
+
+    [ObservableProperty]
     private string _basePath = string.Empty;
+
+    [ObservableProperty]
+    private string _resolvedBasePath = string.Empty;
 
     [ObservableProperty]
     private bool _autoOpenLastDatabase;
@@ -138,6 +144,7 @@ public partial class SettingsViewModel : ViewModelBase
         _updateService = updateService ?? new GitHubUpdateService();
 
         DatabaseFilePath = _excelRepo.DatabaseFilePath;
+        ResolvedDatabasePath = _excelRepo.ResolvedDatabaseFilePath;
         AutoOpenLastDatabase = _prefsService.AutoOpenLastDatabase;
 
         // Inizializza Watermark e Metadati da preferenze
@@ -159,6 +166,16 @@ public partial class SettingsViewModel : ViewModelBase
         RefreshRecentDatabases();
     }
 
+    partial void OnDatabaseFilePathChanged(string value)
+    {
+        ResolvedDatabasePath = _excelRepo.ResolvedDatabaseFilePath;
+    }
+
+    partial void OnBasePathChanged(string value)
+    {
+        ResolvedBasePath = _excelRepo.ResolvePath(value);
+    }
+
     partial void OnCheckUpdatesOnStartupChanged(bool value)
     {
         _prefsService.CheckUpdatesOnStartup = value;
@@ -172,6 +189,8 @@ public partial class SettingsViewModel : ViewModelBase
             IsBusy = true;
             var currentBase = await _excelRepo.GetBasePathAsync();
             BasePath = currentBase ?? string.Empty;
+            ResolvedBasePath = _excelRepo.ResolvePath(BasePath);
+            ResolvedDatabasePath = _excelRepo.ResolvedDatabaseFilePath;
             await LoadCatalogoPrezziAsync();
             await UpdateWatermarkPreviewAsync();
         }
@@ -219,6 +238,7 @@ public partial class SettingsViewModel : ViewModelBase
 
             var targetPath = BasePath.Trim();
             await _excelRepo.UpdateAllEventRootsAsync(targetPath);
+            ResolvedBasePath = _excelRepo.ResolvePath(targetPath);
 
             StatusMessage = "BasePath aggiornato con successo nel foglio Impostazioni e in tutti gli eventi!";
             IsErrorMessage = false;
@@ -252,6 +272,7 @@ public partial class SettingsViewModel : ViewModelBase
 
             await _excelRepo.SwitchDatabaseAsync(targetPath);
             DatabaseFilePath = _excelRepo.DatabaseFilePath;
+            ResolvedDatabasePath = _excelRepo.ResolvedDatabaseFilePath;
 
             _prefsService.AddRecentDatabase(targetPath);
             await _prefsService.SaveAsync();
@@ -259,6 +280,7 @@ public partial class SettingsViewModel : ViewModelBase
 
             var currentBase = await _excelRepo.GetBasePathAsync();
             BasePath = currentBase ?? string.Empty;
+            ResolvedBasePath = _excelRepo.ResolvePath(BasePath);
 
             StatusMessage = "Database commutato con successo!";
             IsErrorMessage = false;
@@ -527,7 +549,7 @@ public partial class SettingsViewModel : ViewModelBase
             return $"{ver.Major}.{ver.Minor}.{ver.Build}";
         }
 
-        return "0.5.5";
+        return "0.5.6";
     }
 
     [RelayCommand]

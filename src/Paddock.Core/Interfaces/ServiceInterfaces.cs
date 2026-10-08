@@ -15,6 +15,8 @@ public class LockContentionEventArgs : EventArgs
 public interface IExcelRepository
 {
     string DatabaseFilePath { get; set; }
+    string ResolvedDatabaseFilePath { get; }
+    string ResolvePath(string? path);
     event EventHandler<LockContentionEventArgs>? LockContentionDetected;
 
     Task EnsureDatabaseInitializedAsync(CancellationToken cancellationToken = default);
@@ -23,6 +25,7 @@ public interface IExcelRepository
     Task<string?> GetSettingAsync(string key, CancellationToken cancellationToken = default);
     Task SetSettingAsync(string key, string value, string? description = null, CancellationToken cancellationToken = default);
     Task<string?> GetBasePathAsync(CancellationToken cancellationToken = default);
+    Task<string> GetResolvedBasePathAsync(CancellationToken cancellationToken = default);
     Task SetBasePathAsync(string newBasePath, CancellationToken cancellationToken = default);
     Task UpdateAllEventRootsAsync(string newBasePath, CancellationToken cancellationToken = default);
 

@@ -45,6 +45,18 @@
                 <TextBox Text="{Binding Luogo}" PlaceholderText="es. Bormio (SO)"/>
             </StackPanel>
 
+            <!-- Cartella Radice Foto Evento -->
+            <StackPanel Spacing="4">
+                <TextBlock Text="Cartella Radice Foto (relativa es. ..\Foto o percorso completo)" FontSize="12" Foreground="#9EA3AE"/>
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBox Grid.Column="0" Text="{Binding CartellaDestinazioneRoot}" PlaceholderText="..\Foto"/>
+                    <Button Grid.Column="1" Content="Sfoglia..." Margin="6,0,0,0" Classes="secondary" Click="BrowseDestinazioneRoot_Click"/>
+                </Grid>
+                <TextBlock Text="{Binding ResolvedCartellaDestinazioneRoot, StringFormat='Percorso effettivo: {0}'}"
+                           FontSize="10" Foreground="#00B4D8" TextTrimming="CharacterEllipsis"
+                           IsVisible="{Binding ResolvedCartellaDestinazioneRoot, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+            </StackPanel>
+
             <!-- Note -->
             <StackPanel Spacing="4">
                 <TextBlock Text="Note (opzionale)" FontSize="12" Foreground="#9EA3AE"/>

@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Versione di rilascio (es. 0.5.5 o v0.5.5)'
+        description: 'Versione di rilascio (es. 0.5.6 o v0.5.6)'
         required: false
-        default: '0.5.5'
+        default: '0.5.6'
         type: string
       prerelease:
         description: 'Contrassegna come pre-release'
@@ -38,7 +38,7 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             RAW="${{ inputs.version }}"
-            [ -z "$RAW" ] && RAW="0.5.5"
+            [ -z "$RAW" ] && RAW="0.5.6"
           else
             RAW="${{ github.ref_name }}"
           fi
@@ -142,16 +142,12 @@ jobs:
             - **Linux (x64)**: `Paddock-${{ needs.meta.outputs.version }}-linux-x64.zip`
               *(Self-contained per distribuzioni Linux x86_64. Estrarre ed eseguire `./Paddock.UI`)*
 
-            ### Novità e Funzionalità della Versione 0.5.5
-            - **Sistema di Aggiornamento Automatico**: Controllo manuale e silenzioso all'avvio delle release GitHub, con utility standalone `Paddock.Updater` (Avalonia) integrata per download, decompressione sicura con processo principale chiuso e riavvio automatico.
-            - **Visualizzatore Foto RAW / Canon CR2**: Supporto nativo ai file `.CR2` e formati RAW fotografici in miniature griglia, visore darkroom a schermo intero (zoom continuo, panning, rotazione) e slideshow clienti su monitor secondario, con pipeline ad alte prestazioni basata su anteprime JPEG embedded ad alta definizione e fallback SkiaSharp.
-            - **Rotazione Automatica Foto in Ingestione**: Nuovo flag "Ruota automaticamente" (attivo di default) nel wizard di ingestione SD per rilevamento orientamento EXIF e rotazione fisica lossless su disco delle immagini.
-            - **Browser Foto a Due Tab**: Tab Atleti (con filtri Atleta e Disciplina, contatori e anteprime) e Tab Premiazioni dedicato (navigazione e anteprima completa di tutte le foto premiazioni dell'evento).
-            - **Ingestione Wizard SD & Premiazioni**: Flag dedicato "Premiazioni" con disattivazione e reset automatico dei selettori atleta/disciplina e salvataggio automatico nel percorso standard `Evento/Premiazioni`.
-            - **Ridenominazione File SD Standardizzata**: Generazione nomi file `[ATLETA]_[DISCIPLINA]_[TIMESTAMP]_[NUMERO].[EXT]` con normalizzazione caratteri e metadati fotocamera/scatto.
-            - **Slideshow Clienti Multi-Monitor**: Supporto foto Atleti e Premiazioni, 10 transizioni grafiche con fallback resiliente, HUD Darkroom arricchito e assenza di pulsanti invasivi a tutto schermo.
-            - **Desk Vendita & Catalogo Prezzi**: Listino prezzi pacchetti con modello di default, anagrafica clienti ed esportazione ordini su Excel.
-            - **Watermark Live & Eliminazione Sincronizzata**: Anteprima live proporzionale a 18 MP ed eliminazione selettiva sincronizzata disco/Excel.
-            - **Tab Informazioni & Versioning Allineato**: Versionamento di tutti i moduli a `0.5.5.0`, copyright © 2026 zmalrobot e link diretto a GitHub.
+            ### Novità e Funzionalità della Versione 0.5.6
+            - **Struttura Cartelle Portatile & Risoluzione Percorsi (Relativi ed Assoluti)**: Supporto nativo per la struttura a cartella radice singola (`<Cartella Base>/` contenente `Database/`, `Paddock/` e `Foto/`). Percorsi relativi predefiniti (`..\Database\Paddock_Database.xlsx` e `..\Foto`) con risoluzione deterministica e supporto trasparente e incondizionato per qualsiasi percorso assoluto o su disco esterno. Feedback visivo dinamico nella UI per il percorso effettivo su disco e selettori con calcolo automatico del percorso relativo.
+            - **Watermark e Metadati Singola Foto**: Nuovo pulsante dedicato nel visore ingrandito a schermo intero (darkroom) per applicare filigrana visiva e metadati (fotografo, copyright) su singoli file JPG/PNG, con salvataggio atomico con sostituzione del file, invalidazione cache miniature e aggiornamento in tempo reale del foglio Excel.
+            - **Icona Win32 PE Incorporata**: Generazione ed incorporamento dell'icona multi-risoluzione `logo.ico` (da 16x16 a 256x256 HiDPI) direttamente all'interno degli eseguibili Windows `Paddock.UI.exe` e `Paddock.Updater.exe`.
+            - **Packaging Linux Desktop**: Creazione e distribuzione del file desktop FreeDesktop `paddock.desktop` e automazione dello script di packaging Linux multipiattaforma.
+            - **Riorganizzazione Tab Informazioni nelle Impostazioni**: Layout a blocchi pulito e gerarchico (Paddock Organizer -> Aggiornamenti software -> Versioni componenti -> Link GitHub -> Copyright/Autore).
+            - **Funzionalità Ereditate**: Sistema di aggiornamento automatico (`Paddock.Updater`), supporto foto RAW / Canon CR2, rotazione automatica lossless in ingestione, browser a due tab con Premiazioni, ridenominazione metadati da SD, slideshow multi-monitor con 10 effetti e catalogo prezzi vendita.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

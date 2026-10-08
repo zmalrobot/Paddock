@@ -172,9 +172,11 @@ public class ChannelIngestionPipelineService : IIngestionPipelineService
                             var ext = Path.GetExtension(item.SourceFilePath);
                             var isRaw = _fileOrgService.IsRawFormat(ext);
 
-                            var rootFolder = !string.IsNullOrWhiteSpace(request.BasePath)
+                            var rawRootFolder = !string.IsNullOrWhiteSpace(request.BasePath)
                                 ? request.BasePath
                                 : request.EventoTarget.CartellaDestinazioneRoot;
+                            var resolved = !string.IsNullOrWhiteSpace(rawRootFolder) ? _excelRepo.ResolvePath(rawRootFolder) : null;
+                            var rootFolder = !string.IsNullOrWhiteSpace(resolved) ? resolved : (rawRootFolder ?? string.Empty);
 
                             // Fase A: Copia organizzata con MD5, relativePath puro e nome file ridenominato
                             var (destPath, relPath, md5, sizeBytes) = await _fileOrgService.CopyFileOrganizedAsync(

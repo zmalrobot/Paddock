@@ -27,23 +27,27 @@ public partial class EventEditDialogViewModel : ViewModelBase
     private string _cartellaDestinazioneRoot = string.Empty;
 
     [ObservableProperty]
+    private string _resolvedCartellaDestinazioneRoot = string.Empty;
+
+    [ObservableProperty]
     private string? _note;
 
     [ObservableProperty]
     private string? _errorMessage;
 
+    private readonly Func<string?, string>? _pathResolver;
+
     public event Action<bool>? RequestClose;
 
-    public EventEditDialogViewModel(Evento? evento = null, string? defaultRootPath = null)
+    public EventEditDialogViewModel(Evento? evento = null, string? defaultRootPath = null, Func<string?, string>? pathResolver = null)
     {
         IsNew = evento == null;
         Evento = evento ?? new Evento();
+        _pathResolver = pathResolver;
 
         var fallbackPath = !string.IsNullOrWhiteSpace(defaultRootPath)
             ? defaultRootPath
-            : Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
-                "Paddock_Events");
+            : @"..\Foto";
 
         if (evento != null)
         {
@@ -60,6 +64,35 @@ public partial class EventEditDialogViewModel : ViewModelBase
         {
             CartellaDestinazioneRoot = fallbackPath;
         }
+
+        UpdateResolvedRoot();
+    }
+
+    partial void OnCartellaDestinazioneRootChanged(string value)
+    {
+        UpdateResolvedRoot();
+    }
+
+    private void UpdateResolvedRoot()
+    {
+        if (string.IsNullOrWhiteSpace(CartellaDestinazioneRoot))
+        {
+            ResolvedCartellaDestinazioneRoot = string.Empty;
+            return;
+        }
+
+        if (_pathResolver != null)
+        {
+            ResolvedCartellaDestinazioneRoot = _pathResolver(CartellaDestinazioneRoot);
+        }
+        else if (Path.IsPathRooted(CartellaDestinazioneRoot))
+        {
+            ResolvedCartellaDestinazioneRoot = Path.GetFullPath(CartellaDestinazioneRoot);
+        }
+        else
+        {
+            ResolvedCartellaDestinazioneRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, CartellaDestinazioneRoot));
+        }
     }
 
     [RelayCommand]
@@ -73,9 +106,7 @@ public partial class EventEditDialogViewModel : ViewModelBase
 
         if (string.IsNullOrWhiteSpace(CartellaDestinazioneRoot))
         {
-            CartellaDestinazioneRoot = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
-                "Paddock_Events");
+            CartellaDestinazioneRoot = @"..\Foto";
         }
 
         Evento.NomeEvento = NomeEvento.Trim();

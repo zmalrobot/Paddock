@@ -281,15 +281,20 @@ public partial class SlideshowConfigViewModel : ViewModelBase
 
             if (matchingFoto.Count == 0 && IncludePremiazioni)
             {
-                var basePath = await _excelRepo.GetBasePathAsync();
+                var basePath = await _excelRepo.GetResolvedBasePathAsync();
                 if (string.IsNullOrWhiteSpace(basePath))
                 {
-                    basePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "Paddock");
+                    basePath = (await _excelRepo.GetBasePathAsync()) ?? string.Empty;
                 }
-                var eventFolder = !string.IsNullOrWhiteSpace(SelectedEvento.CartellaDestinazioneRoot)
-                    ? SelectedEvento.CartellaDestinazioneRoot
-                    : Path.Combine(basePath, SelectedEvento.NomeEvento);
-                var premDir = Path.Combine(eventFolder, "Premiazioni");
+                var resolvedRoot = !string.IsNullOrWhiteSpace(SelectedEvento.CartellaDestinazioneRoot)
+                    ? _excelRepo.ResolvePath(SelectedEvento.CartellaDestinazioneRoot)
+                    : null;
+                var eventFolder = !string.IsNullOrWhiteSpace(resolvedRoot)
+                    ? resolvedRoot
+                    : (!string.IsNullOrWhiteSpace(SelectedEvento.CartellaDestinazioneRoot)
+                        ? SelectedEvento.CartellaDestinazioneRoot
+                        : (!string.IsNullOrWhiteSpace(basePath) ? Path.Combine(basePath, SelectedEvento.NomeEvento) : SelectedEvento.NomeEvento));
+                var premDir = !string.IsNullOrWhiteSpace(eventFolder) ? Path.Combine(eventFolder, "Premiazioni") : string.Empty;
 
                 if (!Directory.Exists(premDir) || !Directory.EnumerateFiles(premDir, "*.*").Any())
                 {

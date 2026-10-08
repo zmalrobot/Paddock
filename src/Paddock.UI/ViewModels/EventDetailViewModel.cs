@@ -261,12 +261,18 @@ public partial class EventDetailViewModel : ViewModelBase
             return;
         }
 
-        var basePath = await _excelRepo.GetBasePathAsync() ?? string.Empty;
+        var basePath = await _excelRepo.GetResolvedBasePathAsync();
+        if (string.IsNullOrWhiteSpace(basePath))
+        {
+            basePath = (await _excelRepo.GetBasePathAsync()) ?? string.Empty;
+        }
 
         var items = new List<PhotoItemViewModel>();
         foreach (var f in filteredList)
         {
-            var fullPath = Path.Combine(basePath, f.PathRelativo);
+            var fullPath = !string.IsNullOrWhiteSpace(basePath)
+                ? Path.Combine(basePath, f.PathRelativo)
+                : f.PathRelativo;
             var item = new PhotoItemViewModel(f, fullPath);
 
             var atleta = AllAtleti.FirstOrDefault(a => a.Id == f.AtletaId);
@@ -340,11 +346,17 @@ public partial class EventDetailViewModel : ViewModelBase
         var premiazioniList = AllFoto.Where(f => f.IsPremiazione).ToList();
         if (premiazioniList.Count == 0) return;
 
-        var basePath = await _excelRepo.GetBasePathAsync() ?? string.Empty;
+        var basePath = await _excelRepo.GetResolvedBasePathAsync();
+        if (string.IsNullOrWhiteSpace(basePath))
+        {
+            basePath = (await _excelRepo.GetBasePathAsync()) ?? string.Empty;
+        }
 
         foreach (var f in premiazioniList)
         {
-            var fullPath = Path.Combine(basePath, f.PathRelativo);
+            var fullPath = !string.IsNullOrWhiteSpace(basePath)
+                ? Path.Combine(basePath, f.PathRelativo)
+                : f.PathRelativo;
             var item = new PhotoItemViewModel(f, fullPath)
             {
                 AtletaDisplay = "Premiazioni",
@@ -771,10 +783,13 @@ public partial class EventDetailViewModel : ViewModelBase
 
         try
         {
-            var cartellaPath = Path.Combine(
-                Evento.CartellaDestinazioneRoot,
-                Evento.NomeEvento,
-                SelectedAcquistoAtleta.NomeCartellaSanitizzato);
+            var resolvedRoot = _excelRepo.ResolvePath(Evento.CartellaDestinazioneRoot);
+            var rootDir = !string.IsNullOrWhiteSpace(resolvedRoot)
+                ? resolvedRoot
+                : (Evento.CartellaDestinazioneRoot ?? string.Empty);
+            var cartellaPath = !string.IsNullOrWhiteSpace(rootDir)
+                ? Path.Combine(rootDir, Evento.NomeEvento, SelectedAcquistoAtleta.NomeCartellaSanitizzato)
+                : Path.Combine(Evento.NomeEvento, SelectedAcquistoAtleta.NomeCartellaSanitizzato);
 
             var fileSelezionati = FotoDisponibiliAtleta
                 .Where(f => f.IsSelected)

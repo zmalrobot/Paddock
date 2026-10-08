@@ -2,13 +2,13 @@
 .SYNOPSIS
     Script di compilazione e packaging per Windows (win-x64).
 .PARAMETER Version
-    Versione del rilascio (default: 0.5.5).
+    Versione del rilascio (default: 0.5.6).
 .PARAMETER Configuration
     Configurazione di compilazione (default: Release).
 #>
 [CmdletBinding()]
 param (
-    [string]$Version = "0.5.5",
+    [string]$Version = "0.5.6",
     [string]$Configuration = "Release"
 )
 

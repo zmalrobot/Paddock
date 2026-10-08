@@ -25,17 +25,37 @@ public partial class DatabaseStartupDialogViewModel : ViewModelBase
 
     public event Action<string?>? DatabaseSelected;
 
+    public static string ResolveDbPath(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return string.Empty;
+        if (Path.IsPathRooted(path)) return Path.GetFullPath(path);
+        return Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, path));
+    }
+
     public DatabaseStartupDialogViewModel(IAppPreferencesService prefsService)
     {
         _prefsService = prefsService;
 
         LastDatabasePath = _prefsService.LastDatabasePath;
-        HasLastDatabase = !string.IsNullOrWhiteSpace(LastDatabasePath) && File.Exists(LastDatabasePath);
+        var resolvedLast = ResolveDbPath(LastDatabasePath);
+        HasLastDatabase = !string.IsNullOrWhiteSpace(resolvedLast) && File.Exists(resolvedLast);
         AutoOpenLastDatabase = _prefsService.AutoOpenLastDatabase;
+
+        // Se non c'è un ultimo database configurato ma esiste già la struttura standard ..\Database\Paddock_Database.xlsx
+        if (!HasLastDatabase && string.IsNullOrWhiteSpace(LastDatabasePath))
+        {
+            var defaultRel = Path.Combine("..", "Database", "Paddock_Database.xlsx");
+            var defaultAbs = ResolveDbPath(defaultRel);
+            if (File.Exists(defaultAbs))
+            {
+                LastDatabasePath = defaultRel;
+                HasLastDatabase = true;
+            }
+        }
 
         foreach (var p in _prefsService.RecentDatabases)
         {
-            if (File.Exists(p))
+            if (File.Exists(ResolveDbPath(p)))
             {
                 RecentDatabases.Add(p);
             }
@@ -45,7 +65,8 @@ public partial class DatabaseStartupDialogViewModel : ViewModelBase
     [RelayCommand]
     private async Task ContinueWithLastDatabaseAsync()
     {
-        if (string.IsNullOrWhiteSpace(LastDatabasePath) || !File.Exists(LastDatabasePath))
+        var resolved = ResolveDbPath(LastDatabasePath);
+        if (string.IsNullOrWhiteSpace(resolved) || !File.Exists(resolved))
         {
             ErrorMessage = "Il file dell'ultimo database non è più accessibile sul disco.";
             return;
