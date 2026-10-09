@@ -524,15 +524,19 @@ public class ImageSharpProcessingService : IImageProcessingService
         return image;
     }
 
-    private static Point CalculateWatermarkPoint(int imgW, int imgH, int wmW, int wmH, WatermarkPosition position, int margin)
+    internal static Point CalculateWatermarkPoint(int imgW, int imgH, int wmW, int wmH, WatermarkPosition position, int margin)
     {
         return position switch
         {
             WatermarkPosition.TopLeft => new Point(margin, margin),
+            WatermarkPosition.TopCenter => new Point(Math.Max(0, (imgW - wmW) / 2), margin),
             WatermarkPosition.TopRight => new Point(Math.Max(0, imgW - wmW - margin), margin),
-            WatermarkPosition.BottomLeft => new Point(margin, Math.Max(0, imgH - wmH - margin)),
-            WatermarkPosition.BottomRight => new Point(Math.Max(0, imgW - wmW - margin), Math.Max(0, imgH - wmH - margin)),
+            WatermarkPosition.CenterLeft => new Point(margin, Math.Max(0, (imgH - wmH) / 2)),
             WatermarkPosition.Center => new Point(Math.Max(0, (imgW - wmW) / 2), Math.Max(0, (imgH - wmH) / 2)),
+            WatermarkPosition.CenterRight => new Point(Math.Max(0, imgW - wmW - margin), Math.Max(0, (imgH - wmH) / 2)),
+            WatermarkPosition.BottomLeft => new Point(margin, Math.Max(0, imgH - wmH - margin)),
+            WatermarkPosition.BottomCenter => new Point(Math.Max(0, (imgW - wmW) / 2), Math.Max(0, imgH - wmH - margin)),
+            WatermarkPosition.BottomRight => new Point(Math.Max(0, imgW - wmW - margin), Math.Max(0, imgH - wmH - margin)),
             _ => new Point(Math.Max(0, imgW - wmW - margin), Math.Max(0, imgH - wmH - margin))
         };
     }

@@ -1,4 +1,6 @@
 using FluentAssertions;
+using Paddock.Core.DTOs;
+using Paddock.Core.Enums;
 using Paddock.Infrastructure.ImageProcessing;
 using Paddock.Infrastructure.Metadata;
 using SixLabors.ImageSharp;
@@ -126,6 +128,76 @@ public class ImageProcessingServiceTests : IDisposable
         var orientation = await metadataService.ExtractOrientationAsync(testFilePath);
 
         orientation.Should().Be(8);
+    }
+
+    [Theory]
+    [InlineData(WatermarkPosition.TopLeft, 20, 20)]
+    [InlineData(WatermarkPosition.TopCenter, 400, 20)]
+    [InlineData(WatermarkPosition.TopRight, 780, 20)]
+    [InlineData(WatermarkPosition.CenterLeft, 20, 350)]
+    [InlineData(WatermarkPosition.Center, 400, 350)]
+    [InlineData(WatermarkPosition.CenterRight, 780, 350)]
+    [InlineData(WatermarkPosition.BottomLeft, 20, 680)]
+    [InlineData(WatermarkPosition.BottomCenter, 400, 680)]
+    [InlineData(WatermarkPosition.BottomRight, 780, 680)]
+    public void CalculateWatermarkPoint_ReturnsExpectedCoordinates(WatermarkPosition position, int expectedX, int expectedY)
+    {
+        // Arrange: Immagine 1000x800, watermark 200x100, margine 20
+        const int imgW = 1000;
+        const int imgH = 800;
+        const int wmW = 200;
+        const int wmH = 100;
+        const int margin = 20;
+
+        // Act
+        var point = ImageSharpProcessingService.CalculateWatermarkPoint(imgW, imgH, wmW, wmH, position, margin);
+
+        // Assert
+        point.X.Should().Be(expectedX);
+        point.Y.Should().Be(expectedY);
+    }
+
+    [Theory]
+    [InlineData(WatermarkPosition.BottomCenter)]
+    [InlineData(WatermarkPosition.TopCenter)]
+    [InlineData(WatermarkPosition.CenterLeft)]
+    [InlineData(WatermarkPosition.CenterRight)]
+    public async Task ApplyWatermarkAsync_WithNewPositions_ProducesValidImage(WatermarkPosition position)
+    {
+        // Arrange
+        var sourceFile = Path.Combine(_tempDir, $"source_{position}.jpg");
+        var wmFile = Path.Combine(_tempDir, $"wm_{position}.png");
+        var destFile = Path.Combine(_tempDir, $"dest_{position}.jpg");
+
+        using (var img = new Image<Rgba32>(800, 600))
+        {
+            img.SaveAsJpeg(sourceFile);
+        }
+
+        using (var wm = new Image<Rgba32>(100, 100))
+        {
+            wm.SaveAsPng(wmFile);
+        }
+
+        var service = new ImageSharpProcessingService();
+        var options = new WatermarkOptions
+        {
+            Enabled = true,
+            WatermarkImagePath = wmFile,
+            Position = position,
+            Opacity = 0.8f,
+            ScalePercent = 0.2f,
+            MarginPixels = 24
+        };
+
+        // Act
+        await service.ApplyWatermarkAsync(sourceFile, destFile, options);
+
+        // Assert
+        File.Exists(destFile).Should().BeTrue();
+        using var resultImg = Image.Load(destFile);
+        resultImg.Width.Should().Be(800);
+        resultImg.Height.Should().Be(600);
     }
 }
 

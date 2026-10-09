@@ -13,7 +13,11 @@ public enum WatermarkPosition
     TopRight,
     TopLeft,
     Center,
-    Tiled
+    Tiled,
+    BottomCenter,
+    TopCenter,
+    CenterLeft,
+    CenterRight
 }
 
 public enum IngestionStatus
