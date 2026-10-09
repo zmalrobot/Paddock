@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Versione di rilascio (es. 0.6.0 o v0.6.0)'
+        description: 'Versione di rilascio (es. 0.6.1 o v0.6.1)'
         required: false
-        default: '0.6.0'
+        default: '0.6.1'
         type: string
       prerelease:
         description: 'Contrassegna come pre-release'
@@ -38,7 +38,7 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             RAW="${{ inputs.version }}"
-            [ -z "$RAW" ] && RAW="0.6.0"
+            [ -z "$RAW" ] && RAW="0.6.1"
           else
             RAW="${{ github.ref_name }}"
           fi
@@ -142,10 +142,10 @@ jobs:
             - **Linux (x64)**: `Paddock-${{ needs.meta.outputs.version }}-linux-x64.zip`
               *(Self-contained per distribuzioni Linux x86_64. Estrarre ed eseguire `./Paddock.UI`)*
 
-            ### Novità e Funzionalità della Versione 0.6.0
-            - **Supporto Database Relazionale SQLite ("Nuovo e performante")**: Integrazione ufficiale di `Microsoft.Data.Sqlite 10.0.12` per archiviare eventi, atleti, discipline, foto, listini prezzi e acquisti all'interno di un database relazionale SQLite ottimizzato. Abilitazione nativa della modalità WAL (`journal_mode = WAL; synchronous = NORMAL;`) che elimina i blocchi di contesa sui file, velocizza gli inserimenti massivi di foto tramite singola transazione (`AddFotoBatchAsync`) e garantisce caricamenti consolidati istantanei (`GetEventDataBundleAsync`) in meno di 10ms anche su grandi cataloghi con decine di migliaia di scatti.
-            - **Router Dinamico & Riconoscimento Trasparente per Estensione (`DatabaseRepositoryRouter`)**: Supporto affiancato e trasparente sia a SQLite che ad Excel. Il router rileva l'estensione del file in modo automatico (`.db`, `.sqlite`, `.sqlite3`, `.db3` per SQLite; `.xlsx`, `.xlsm`, `.xls` per Excel) e instrada tutte le operazioni al motore corrispondente senza interruzione dell'interfaccia utente.
-            - **Creazione Guidata all'Avvio & Finestra Impostazioni a Doppia Scelta**: Nuova esperienza di avvio (`DatabaseStartupDialog`) con selezione esplicita per creare *"🚀 Nuovo SQLite (.db)..."* (consigliato per velocità) o *"📊 Vecchio Excel (.xlsx)..."* (compatibilità con fogli di calcolo ClosedXML), selettori file con filtri unificati, badge visivi colorati (`[SQLITE]` e `[EXCEL]`), e nuovo strumento di migrazione con 1 clic nelle Impostazioni per convertire database storici Excel in SQLite.
-            - **Funzionalità Ereditate**: Conversione batch RAW/CR2 in JPEG per atleti con correzione colore stile Foto di Windows, risoluzione bug trailing slash nell'auto-updater (`Paddock.Updater`), icone multi-risoluzione incorporate negli eseguibili Windows PE, darkroom a schermo intero con filigrana e metadati per singola foto, architettura a cartella portatile (`Database/`, `Paddock/`, `Foto/`).
+            ### Novità e Funzionalità della Versione 0.6.1
+            - **Nuove Posizioni Watermark**: Aggiunto il supporto completo a tutte le posizioni mancanti per la filigrana grafica: `BottomCenter` (In basso al centro), `TopCenter` (In alto al centro), `CenterLeft` (Al centro a sinistra) e `CenterRight` (Al centro a destra), che si affiancano alle posizioni storiche (`BottomRight`, `BottomLeft`, `TopRight`, `TopLeft`, `Center`, `Tiled`).
+            - **Integrazione UI Immediata**: Le nuove posizioni sono automaticamente disponibili nei menu di scelta rapida di *Impostazioni*, *Wizard di Ingestione*, *Applicazione Watermark Singolo* e nel tool di *Conversione RAW in JPEG*.
+            - **Calcolo Geometrico Margini & Centratura Assi**: Ottimizzazione del calcolo delle coordinate geometriche in ImageSharp con centratura perfetta sia orizzontale che verticale, rispetto rigoroso dei margini e suite di test al 100% di copertura.
+            - **Funzionalità Ereditate (v0.6.0)**: Motore database relazionale SQLite ultraveloce (`Microsoft.Data.Sqlite`) in WAL mode con router trasparente SQLite/Excel, migrazione con 1 clic, conversione RAW in JPEG, auto-aggiornamento integrato e darkroom a schermo intero.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

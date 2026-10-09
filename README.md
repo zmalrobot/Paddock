@@ -464,21 +464,21 @@ La compilazione e distribuzione degli archivi standalone è automatizzata tramit
 ### 1. Workflow GitHub Actions (`.github/workflows/release.yml`)
 - **Runner Windows** (`windows-latest`): compila e impacchetta la versione per Windows x64 con icona incorporata (`paddock.ico`).
 - **Runner Linux** (`ubuntu-latest`): compila e impacchetta la versione per Linux x64 con permessi POSIX eseguibili.
-- **Creazione Automatica GitHub Release**: Pubblica ufficialmente la release con tag semantico (es. `v0.6.0`) allegando i pacchetti ZIP direttamente alla pagina Releases di GitHub.
+- **Creazione Automatica GitHub Release**: Pubblica ufficialmente la release con tag semantico (es. `v0.6.1`) allegando i pacchetti ZIP direttamente alla pagina Releases di GitHub.
 
 ### 2. Packaging Locale
 È possibile creare i pacchetti anche localmente con gli script forniti:
 - **Su Windows (PowerShell)**:
   ```powershell
-  ./scripts/build-windows.ps1 -Version "0.6.0"
+  ./scripts/build-windows.ps1 -Version "0.6.1"
   ```
-  Genera: `artifacts/Paddock-0.6.0-windows-x64.zip`
+  Genera: `artifacts/Paddock-0.6.1-windows-x64.zip`
 - **Su Linux (Bash)**:
   ```bash
   chmod +x ./scripts/build-linux.sh
-  ./scripts/build-linux.sh "0.6.0"
+  ./scripts/build-linux.sh "0.6.1"
   ```
-  Genera: `artifacts/Paddock-0.6.0-linux-x64.zip`
+  Genera: `artifacts/Paddock-0.6.1-linux-x64.zip`
 
 ---
 

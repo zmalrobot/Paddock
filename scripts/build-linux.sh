@@ -2,7 +2,7 @@
 # Script di compilazione e packaging per Linux (linux-x64).
 set -euo pipefail
 
-VERSION="${1:-0.6.0}"
+VERSION="${1:-0.6.1}"
 CONFIGURATION="${2:-Release}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

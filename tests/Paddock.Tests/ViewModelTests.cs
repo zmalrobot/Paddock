@@ -1315,9 +1315,9 @@ public class ViewModelTests
 
         var vm = new SettingsViewModel(mockRepo.Object, mockPrefs.Object);
 
-        vm.CoreVersion.Should().Be("0.6.0");
-        vm.InfrastructureVersion.Should().Be("0.6.0");
-        vm.UiVersion.Should().Be("0.6.0");
+        vm.CoreVersion.Should().Be("0.6.1");
+        vm.InfrastructureVersion.Should().Be("0.6.1");
+        vm.UiVersion.Should().Be("0.6.1");
         vm.CopyrightText.Should().Contain("zmalrobot").And.Contain("2026");
         vm.GitHubUrl.Should().Be("https://github.com/zmalrobot/Paddock");
     }
